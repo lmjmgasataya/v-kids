@@ -1,7 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
 import { LogoMark } from "@/components/LogoMark";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
   return (
     <div className="flex flex-col items-center gap-10 py-12 text-center">
       <LogoMark size={96} />
@@ -23,10 +28,6 @@ export default function Home() {
           <span className="text-sm text-white/80">Sign up a child for Kids Church</span>
         </Link>
       </div>
-
-      <Link href="/login" className="text-xs text-gray-300 hover:text-gray-400">
-        Staff login
-      </Link>
     </div>
   );
 }

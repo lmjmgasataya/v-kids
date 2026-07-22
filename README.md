@@ -47,8 +47,8 @@ npm run db:seed       # seed the default admin user
 ## What's included
 
 - **Registration** — public `/register` form; a child (`kids` table) and their guardian (`guardians` table, separate) are captured and inserted together (`src/app/register/actions.ts`)
-- **Kid-friendly home page** (`/`) — the only menu item for now is **Register**
-- **Auth (staff-side)** — JWT session cookie (`src/lib/auth.ts`), login/logout Server Actions (`src/app/login/actions.ts`), route protection via `src/proxy.ts` (guards `/dashboard/*`)
+- **Staff dashboard** (`/`) — kid-friendly themed, requires sign-in; the only menu item for now is **Register**
+- **Auth** — JWT session cookie (`src/lib/auth.ts`), login/logout Server Actions (`src/app/login/actions.ts`), route protection via `src/proxy.ts` (guards `/`); signing in lands on `/`, signing out redirects to `/login`
 - **Database** — Drizzle client (`src/db/index.ts`), schema (`src/db/schema/index.ts`) with `users`, `login_logs`, `guardians`, and `kids` tables
 - **API routes** — `/api/health` (DB connectivity check), `/api/keep-alive` (cron-friendly DB ping, `CRON_SECRET`-gated)
 - **Shared components** — `LogoMark` (brand mark), `NavigationProgress`, `PageLoader`, `SubmitButton`

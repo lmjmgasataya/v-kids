@@ -26,7 +26,7 @@ export async function login(_: unknown, formData: FormData) {
     role: user.role as Role,
   });
   await setSessionCookie(token);
-  redirect("/dashboard");
+  redirect("/");
 }
 
 export async function logout() {

@@ -20,9 +20,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" className="h-full">
-      <body className={`${geist.className} ${fredoka.variable} min-h-full bg-gray-50 antialiased`}>
+      <body className={`${geist.className} ${fredoka.variable} min-h-full antialiased`}>
         <NavigationProgress />
-        <header className="bg-white shadow-sm">
+        <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-10">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition">
               <LogoMark size={40} />
@@ -44,7 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </div>
             )}
           </div>
-          <div className="h-1.5 flex">
+          <div className="h-2 flex">
             <div className="flex-1 bg-kids-magenta" />
             <div className="flex-1 bg-kids-navy" />
             <div className="flex-1 bg-kids-green" />

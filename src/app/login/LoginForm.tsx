@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { login } from "./actions";
+import { LogoMark } from "@/components/LogoMark";
 
 export default function LoginForm() {
   const [state, action, pending] = useActionState(login, undefined);
@@ -9,10 +10,15 @@ export default function LoginForm() {
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
-      <div className="w-full max-w-sm bg-white rounded-2xl border border-gray-200 shadow-sm p-8 flex flex-col gap-6">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">v-2-kids</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Sign in to continue</p>
+      <div className="w-full max-w-sm bg-white rounded-3xl border-2 border-kids-navy/15 shadow-lg p-8 flex flex-col gap-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <LogoMark size={64} />
+          <div>
+            <h2 className="text-2xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
+              Staff Login
+            </h2>
+            <p className="text-sm text-gray-500 mt-0.5">Sign in to continue</p>
+          </div>
         </div>
 
         <form action={action} className="flex flex-col gap-4">
@@ -23,7 +29,7 @@ export default function LoginForm() {
               autoComplete="username"
               autoFocus
               required
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -34,7 +40,7 @@ export default function LoginForm() {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
               />
               <button
                 type="button"
@@ -66,7 +72,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={pending}
-            className="bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition"
+            className="bg-kids-navy hover:bg-kids-navy/90 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-xl transition font-[family-name:var(--font-fredoka)]"
           >
             {pending ? "Signing in…" : "Sign in"}
           </button>

@@ -31,12 +31,12 @@ docker compose up -d  # Starts postgres:16 on :5432 and Adminer on :8080
 
 ## Architecture
 
-**Kids Church** — registration app for a children's ministry. Kids register with a guardian's info; staff auth/dashboard chassis is in place for future check-in/reporting features.
+**Kids Church** — registration app for a children's ministry. Staff sign in to reach the dashboard at `/`; kids register with a guardian's info via the public `/register` form.
 
 ### Stack
 - **Next.js 16 App Router** with React 19 — all pages under `src/app/`
 - **Drizzle ORM** on PostgreSQL — schema in `src/db/schema/index.ts`, client in `src/db/index.ts`
-- **JWT sessions** via `jose` — implementation in `src/lib/auth.ts`, stored in `app_session` cookie (12h expiry, HS256); staff-only, not required for registration
+- **JWT sessions** via `jose` — implementation in `src/lib/auth.ts`, stored in `app_session` cookie (12h expiry, HS256); required to view `/`, not required for `/register`
 - **Tailwind CSS 4** for styling — custom colors `kids-magenta` / `kids-navy` / `kids-green` / `kids-yellow` defined via `@theme` in `src/app/globals.css`, matched to the Kids Church logo. Headings/buttons on kid-facing pages use the `Fredoka` font (`font-[family-name:var(--font-fredoka)]`).
 
 ### Data model
@@ -47,10 +47,9 @@ Four tables:
 - `login_logs` — audit log scaffold (not currently written to; wire up in `login` action if needed)
 
 ### Route sections
-- `src/app/page.tsx` — public, kid-friendly home page; only menu item is **Register**
+- `src/app/page.tsx` — the staff dashboard, kid-friendly themed; protected (redirects to `/login` if no session, also guarded by `src/proxy.ts`); only menu item is **Register**
 - `src/app/register/` — public registration form (`RegisterForm.tsx`), `actions.ts` has the `registerKid` Server Action (inserts `guardians` row, then `kids` row referencing it), `success/` is the post-registration confirmation page
-- `src/app/login/` — staff login page; `actions.ts` has the `login`/`logout` Server Actions
-- `src/app/dashboard/` — example protected staff page (redirects to `/login` if no session); also guarded by `src/proxy.ts`
+- `src/app/login/` — staff login page; `actions.ts` has the `login`/`logout` Server Actions; redirects to `/` if already signed in, and to `/` on successful login
 
 ### Patterns
 **Auth gating pattern** — any page that requires login:
@@ -60,7 +59,7 @@ if (!session) redirect("/login");
 ```
 Role checks: `session.role === "admin"`.
 
-**Route protection** — `src/proxy.ts` is Next 16's middleware equivalent; its `matcher` currently only covers `/dashboard/:path*`. Add more patterns there as protected routes are added, mirroring the `DEVELOPER_ONLY`-style regex array approach if role-specific gating is needed.
+**Route protection** — `src/proxy.ts` is Next 16's middleware equivalent; its `matcher` currently only covers `/` (the dashboard). Add more patterns there as protected routes are added, mirroring the `DEVELOPER_ONLY`-style regex array approach if role-specific gating is needed. `/register` is intentionally excluded — it must stay public.
 
 **Mutations use Server Actions**, not API routes, following the pattern in `src/app/login/actions.ts` and `src/app/register/actions.ts`.
 
