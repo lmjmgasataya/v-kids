@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-kids-magenta: #a8408f;
+  --color-kids-navy: #1c3f8b;
+  --color-kids-green: #3fa945;
+  --color-kids-yellow: #f0c419;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button {
+  cursor: pointer;
+}
