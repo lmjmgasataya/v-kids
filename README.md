@@ -1,13 +1,13 @@
-# v-2-kids
+# Kids Church
 
-Base Next.js application with TypeScript, Drizzle ORM, and PostgreSQL.
+Registration app for Kids Church, built on Next.js, TypeScript, Drizzle ORM, and PostgreSQL.
 
 ## Stack
 
 - **Next.js 16** App Router · **React 19**
 - **Drizzle ORM** on PostgreSQL
-- **Tailwind CSS 4**
-- JWT sessions via `jose` (`app_session` cookie)
+- **Tailwind CSS 4**, colors matched to the Kids Church logo (magenta/navy/green/yellow)
+- JWT sessions via `jose` (`app_session` cookie) for staff-only areas
 
 ## Local setup
 
@@ -46,10 +46,11 @@ npm run db:seed       # seed the default admin user
 
 ## What's included
 
-- **Auth** — JWT session cookie (`src/lib/auth.ts`), login/logout Server Actions (`src/app/login/actions.ts`), route protection via `src/proxy.ts` (guards `/dashboard/*`)
-- **Database** — Drizzle client (`src/db/index.ts`), schema (`src/db/schema/index.ts`) with `users` and `login_logs` tables
-- **Example pages** — public home (`/`), login (`/login`), protected dashboard (`/dashboard`)
+- **Registration** — public `/register` form; a child (`kids` table) and their guardian (`guardians` table, separate) are captured and inserted together (`src/app/register/actions.ts`)
+- **Kid-friendly home page** (`/`) — the only menu item for now is **Register**
+- **Auth (staff-side)** — JWT session cookie (`src/lib/auth.ts`), login/logout Server Actions (`src/app/login/actions.ts`), route protection via `src/proxy.ts` (guards `/dashboard/*`)
+- **Database** — Drizzle client (`src/db/index.ts`), schema (`src/db/schema/index.ts`) with `users`, `login_logs`, `guardians`, and `kids` tables
 - **API routes** — `/api/health` (DB connectivity check), `/api/keep-alive` (cron-friendly DB ping, `CRON_SECRET`-gated)
-- **Shared components** — `NavigationProgress`, `PageLoader`, `SubmitButton`
+- **Shared components** — `LogoMark` (brand mark), `NavigationProgress`, `PageLoader`, `SubmitButton`
 
-Extend the `users.role` enum and add role checks in `proxy.ts` / server components as the app grows.
+Extend the `users.role` enum and add role checks in `proxy.ts` / server components as staff features grow (e.g. a kid check-in dashboard).
