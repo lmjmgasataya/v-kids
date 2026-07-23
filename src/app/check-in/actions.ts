@@ -96,6 +96,47 @@ export async function checkOutKidForm(checkInId: number, formData: FormData) {
   await checkOutKid(checkInId, undefined, formData);
 }
 
+// Deletes a still-open check-in, as if it never happened. Only valid before
+// checkout — undo the checkout first if the kid has already left.
+export async function undoCheckIn(checkInId: number, _formData: FormData) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const [existing] = await db
+    .select({ id: checkIns.id, checkedOutAt: checkIns.checkedOutAt })
+    .from(checkIns)
+    .where(eq(checkIns.id, checkInId));
+
+  if (!existing || existing.checkedOutAt) return;
+
+  await db.delete(checkIns).where(eq(checkIns.id, checkInId));
+
+  revalidatePath("/check-in");
+  revalidatePath("/attendance");
+}
+
+// Reopens a checked-out record. No-ops if the kid already has a newer open
+// check-in, since only one open check-in per kid is allowed at a time.
+export async function undoCheckOut(checkInId: number, _formData: FormData) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const [existing] = await db
+    .select({ id: checkIns.id, kidId: checkIns.kidId, checkedOutAt: checkIns.checkedOutAt })
+    .from(checkIns)
+    .where(eq(checkIns.id, checkInId));
+
+  if (!existing || !existing.checkedOutAt) return;
+
+  const alreadyOpen = await getOpenCheckIn(existing.kidId);
+  if (alreadyOpen) return;
+
+  await db.update(checkIns).set({ checkedOutAt: null, checkedOutBy: null }).where(eq(checkIns.id, checkInId));
+
+  revalidatePath("/check-in");
+  revalidatePath("/attendance");
+}
+
 export async function searchKidsForCheckIn(query: string): Promise<CheckInSearchResult[]> {
   const session = await getSession();
   if (!session) return [];

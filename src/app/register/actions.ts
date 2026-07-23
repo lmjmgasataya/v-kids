@@ -17,15 +17,18 @@ export async function registerKid(_: unknown, formData: FormData) {
 
   const [guardianRow] = await db.insert(guardians).values(guardian).returning({ id: guardians.id });
 
-  await db.insert(kids).values({
-    firstName: child.firstName,
-    lastName: child.lastName,
-    nickname: child.nickname || null,
-    age: child.age,
-    gender: child.gender,
-    serviceAttending: child.serviceAttending,
-    guardianId: guardianRow.id,
-  });
+  const [kidRow] = await db
+    .insert(kids)
+    .values({
+      firstName: child.firstName,
+      lastName: child.lastName,
+      nickname: child.nickname || null,
+      age: child.age,
+      gender: child.gender,
+      serviceAttending: child.serviceAttending,
+      guardianId: guardianRow.id,
+    })
+    .returning({ id: kids.id });
 
-  redirect("/register/success");
+  redirect(`/register/success?kidId=${kidRow.id}`);
 }

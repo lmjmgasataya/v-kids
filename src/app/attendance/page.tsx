@@ -1,13 +1,8 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getSession } from "@/lib/auth";
-import {
-  getAttendanceByService,
-  getManilaDayBoundsForDateString,
-  manilaDateString,
-  shiftDateString,
-} from "@/lib/checkIn";
+import { getAttendanceByService, getManilaDayBoundsForDateString, manilaDateString } from "@/lib/checkIn";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { AttendanceDateNav } from "./AttendanceDateNav";
 
 const dateHeadingFormatter = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "full",
@@ -43,76 +38,48 @@ export default async function AttendancePage({
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Attendance" }]} />
       <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Attendance</h2>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href={`/attendance?date=${shiftDateString(date, -1)}`}
-          className="px-3 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-500 hover:bg-gray-200 transition"
-        >
-          ← Prev day
-        </Link>
-        <form action="/attendance" className="flex items-center gap-2">
-          <input
-            type="date"
-            name="date"
-            defaultValue={date}
-            max={manilaDateString()}
-            className="px-3 py-2 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-700"
-          />
-          <button
-            type="submit"
-            className="px-3 py-2 rounded-xl text-sm font-semibold bg-kids-navy text-white hover:bg-kids-navy/90 transition"
-          >
-            Go
-          </button>
-        </form>
-        <Link
-          href={`/attendance?date=${shiftDateString(date, 1)}`}
-          className="px-3 py-2 rounded-xl text-sm font-semibold bg-gray-100 text-gray-500 hover:bg-gray-200 transition"
-        >
-          Next day →
-        </Link>
-      </div>
+      <AttendanceDateNav date={date} today={manilaDateString()}>
+        <p className="text-sm text-gray-500 mb-6">{dateHeadingFormatter.format(start)}</p>
 
-      <p className="text-sm text-gray-500">{dateHeadingFormatter.format(start)}</p>
-
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-4 py-3 text-left font-semibold text-gray-600">Service</th>
-              <th className="px-4 py-3 text-right font-semibold text-gray-600">Checked in</th>
-              <th className="px-4 py-3 text-right font-semibold text-gray-600">Checked out</th>
-              <th className="px-4 py-3 text-right font-semibold text-gray-600">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.service} className="border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5">
-                <td className="px-4 py-3 font-medium text-gray-900">{row.service}</td>
-                <td className="px-4 py-3 text-right">
-                  {row.checkedIn > 0 ? (
-                    <span className="text-xs font-semibold text-kids-green bg-kids-green/10 rounded-full px-2 py-1">
-                      {row.checkedIn}
-                    </span>
-                  ) : (
-                    <span className="text-gray-300">0</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right text-gray-500">{row.checkedOut}</td>
-                <td className="px-4 py-3 text-right font-semibold text-gray-900">{row.total}</td>
+        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-4 py-3 text-left font-semibold text-gray-600">Service</th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-600">Checked in</th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-600">Checked out</th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-600">Total</th>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="bg-gray-50 font-bold text-gray-900">
-              <td className="px-4 py-3">Total</td>
-              <td className="px-4 py-3 text-right">{totals.checkedIn}</td>
-              <td className="px-4 py-3 text-right">{totals.checkedOut}</td>
-              <td className="px-4 py-3 text-right">{totals.total}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.service} className="border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5">
+                  <td className="px-4 py-3 font-medium text-gray-900">{row.service}</td>
+                  <td className="px-4 py-3 text-right">
+                    {row.checkedIn > 0 ? (
+                      <span className="text-xs font-semibold text-kids-green bg-kids-green/10 rounded-full px-2 py-1">
+                        {row.checkedIn}
+                      </span>
+                    ) : (
+                      <span className="text-gray-300">0</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-500">{row.checkedOut}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-gray-900">{row.total}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-gray-50 font-bold text-gray-900">
+                <td className="px-4 py-3">Total</td>
+                <td className="px-4 py-3 text-right">{totals.checkedIn}</td>
+                <td className="px-4 py-3 text-right">{totals.checkedOut}</td>
+                <td className="px-4 py-3 text-right">{totals.total}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </AttendanceDateNav>
     </div>
   );
 }

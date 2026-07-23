@@ -1,5 +1,6 @@
-import { checkOutKidForm } from "./actions";
+import { checkOutKidForm, undoCheckIn, undoCheckOut } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
+import { UndoForm } from "./UndoForm";
 import { inputCls } from "@/components/form";
 
 interface Row {
@@ -55,20 +56,37 @@ export function RosterTable({ rows }: { rows: Row[] }) {
               </td>
               <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{row.remarks}</td>
               <td className="px-4 py-3 text-right">
-                {!row.checkedOutAt && (
-                  <form action={checkOutKidForm.bind(null, row.id)} className="flex items-center justify-end gap-2">
-                    <input
-                      name="remarks"
-                      placeholder="Remarks (optional)"
-                      maxLength={500}
-                      className={`${inputCls} w-40 py-1.5`}
-                    />
-                    <SubmitButton
-                      label="Check out"
+                {!row.checkedOutAt ? (
+                  <div className="flex items-center justify-end gap-2 flex-wrap">
+                    <form action={checkOutKidForm.bind(null, row.id)} className="flex items-center gap-2">
+                      <input
+                        name="remarks"
+                        placeholder="Remarks (optional)"
+                        maxLength={500}
+                        className={`${inputCls} w-40 py-1.5`}
+                      />
+                      <SubmitButton
+                        label="Check out"
+                        pendingLabel="…"
+                        className="bg-kids-magenta hover:bg-kids-magenta/90 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                      />
+                    </form>
+                    <UndoForm
+                      action={undoCheckIn.bind(null, row.id)}
+                      confirmText={`Undo check-in for ${row.kidFirstName} ${row.kidLastName}? This removes today's check-in record.`}
+                      label="Undo check-in"
                       pendingLabel="…"
-                      className="bg-kids-magenta hover:bg-kids-magenta/90 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                      className="text-xs font-semibold text-gray-400 hover:text-red-600 transition disabled:opacity-50"
                     />
-                  </form>
+                  </div>
+                ) : (
+                  <UndoForm
+                    action={undoCheckOut.bind(null, row.id)}
+                    confirmText={`Undo check-out for ${row.kidFirstName} ${row.kidLastName}? They'll show as checked in again.`}
+                    label="Undo check-out"
+                    pendingLabel="…"
+                    className="text-xs font-semibold text-kids-navy hover:underline disabled:opacity-50"
+                  />
                 )}
               </td>
             </tr>
