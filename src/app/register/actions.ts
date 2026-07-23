@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { guardians, kids } from "@/db/schema";
 import { redirect } from "next/navigation";
+import { SERVICE_OPTIONS, MOBILE_NUMBER_REGEX } from "@/lib/constants";
 
 type Gender = "Male" | "Female";
 
@@ -22,8 +23,14 @@ export async function registerKid(_: unknown, formData: FormData) {
   if (!firstName || !lastName || !Number.isFinite(age) || age < 0 || !gender || !serviceAttending) {
     return { error: "Please fill in all required fields for the child." };
   }
+  if (!SERVICE_OPTIONS.includes(serviceAttending)) {
+    return { error: "Please select a valid service." };
+  }
   if (!guardianFirstName || !guardianLastName || !guardianContactNumber || !guardianGender) {
     return { error: "Please fill in all required guardian fields." };
+  }
+  if (!MOBILE_NUMBER_REGEX.test(guardianContactNumber)) {
+    return { error: "Please enter a valid guardian mobile number." };
   }
 
   const [guardian] = await db
