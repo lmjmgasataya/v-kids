@@ -14,6 +14,9 @@ const fredoka = Fredoka({ subsets: ["latin"], variable: "--font-fredoka" });
 export const metadata: Metadata = {
   title: "Kids Church",
   description: "Registration for Kids Church",
+  icons: {
+    icon: "/kids-logo.webp",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
