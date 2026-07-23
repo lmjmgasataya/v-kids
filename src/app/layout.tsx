@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { logout } from "@/app/login/actions";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { LogoMark } from "@/components/LogoMark";
+import { CursorTrail } from "@/components/CursorTrail";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"] });
@@ -22,6 +23,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className="h-full">
       <body className={`${geist.className} ${fredoka.variable} min-h-full antialiased`}>
         <NavigationProgress />
+        <CursorTrail />
         <header className="bg-gradient-to-r from-kids-magenta/10 via-kids-yellow/10 to-kids-navy/10 backdrop-blur-sm shadow-sm sticky top-0 z-10">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition">
