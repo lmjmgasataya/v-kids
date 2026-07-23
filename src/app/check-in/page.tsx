@@ -30,6 +30,7 @@ export default async function CheckInPage({
       kidFirstName: kids.firstName,
       kidLastName: kids.lastName,
       kidNickname: kids.nickname,
+      kidAge: kids.age,
       serviceAttending: checkIns.serviceAttending,
       checkedInAt: checkIns.checkedInAt,
       checkedOutAt: checkIns.checkedOutAt,

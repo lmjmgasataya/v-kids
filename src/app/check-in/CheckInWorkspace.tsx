@@ -105,7 +105,7 @@ function SearchPanel({
                   </div>
                 </div>
                 {kid.openCheckIn && (
-                  <span className="text-xs font-semibold text-kids-green bg-kids-green/10 rounded-full px-2 py-1">
+                  <span className="text-xs font-semibold text-kids-green bg-kids-green/10 rounded-full px-2 py-1 whitespace-nowrap shrink-0">
                     Checked in
                   </span>
                 )}

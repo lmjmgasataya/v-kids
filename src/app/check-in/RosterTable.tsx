@@ -8,6 +8,7 @@ interface Row {
   kidFirstName: string;
   kidLastName: string;
   kidNickname: string | null;
+  kidAge: number;
   serviceAttending: string;
   checkedInAt: Date;
   checkedOutAt: Date | null;
@@ -27,8 +28,8 @@ export function RosterTable({ rows }: { rows: Row[] }) {
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50">
             <th className="px-4 py-3 text-left font-semibold text-gray-600">Name</th>
-            <th className="px-4 py-3 text-left font-semibold text-gray-600">Service</th>
-            <th className="px-4 py-3 text-left font-semibold text-gray-600">Checked in</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-600">Age</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Checked in</th>
             <th className="px-4 py-3 text-left font-semibold text-gray-600">Status</th>
             <th className="px-4 py-3 text-left font-semibold text-gray-600">Remarks</th>
             <th className="px-4 py-3" />
@@ -43,9 +44,9 @@ export function RosterTable({ rows }: { rows: Row[] }) {
                 </div>
                 {row.kidNickname && <div className="text-xs text-gray-400">&quot;{row.kidNickname}&quot;</div>}
               </td>
-              <td className="px-4 py-3">{row.serviceAttending}</td>
+              <td className="px-4 py-3">{row.kidAge}</td>
               <td className="px-4 py-3 text-gray-500">{timeFormatter.format(row.checkedInAt)}</td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-3 whitespace-nowrap">
                 {row.checkedOutAt ? (
                   <span className="text-xs text-gray-500">Checked out {timeFormatter.format(row.checkedOutAt)}</span>
                 ) : (

@@ -49,6 +49,7 @@ export function ServiceRow({ row }: { row: ServiceAttendance }) {
                   <span className="text-gray-800">
                     {kid.firstName} {kid.lastName}
                     {kid.nickname && <span className="text-xs text-gray-400"> &quot;{kid.nickname}&quot;</span>}
+                    <span className="text-xs text-gray-400"> · Age {kid.age}</span>
                   </span>
                   {kid.checkedOutAt ? (
                     <span className="text-xs text-gray-400">

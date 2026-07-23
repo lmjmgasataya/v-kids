@@ -199,9 +199,15 @@ export async function searchKidsForCheckIn(query: string): Promise<CheckInSearch
   }));
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function resolveQrToken(token: string): Promise<{ kid: CheckInSearchResult } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "Please sign in again." };
+
+  if (!UUID_RE.test(token)) {
+    return { error: "That QR code isn't a Kids Church ID card. Please scan the child's ID card." };
+  }
 
   const [row] = await db
     .select({

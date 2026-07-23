@@ -96,6 +96,7 @@ export interface ServiceAttendanceKid {
   firstName: string;
   lastName: string;
   nickname: string | null;
+  age: number;
   checkedInAt: Date;
   checkedOutAt: Date | null;
 }
@@ -115,6 +116,7 @@ export async function getAttendanceByService(start: Date, end: Date): Promise<Se
       firstName: kids.firstName,
       lastName: kids.lastName,
       nickname: kids.nickname,
+      age: kids.age,
       service: checkIns.serviceAttending,
       checkedInAt: checkIns.checkedInAt,
       checkedOutAt: checkIns.checkedOutAt,
@@ -133,6 +135,7 @@ export async function getAttendanceByService(start: Date, end: Date): Promise<Se
       firstName: row.firstName,
       lastName: row.lastName,
       nickname: row.nickname,
+      age: row.age,
       checkedInAt: row.checkedInAt,
       checkedOutAt: row.checkedOutAt,
     });
