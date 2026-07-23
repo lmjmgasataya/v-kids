@@ -1,4 +1,5 @@
-import { pgTable, pgEnum, serial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, serial, text, boolean, timestamp, integer, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const roleEnum = pgEnum("user_role", ["admin", "volunteer"]);
 
@@ -43,8 +44,26 @@ export const kids = pgTable("kids", {
   guardianId: integer("guardian_id")
     .references(() => guardians.id)
     .notNull(),
+  qrToken: uuid("qr_token").defaultRandom().notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const checkIns = pgTable(
+  "check_ins",
+  {
+    id: serial("id").primaryKey(),
+    kidId: integer("kid_id")
+      .references(() => kids.id)
+      .notNull(),
+    serviceAttending: text("service_attending").notNull(),
+    checkedInAt: timestamp("checked_in_at").defaultNow().notNull(),
+    checkedOutAt: timestamp("checked_out_at"),
+    remarks: text("remarks"),
+    checkedInBy: integer("checked_in_by").references(() => users.id),
+    checkedOutBy: integer("checked_out_by").references(() => users.id),
+  },
+  (t) => [uniqueIndex("check_ins_open_kid_idx").on(t.kidId).where(sql`${t.checkedOutAt} is null`)]
+);
 
 export const featureFlags = pgTable("feature_flags", {
   key: text("key").primaryKey(),
@@ -56,4 +75,5 @@ export type User = typeof users.$inferSelect;
 export type LoginLog = typeof loginLogs.$inferSelect;
 export type Guardian = typeof guardians.$inferSelect;
 export type Kid = typeof kids.$inferSelect;
+export type CheckIn = typeof checkIns.$inferSelect;
 export type FeatureFlag = typeof featureFlags.$inferSelect;

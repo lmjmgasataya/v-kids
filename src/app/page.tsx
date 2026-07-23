@@ -18,7 +18,7 @@ export default async function Home() {
         <p className="mt-2 text-gray-500">Let&apos;s get you signed up for today 🎉</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-3xl">
         <NavTile
           href="/register"
           icon="📝"
@@ -32,6 +32,13 @@ export default async function Home() {
           label="Registered Kids"
           description="View, search, and edit registrations"
           color="kids-green"
+        />
+        <NavTile
+          href="/check-in"
+          icon="✅"
+          label="Check-In"
+          description="Check kids in and out of service"
+          color="kids-yellow"
         />
       </div>
     </div>

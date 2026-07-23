@@ -37,7 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${geist.className} ${fredoka.variable} min-h-full antialiased`}>
         <NavigationProgress />
         {cursorTrailEnabled && <CursorTrail />}
-        <header className="bg-gradient-to-r from-kids-magenta/10 via-kids-yellow/10 to-kids-navy/10 backdrop-blur-sm shadow-sm sticky top-0 z-10">
+        <header className="print:hidden bg-gradient-to-r from-kids-magenta/10 via-kids-yellow/10 to-kids-navy/10 backdrop-blur-sm shadow-sm sticky top-0 z-10">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition">
               <LogoMark size={40} />

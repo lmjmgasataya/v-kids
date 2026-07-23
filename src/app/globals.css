@@ -25,3 +25,65 @@ body {
 button {
   cursor: pointer;
 }
+
+/* html5-qrcode injects raw, unstyled DOM controls into #qr-reader */
+#qr-reader span:has(> select#html5-qrcode-select-camera) {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-kids-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+#qr-reader select#html5-qrcode-select-camera {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto 0.75rem;
+  padding: 0.625rem 2.25rem 0.625rem 0.875rem;
+  border-radius: 0.75rem;
+  border: 2px solid color-mix(in srgb, var(--color-kids-navy) 30%, transparent);
+  background-color: white;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%231c3f8b'><path fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.1rem;
+  appearance: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-kids-navy);
+  cursor: pointer;
+}
+
+#qr-reader button#html5-qrcode-button-camera-permission,
+#qr-reader button#html5-qrcode-button-camera-start,
+#qr-reader button#html5-qrcode-button-camera-stop {
+  display: inline-block;
+  padding: 0.625rem 1.5rem;
+  border-radius: 0.75rem;
+  border: none;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: white;
+  transition: background-color 0.15s ease;
+}
+
+#qr-reader button#html5-qrcode-button-camera-permission,
+#qr-reader button#html5-qrcode-button-camera-start {
+  background-color: var(--color-kids-green);
+}
+
+#qr-reader button#html5-qrcode-button-camera-permission:hover,
+#qr-reader button#html5-qrcode-button-camera-start:hover {
+  background-color: color-mix(in srgb, var(--color-kids-green) 88%, black);
+}
+
+#qr-reader button#html5-qrcode-button-camera-stop {
+  background-color: var(--color-kids-magenta);
+}
+
+#qr-reader button#html5-qrcode-button-camera-stop:hover {
+  background-color: color-mix(in srgb, var(--color-kids-magenta) 88%, black);
+}
