@@ -19,6 +19,7 @@ export interface CheckInSearchResult {
   age: number;
   defaultService: string;
   openCheckIn: OpenCheckInSummary | null;
+  checkedInServicesToday: string[];
 }
 
 export async function getOpenCheckIn(kidId: number): Promise<OpenCheckInSummary | null> {
@@ -41,6 +42,46 @@ export async function getOpenCheckInsByKidIds(kidIds: number[]): Promise<Map<num
     .from(checkIns)
     .where(and(inArray(checkIns.kidId, kidIds), isNull(checkIns.checkedOutAt)));
   return new Map(rows.map((row) => [row.kidId, row]));
+}
+
+export async function getCheckedInServicesTodayByKidIds(
+  kidIds: number[],
+  start: Date,
+  end: Date
+): Promise<Map<number, string[]>> {
+  if (kidIds.length === 0) return new Map();
+  const rows = await db
+    .select({ kidId: checkIns.kidId, service: checkIns.serviceAttending })
+    .from(checkIns)
+    .where(and(inArray(checkIns.kidId, kidIds), gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end)));
+
+  const map = new Map<number, Set<string>>();
+  for (const row of rows) {
+    if (!map.has(row.kidId)) map.set(row.kidId, new Set());
+    map.get(row.kidId)!.add(row.service);
+  }
+  return new Map(Array.from(map.entries()).map(([kidId, services]) => [kidId, Array.from(services)]));
+}
+
+export async function hasCheckedInServiceToday(
+  kidId: number,
+  service: string,
+  start: Date,
+  end: Date
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: checkIns.id })
+    .from(checkIns)
+    .where(
+      and(
+        eq(checkIns.kidId, kidId),
+        eq(checkIns.serviceAttending, service),
+        gte(checkIns.checkedInAt, start),
+        lt(checkIns.checkedInAt, end)
+      )
+    )
+    .limit(1);
+  return !!row;
 }
 
 export function validateCheckInInput(serviceAttending: string, remarks: string): string | null {

@@ -7,8 +7,11 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
+  getCheckedInServicesTodayByKidIds,
+  getManilaDayBounds,
   getOpenCheckIn,
   getOpenCheckInsByKidIds,
+  hasCheckedInServiceToday,
   validateCheckInInput,
   type CheckInSearchResult,
   type OpenCheckInSummary,
@@ -41,6 +44,12 @@ export async function checkInKid(
   const existingOpen = await getOpenCheckIn(kidId);
   if (existingOpen) {
     return { error: "This kid is already checked in.", openCheckIn: existingOpen };
+  }
+
+  const { start, end } = getManilaDayBounds();
+  const alreadyCheckedInService = await hasCheckedInServiceToday(kidId, serviceAttending, start, end);
+  if (alreadyCheckedInService) {
+    return { error: `This kid has already checked in to ${serviceAttending} today.` };
   }
 
   let insertedCheckIn: { id: number };
@@ -175,9 +184,18 @@ export async function searchKidsForCheckIn(query: string): Promise<CheckInSearch
     .where(or(ilike(kids.firstName, `%${search}%`), ilike(kids.lastName, `%${search}%`), ilike(kids.nickname, `%${search}%`)))
     .limit(10);
 
-  const openByKid = await getOpenCheckInsByKidIds(rows.map((row) => row.id));
+  const kidIds = rows.map((row) => row.id);
+  const { start, end } = getManilaDayBounds();
+  const [openByKid, servicesByKid] = await Promise.all([
+    getOpenCheckInsByKidIds(kidIds),
+    getCheckedInServicesTodayByKidIds(kidIds, start, end),
+  ]);
 
-  return rows.map((row) => ({ ...row, openCheckIn: openByKid.get(row.id) ?? null }));
+  return rows.map((row) => ({
+    ...row,
+    openCheckIn: openByKid.get(row.id) ?? null,
+    checkedInServicesToday: servicesByKid.get(row.id) ?? [],
+  }));
 }
 
 export async function resolveQrToken(token: string): Promise<{ kid: CheckInSearchResult } | { error: string }> {
@@ -198,6 +216,11 @@ export async function resolveQrToken(token: string): Promise<{ kid: CheckInSearc
 
   if (!row) return { error: "No kid found for this QR code." };
 
-  const openCheckIn = await getOpenCheckIn(row.id);
-  return { kid: { ...row, openCheckIn } };
+  const { start, end } = getManilaDayBounds();
+  const [openCheckIn, servicesByKid] = await Promise.all([
+    getOpenCheckIn(row.id),
+    getCheckedInServicesTodayByKidIds([row.id], start, end),
+  ]);
+
+  return { kid: { ...row, openCheckIn, checkedInServicesToday: servicesByKid.get(row.id) ?? [] } };
 }

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { checkIns, kids } from "@/db/schema";
 import { getManilaDayBounds } from "@/lib/checkIn";
+import { SERVICE_OPTIONS } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CheckInWorkspace } from "./CheckInWorkspace";
 import { RosterTable } from "./RosterTable";
@@ -18,6 +19,7 @@ export default async function CheckInPage({
 
   const sp = await searchParams;
   const token = typeof sp.token === "string" ? sp.token : undefined;
+  const service = typeof sp.service === "string" && SERVICE_OPTIONS.includes(sp.service) ? sp.service : SERVICE_OPTIONS[0];
 
   const { start, end } = getManilaDayBounds();
 
@@ -34,17 +36,23 @@ export default async function CheckInPage({
     })
     .from(checkIns)
     .innerJoin(kids, eq(checkIns.kidId, kids.id))
-    .where(and(gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end)))
+    .where(
+      and(
+        gte(checkIns.checkedInAt, start),
+        lt(checkIns.checkedInAt, end),
+        eq(checkIns.serviceAttending, service)
+      )
+    )
     .orderBy(desc(checkIns.checkedInAt));
 
   return (
     <div className="flex flex-col gap-6">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Check-In" }]} />
 
-      <CheckInWorkspace initialToken={token} />
+      <CheckInWorkspace initialToken={token} initialService={service} />
 
       <div>
-        <h3 className="text-lg font-bold text-kids-navy mb-3">Today&apos;s roster</h3>
+        <h3 className="text-lg font-bold text-kids-navy mb-3">Today&apos;s roster — {service}</h3>
         <RosterTable rows={roster} />
       </div>
     </div>
