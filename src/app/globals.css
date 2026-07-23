@@ -26,6 +26,28 @@ button {
   cursor: pointer;
 }
 
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@keyframes emoji-burst {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--burst-angle)) translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--burst-angle)) translateY(-32px) scale(0.4);
+    opacity: 0;
+  }
+}
+
+.animate-emoji-burst {
+  animation: emoji-burst 0.55s ease-out forwards;
+}
+
 @keyframes shimmer {
   0% {
     background-position: -400px 0;

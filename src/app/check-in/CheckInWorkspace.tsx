@@ -22,6 +22,24 @@ function parseQrToken(decodedText: string): string {
 
 const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short" });
 
+function EmojiBurst({ triggerKey, emoji }: { triggerKey: number; emoji: string }) {
+  if (!triggerKey) return null;
+  const particles = Array.from({ length: 8 });
+  return (
+    <span key={triggerKey} className="pointer-events-none absolute inset-0">
+      {particles.map((_, i) => (
+        <span
+          key={i}
+          className="absolute left-1/2 top-1/2 text-lg animate-emoji-burst"
+          style={{ "--burst-angle": `${(360 / particles.length) * i}deg` } as React.CSSProperties}
+        >
+          {emoji}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function SearchPanel({
   intent,
   service,
@@ -103,6 +121,7 @@ function SearchPanel({
 function CheckInForm({ kid, service, onDone }: { kid: CheckInSearchResult; service: string; onDone: () => void }) {
   const checkInWithId = checkInKid.bind(null, kid.id);
   const [state, action] = useActionState(checkInWithId, undefined);
+  const [burst, setBurst] = useState(0);
 
   return (
     <div className="rounded-2xl border-2 border-kids-green/30 bg-kids-green/5 p-6 flex flex-col gap-4">
@@ -117,7 +136,7 @@ function CheckInForm({ kid, service, onDone }: { kid: CheckInSearchResult; servi
           Close
         </button>
       </div>
-      <form action={action} className="flex flex-col gap-3">
+      <form action={action} onSubmit={() => setBurst((b) => b + 1)} className="flex flex-col gap-3">
         <input type="hidden" name="serviceAttending" value={service} />
         <p className="text-sm text-gray-700">
           Checking in to <span className="font-semibold">{service}</span>.
@@ -127,11 +146,15 @@ function CheckInForm({ kid, service, onDone }: { kid: CheckInSearchResult; servi
           <textarea name="remarks" rows={2} maxLength={500} className={inputCls} />
         </div>
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-        <SubmitButton
-          label="Check in"
-          pendingLabel="Checking in…"
-          className="bg-kids-green hover:bg-kids-green/90 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition"
-        />
+        <div className="relative">
+          <SubmitButton
+            label="Check in"
+            pendingLabel="Checking in…"
+            icon="✅"
+            className="w-full bg-kids-green hover:bg-kids-green/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white font-bold py-2.5 rounded-xl transition-[transform,background-color,opacity] duration-150"
+          />
+          <EmojiBurst triggerKey={burst} emoji="🎉" />
+        </div>
       </form>
     </div>
   );
@@ -148,6 +171,7 @@ function CheckOutForm({
 }) {
   const checkOutWithId = checkOutKid.bind(null, openCheckIn.id);
   const [state, action] = useActionState(checkOutWithId, undefined);
+  const [burst, setBurst] = useState(0);
 
   return (
     <div className="rounded-2xl border-2 border-kids-magenta/30 bg-kids-magenta/5 p-6 flex flex-col gap-4">
@@ -162,7 +186,7 @@ function CheckOutForm({
           Close
         </button>
       </div>
-      <form action={action} className="flex flex-col gap-3">
+      <form action={action} onSubmit={() => setBurst((b) => b + 1)} className="flex flex-col gap-3">
         <input type="hidden" name="service" value={openCheckIn.serviceAttending} />
         <p className="text-sm text-gray-700">
           Currently checked in to <span className="font-semibold">{openCheckIn.serviceAttending}</span> since{" "}
@@ -173,11 +197,15 @@ function CheckOutForm({
           <textarea name="remarks" rows={2} maxLength={500} className={inputCls} />
         </div>
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-        <SubmitButton
-          label="Check out"
-          pendingLabel="Checking out…"
-          className="bg-kids-magenta hover:bg-kids-magenta/90 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition"
-        />
+        <div className="relative">
+          <SubmitButton
+            label="Check out"
+            pendingLabel="Checking out…"
+            icon="👋"
+            className="w-full bg-kids-magenta hover:bg-kids-magenta/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white font-bold py-2.5 rounded-xl transition-[transform,background-color,opacity] duration-150"
+          />
+          <EmojiBurst triggerKey={burst} emoji="✨" />
+        </div>
       </form>
     </div>
   );
@@ -186,30 +214,43 @@ function CheckOutForm({
 export function CheckInWorkspace({
   initialToken,
   initialService,
+  initialIntent,
 }: {
   initialToken?: string;
   initialService?: string;
+  initialIntent?: Intent;
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [intent, setIntent] = useState<Intent>("checkin");
+  const [intent, setIntent] = useState<Intent>(initialIntent ?? "checkin");
   const [mode, setMode] = useState<"search" | "scan">("search");
   const [service, setServiceState] = useState<string>(initialService ?? SERVICE_OPTIONS[0]);
   const [selectedKid, setSelectedKid] = useState<CheckInSearchResult | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
 
+  const updateUrlParams = useCallback(
+    (nextService: string, nextIntent: Intent) => {
+      const params = new URLSearchParams();
+      params.set("service", nextService);
+      params.set("intent", nextIntent);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [router, pathname]
+  );
+
   const setService = useCallback(
     (next: string) => {
       setServiceState(next);
-      router.replace(`${pathname}?service=${encodeURIComponent(next)}`, { scroll: false });
+      updateUrlParams(next, intent);
     },
-    [router, pathname]
+    [updateUrlParams, intent]
   );
 
   function switchIntent(next: Intent) {
     setIntent(next);
     setSelectedKid(null);
     setScanError(null);
+    updateUrlParams(service, next);
   }
 
   function switchMode(next: "search" | "scan") {
@@ -262,17 +303,19 @@ export function CheckInWorkspace({
       const kid = result.kid;
       if (kid.openCheckIn) {
         setIntent("checkout");
-        setService(kid.openCheckIn.serviceAttending);
+        setServiceState(kid.openCheckIn.serviceAttending);
+        updateUrlParams(kid.openCheckIn.serviceAttending, "checkout");
       } else {
         setIntent("checkin");
-        setService(kid.defaultService);
+        setServiceState(kid.defaultService);
+        updateUrlParams(kid.defaultService, "checkin");
       }
       setSelectedKid(kid);
     });
     return () => {
       cancelled = true;
     };
-  }, [initialToken, setService]);
+  }, [initialToken, updateUrlParams]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -284,20 +327,20 @@ export function CheckInWorkspace({
         <button
           type="button"
           onClick={() => switchIntent("checkin")}
-          className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-            intent === "checkin" ? "bg-kids-green text-white" : "bg-gray-100 text-gray-500"
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-[transform,background-color,color] duration-150 active:scale-90 ${
+            intent === "checkin" ? "bg-kids-green text-white scale-105" : "bg-gray-100 text-gray-500"
           }`}
         >
-          Check In
+          ✅ Check In
         </button>
         <button
           type="button"
           onClick={() => switchIntent("checkout")}
-          className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-            intent === "checkout" ? "bg-kids-magenta text-white" : "bg-gray-100 text-gray-500"
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-[transform,background-color,color] duration-150 active:scale-90 ${
+            intent === "checkout" ? "bg-kids-magenta text-white scale-105" : "bg-gray-100 text-gray-500"
           }`}
         >
-          Check Out
+          👋 Check Out
         </button>
       </div>
 

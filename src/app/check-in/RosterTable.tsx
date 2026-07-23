@@ -69,7 +69,8 @@ export function RosterTable({ rows }: { rows: Row[] }) {
                       <SubmitButton
                         label="Check out"
                         pendingLabel="…"
-                        className="bg-kids-magenta hover:bg-kids-magenta/90 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                        icon="👋"
+                        className="bg-kids-magenta hover:bg-kids-magenta/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-[transform,background-color,opacity] duration-150"
                       />
                     </form>
                     <UndoForm

@@ -27,6 +27,7 @@ export default async function KidsPage({
   if (!session) redirect("/login");
 
   const sp = await searchParams;
+  const deleted = sp.deleted === "1";
   const q = typeof sp.q === "string" ? sp.q : "";
   const sortParam = typeof sp.sort === "string" ? sp.sort : "createdAt";
   const dirParam = typeof sp.dir === "string" ? sp.dir : "desc";
@@ -68,6 +69,11 @@ export default async function KidsPage({
   return (
     <div className="flex flex-col gap-6">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Registered Kids" }]} />
+      {deleted && (
+        <p className="text-sm text-kids-green bg-kids-green/10 border border-kids-green/30 rounded-lg px-3 py-2">
+          Registration deleted.
+        </p>
+      )}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
           Registered Kids

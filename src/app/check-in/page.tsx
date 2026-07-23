@@ -20,6 +20,7 @@ export default async function CheckInPage({
   const sp = await searchParams;
   const token = typeof sp.token === "string" ? sp.token : undefined;
   const service = typeof sp.service === "string" && SERVICE_OPTIONS.includes(sp.service) ? sp.service : SERVICE_OPTIONS[0];
+  const intent = sp.intent === "checkout" ? "checkout" : "checkin";
 
   const { start, end } = getManilaDayBounds();
 
@@ -49,7 +50,7 @@ export default async function CheckInPage({
     <div className="flex flex-col gap-6">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Check-In" }]} />
 
-      <CheckInWorkspace initialToken={token} initialService={service} />
+      <CheckInWorkspace initialToken={token} initialService={service} initialIntent={intent} />
 
       <div>
         <h3 className="text-lg font-bold text-kids-navy mb-3">Today&apos;s roster — {service}</h3>

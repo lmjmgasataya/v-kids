@@ -20,7 +20,7 @@ const brandStripe = (
 
 function IdCardFront({ displayName, fullName }: { displayName: string; fullName: string }) {
   return (
-    <div className="w-[85.6mm] h-[54mm] bg-white rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border-0 overflow-hidden flex flex-col break-after-page">
+    <div className="w-[85.6mm] h-[54mm] bg-white rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300 overflow-hidden flex flex-col break-after-page">
       <div className="flex items-center gap-1.5 px-[5mm] pt-[3.5mm]">
         <LogoMark size={22} />
         <span className="text-[7px] font-bold tracking-widest text-kids-navy uppercase font-[family-name:var(--font-fredoka)]">
@@ -40,7 +40,7 @@ function IdCardFront({ displayName, fullName }: { displayName: string; fullName:
 
 function IdCardBack({ qrDataUrl, fullName }: { qrDataUrl: string; fullName: string }) {
   return (
-    <div className="w-[85.6mm] h-[54mm] bg-white rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border-0 overflow-hidden flex flex-col">
+    <div className="w-[85.6mm] h-[54mm] bg-white rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300 overflow-hidden flex flex-col">
       {brandStripe}
       <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
         {/* eslint-disable-next-line @next/next/no-img-element */}

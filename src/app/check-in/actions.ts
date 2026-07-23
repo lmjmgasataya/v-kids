@@ -84,7 +84,7 @@ export async function checkInKid(
   }
 
   revalidatePath("/check-in");
-  redirect(`/check-in?service=${encodeURIComponent(serviceAttending)}`);
+  redirect(`/check-in?service=${encodeURIComponent(serviceAttending)}&intent=checkin`);
 }
 
 export async function checkOutKid(checkInId: number, _prev: { error?: string } | undefined, formData: FormData) {
@@ -113,7 +113,7 @@ export async function checkOutKid(checkInId: number, _prev: { error?: string } |
     .where(eq(checkIns.id, checkInId));
 
   revalidatePath("/check-in");
-  redirect(service ? `/check-in?service=${encodeURIComponent(service)}` : "/check-in");
+  redirect(service ? `/check-in?service=${encodeURIComponent(service)}&intent=checkout` : "/check-in?intent=checkout");
 }
 
 // Row-level checkout form on the roster table has no local pending/error UI
