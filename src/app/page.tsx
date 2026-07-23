@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { LogoMark } from "@/components/LogoMark";
-import { RegisterTile } from "@/components/RegisterTile";
+import { NavTile } from "@/components/NavTile";
 
 export default async function Home() {
   const session = await getSession();
@@ -18,8 +18,21 @@ export default async function Home() {
         <p className="mt-2 text-gray-500">Let&apos;s get you signed up for today 🎉</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 w-full max-w-xs">
-        <RegisterTile />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
+        <NavTile
+          href="/register"
+          icon="📝"
+          label="Register"
+          description="Sign up a child for Kids Church"
+          color="kids-magenta"
+        />
+        <NavTile
+          href="/kids"
+          icon="📋"
+          label="Registered Kids"
+          description="View, search, and edit registrations"
+          color="kids-green"
+        />
       </div>
     </div>
   );

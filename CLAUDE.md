@@ -31,7 +31,7 @@ docker compose up -d  # Starts postgres:16 on :5432 and Adminer on :8080
 
 ## Architecture
 
-**Kids Church** — registration app for a children's ministry. Staff sign in to reach the dashboard at `/`; kids register with a guardian's info via the public `/register` form.
+**Kids Church** — registration app for a children's ministry. Staff sign in to reach the dashboard at `/`; kids register with a guardian's info via the public `/register` form; staff can search/sort/edit registrations at `/kids`.
 
 ### Stack
 - **Next.js 16 App Router** with React 19 — all pages under `src/app/`
@@ -47,8 +47,10 @@ Four tables:
 - `login_logs` — audit log scaffold (not currently written to; wire up in `login` action if needed)
 
 ### Route sections
-- `src/app/page.tsx` — the staff dashboard, kid-friendly themed; protected (redirects to `/login` if no session, also guarded by `src/proxy.ts`); only menu item is **Register**
+- `src/app/page.tsx` — the staff dashboard, kid-friendly themed; protected (redirects to `/login` if no session, also guarded by `src/proxy.ts`); menu tiles: **Register**, **Registered Kids**
 - `src/app/register/` — public registration form (`RegisterForm.tsx`), `actions.ts` has the `registerKid` Server Action (inserts `guardians` row, then `kids` row referencing it), `success/` is the post-registration confirmation page
+- `src/app/kids/` — protected list of all registered kids (`page.tsx`), joined with `guardians`; supports `?q=` search (kid/guardian name, `ilike`) and `?sort=&dir=` column sorting via `KidsTable.tsx` header links; `KidsSearch.tsx` is a debounced client search box that updates the URL
+- `src/app/kids/[id]/edit/` — edit an existing kid + guardian; `actions.ts` has the `updateKid` Server Action (bound with the kid's id via `.bind(null, id)` for use with `useActionState`)
 - `src/app/login/` — staff login page; `actions.ts` has the `login`/`logout` Server Actions; redirects to `/` if already signed in, and to `/` on successful login
 
 ### Patterns
@@ -59,11 +61,22 @@ if (!session) redirect("/login");
 ```
 Role checks: `session.role === "admin"`.
 
-**Route protection** — `src/proxy.ts` is Next 16's middleware equivalent; its `matcher` currently only covers `/` (the dashboard). Add more patterns there as protected routes are added, mirroring the `DEVELOPER_ONLY`-style regex array approach if role-specific gating is needed. `/register` is intentionally excluded — it must stay public.
+**Route protection** — `src/proxy.ts` is Next 16's middleware equivalent; its `matcher` covers `/` and `/kids/:path*`. Add more patterns there as protected routes are added, mirroring the `DEVELOPER_ONLY`-style regex array approach if role-specific gating is needed. `/register` is intentionally excluded — it must stay public.
 
-**Mutations use Server Actions**, not API routes, following the pattern in `src/app/login/actions.ts` and `src/app/register/actions.ts`.
+**Mutations use Server Actions**, not API routes, following the pattern in `src/app/login/actions.ts`, `src/app/register/actions.ts`, and `src/app/kids/[id]/edit/actions.ts`.
 
-**Brand mark** — `src/components/LogoMark.tsx` renders the four-quadrant K/i/D/S mark using the `kids-*` theme colors; reused in the header and home page hero.
+**Shared registration fields/validation** — the child and guardian form fields (and their validation) are shared between `/register` and `/kids/[id]/edit` to avoid drift between the two forms:
+- `src/components/ChildFields.tsx` / `src/components/GuardianFields.tsx` — the actual `<fieldset>` inputs, each taking an optional `defaultValues` prop (unset for register, pre-filled for edit)
+- `src/components/form.tsx` — low-level `Field` / `Select` primitives used by the above
+- `src/lib/kidRegistration.ts` — `readChildInput`/`readGuardianInput` (FormData → typed input) and `validateChildInput`/`validateGuardianInput`, called by both `registerKid` and `updateKid`
+
+**When adding/changing a child or guardian field, edit these shared files once — do not duplicate the change into both the register and edit Server Actions/forms.**
+
+**Brand mark** — `src/components/LogoMark.tsx` renders the Kids Church logo (`public/kids-logo.webp`); reused in the header, home page hero, and login card; also set as the favicon via `metadata.icons` in `layout.tsx`.
+
+**Dashboard nav tiles** — `src/components/NavTile.tsx` is the reusable colorful tilt/press tile used on `/` (Register, Registered Kids); pass `href`, `icon`, `label`, `description`, and one of the `kids-*` colors.
+
+**Constants** — `src/lib/constants.ts` holds `SERVICE_OPTIONS` (the fixed list of services shown in the "Service attending" dropdown) and the `MOBILE_NUMBER_*` pattern/regex/help text used to validate guardian contact numbers on both client and server.
 
 **API routes** (`src/app/api/`) exist only for:
 - `health` — health check

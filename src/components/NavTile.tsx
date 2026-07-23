@@ -3,7 +3,24 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 
-export function RegisterTile() {
+type Color = "kids-magenta" | "kids-green" | "kids-navy" | "kids-yellow";
+
+const BG_CLASS: Record<Color, string> = {
+  "kids-magenta": "bg-kids-magenta",
+  "kids-green": "bg-kids-green",
+  "kids-navy": "bg-kids-navy",
+  "kids-yellow": "bg-kids-yellow",
+};
+
+interface Props {
+  href: string;
+  icon: string;
+  label: string;
+  description: string;
+  color: Color;
+}
+
+export function NavTile({ href, icon, label, description, color }: Props) {
   const ref = useRef<HTMLAnchorElement>(null);
   const [pressed, setPressed] = useState(false);
 
@@ -24,7 +41,7 @@ export function RegisterTile() {
   return (
     <Link
       ref={ref}
-      href="/register"
+      href={href}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onMouseDown={() => setPressed(true)}
@@ -34,11 +51,11 @@ export function RegisterTile() {
           ? "-4px 6px 12px rgba(0,0,0,0.22), 0 3px 8px rgba(0,0,0,0.12)"
           : "-10px 14px 24px rgba(0,0,0,0.32), 0 6px 14px rgba(0,0,0,0.18)",
       }}
-      className="flex flex-col items-center gap-3 rounded-3xl bg-kids-magenta text-white p-8 transition-[transform,box-shadow] duration-200 ease-out will-change-transform"
+      className={`flex flex-col items-center gap-3 rounded-3xl text-white p-8 transition-[transform,box-shadow] duration-200 ease-out will-change-transform ${BG_CLASS[color]}`}
     >
-      <span className="text-5xl">📝</span>
-      <span className="text-2xl font-bold font-[family-name:var(--font-fredoka)]">Register</span>
-      <span className="text-sm text-white/80">Sign up a child for Kids Church</span>
+      <span className="text-5xl">{icon}</span>
+      <span className="text-2xl font-bold font-[family-name:var(--font-fredoka)]">{label}</span>
+      <span className="text-sm text-white/80">{description}</span>
     </Link>
   );
 }
