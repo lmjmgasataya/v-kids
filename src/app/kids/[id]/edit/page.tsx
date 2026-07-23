@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { kids, guardians } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import EditKidForm from "./EditKidForm";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export default async function EditKidPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -33,5 +34,16 @@ export default async function EditKidPage({ params }: { params: Promise<{ id: st
 
   if (!row) notFound();
 
-  return <EditKidForm kid={row} />;
+  return (
+    <div>
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Registered Kids", href: "/kids" },
+          { label: `${row.firstName} ${row.lastName}` },
+        ]}
+      />
+      <EditKidForm kid={row} />
+    </div>
+  );
 }

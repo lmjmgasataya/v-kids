@@ -46,7 +46,14 @@ export const kids = pgTable("kids", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const featureFlags = pgTable("feature_flags", {
+  key: text("key").primaryKey(),
+  enabled: boolean("enabled").notNull().default(true),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type LoginLog = typeof loginLogs.$inferSelect;
 export type Guardian = typeof guardians.$inferSelect;
 export type Kid = typeof kids.$inferSelect;
+export type FeatureFlag = typeof featureFlags.$inferSelect;

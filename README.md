@@ -50,8 +50,9 @@ npm run db:seed       # seed the default admin user
 - **Registered kids list** (`/kids`) — searchable (kid or guardian name), sortable by any column header, links to an edit page per kid
 - **Edit registration** (`/kids/[id]/edit`) — updates the kid and guardian together; shares its fields and validation with `/register` (see `src/lib/kidRegistration.ts`, `src/components/ChildFields.tsx`/`GuardianFields.tsx`) so the two forms can't drift apart
 - **Staff dashboard** (`/`) — kid-friendly themed, requires sign-in; menu tiles: **Register**, **Registered Kids**
-- **Auth** — JWT session cookie (`src/lib/auth.ts`), login/logout Server Actions (`src/app/login/actions.ts`), route protection via `src/proxy.ts` (guards `/` and `/kids/*`); signing in lands on `/`, signing out redirects to `/login`
-- **Database** — Drizzle client (`src/db/index.ts`), schema (`src/db/schema/index.ts`) with `users`, `login_logs`, `guardians`, and `kids` tables
+- **Settings** (`/settings`, admin only) — global feature-flag toggles, gear icon in the header (admins only); currently just the cursor trail effect
+- **Auth** — JWT session cookie (`src/lib/auth.ts`), login/logout Server Actions (`src/app/login/actions.ts`), route protection via `src/proxy.ts` (guards `/`, `/kids/*`, `/settings/*`); signing in lands on `/`, signing out redirects to `/login`
+- **Database** — Drizzle client (`src/db/index.ts`), schema (`src/db/schema/index.ts`) with `users`, `login_logs`, `guardians`, `kids`, and `feature_flags` tables
 - **API routes** — `/api/health` (DB connectivity check), `/api/keep-alive` (cron-friendly DB ping, `CRON_SECRET`-gated)
 - **Shared components** — `LogoMark` (brand mark), `NavigationProgress`, `PageLoader`, `SubmitButton`
 

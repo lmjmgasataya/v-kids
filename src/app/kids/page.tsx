@@ -5,6 +5,7 @@ import { kids, guardians } from "@/db/schema";
 import { asc, desc, eq, ilike, or } from "drizzle-orm";
 import { KidsSearch } from "./KidsSearch";
 import { KidsTable } from "./KidsTable";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 const SORTABLE = {
   lastName: kids.lastName,
@@ -66,6 +67,7 @@ export default async function KidsPage({
 
   return (
     <div className="flex flex-col gap-6">
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Registered Kids" }]} />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
           Registered Kids

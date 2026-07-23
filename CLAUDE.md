@@ -45,6 +45,7 @@ Four tables:
 - `kids` — `firstName`, `lastName`, `nickname`, `age`, `gender`, `serviceAttending` (free text), `guardianId` (FK, not null)
 - `users` — `username`, `passwordHash` (bcryptjs), `name`, `role` (`admin` | `user`) — staff accounts
 - `login_logs` — audit log scaffold (not currently written to; wire up in `login` action if needed)
+- `feature_flags` — `key` (primary key), `enabled` (default `true`), `updatedAt`; global on/off switches, editable at `/settings` (admin only). Currently just `cursor_trail`. Missing row ⇒ treated as enabled (see fallback pattern below).
 
 ### Route sections
 - `src/app/page.tsx` — the staff dashboard, kid-friendly themed; protected (redirects to `/login` if no session, also guarded by `src/proxy.ts`); menu tiles: **Register**, **Registered Kids**
@@ -52,6 +53,7 @@ Four tables:
 - `src/app/kids/` — protected list of all registered kids (`page.tsx`), joined with `guardians`; supports `?q=` search (kid/guardian name, `ilike`) and `?sort=&dir=` column sorting via `KidsTable.tsx` header links; `KidsSearch.tsx` is a debounced client search box that updates the URL
 - `src/app/kids/[id]/edit/` — edit an existing kid + guardian; `actions.ts` has the `updateKid` Server Action (bound with the kid's id via `.bind(null, id)` for use with `useActionState`)
 - `src/app/login/` — staff login page; `actions.ts` has the `login`/`logout` Server Actions; redirects to `/` if already signed in, and to `/` on successful login
+- `src/app/settings/` — admin-only global settings (redirects non-admins to `/`); currently toggles the `cursor_trail` feature flag via the `toggleCursorTrail` Server Action in `actions.ts`
 
 ### Patterns
 **Auth gating pattern** — any page that requires login:
@@ -59,7 +61,9 @@ Four tables:
 const session = await getSession();
 if (!session) redirect("/login");
 ```
-Role checks: `session.role === "admin"`.
+Role checks: `session.role === "admin"`. Admin-only pages (e.g. `/settings`) redirect non-admins to `/` rather than `/login` — they're authenticated, just not authorized.
+
+**Feature flags** — read with `db.select().from(featureFlags).where(eq(featureFlags.key, KEY))`, then fall back with `flag?.enabled ?? true` (a missing row means the feature is on). `src/app/layout.tsx` reads `CURSOR_TRAIL_FLAG_KEY` on every request to decide whether to mount `<CursorTrail />`. Toggling is an upsert (`onConflictDoUpdate`) in `src/app/settings/actions.ts`, since the row may not exist yet on first toggle.
 
 **Route protection** — `src/proxy.ts` is Next 16's middleware equivalent; its `matcher` covers `/` and `/kids/:path*`. Add more patterns there as protected routes are added, mirroring the `DEVELOPER_ONLY`-style regex array approach if role-specific gating is needed. `/register` is intentionally excluded — it must stay public.
 

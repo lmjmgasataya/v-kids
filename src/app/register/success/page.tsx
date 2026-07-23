@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export default function RegisterSuccessPage() {
   return (
     <div className="flex flex-col items-center gap-6 py-20 text-center">
+      <Breadcrumbs
+        items={[{ label: "Home", href: "/" }, { label: "Register", href: "/register" }, { label: "Success" }]}
+      />
       <span className="text-6xl">🎉</span>
       <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
         You&apos;re all set!
