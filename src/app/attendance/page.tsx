@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { getAttendanceByService, getManilaDayBoundsForDateString, manilaDateString } from "@/lib/checkIn";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { AttendanceDateNav } from "./AttendanceDateNav";
+import { ServiceRow } from "./ServiceRow";
 
 const dateHeadingFormatter = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "full",
@@ -53,20 +54,7 @@ export default async function AttendancePage({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.service} className="border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5">
-                  <td className="px-4 py-3 font-medium text-gray-900">{row.service}</td>
-                  <td className="px-4 py-3 text-right">
-                    {row.checkedIn > 0 ? (
-                      <span className="text-xs font-semibold text-kids-green bg-kids-green/10 rounded-full px-2 py-1">
-                        {row.checkedIn}
-                      </span>
-                    ) : (
-                      <span className="text-gray-300">0</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-500">{row.checkedOut}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-900">{row.total}</td>
-                </tr>
+                <ServiceRow key={row.service} row={row} />
               ))}
             </tbody>
             <tfoot>

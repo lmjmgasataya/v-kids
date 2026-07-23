@@ -1,6 +1,6 @@
 import { and, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
-import { checkIns } from "@/db/schema";
+import { checkIns, kids } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 
 export * from "@/lib/date";
@@ -50,32 +50,58 @@ export function validateCheckInInput(serviceAttending: string, remarks: string):
   return null;
 }
 
+export interface ServiceAttendanceKid {
+  id: number;
+  firstName: string;
+  lastName: string;
+  nickname: string | null;
+  checkedInAt: Date;
+  checkedOutAt: Date | null;
+}
+
 export interface ServiceAttendance {
   service: string;
   checkedIn: number;
   checkedOut: number;
   total: number;
+  kids: ServiceAttendanceKid[];
 }
 
 export async function getAttendanceByService(start: Date, end: Date): Promise<ServiceAttendance[]> {
   const rows = await db
-    .select({ service: checkIns.serviceAttending, checkedOutAt: checkIns.checkedOutAt })
+    .select({
+      id: kids.id,
+      firstName: kids.firstName,
+      lastName: kids.lastName,
+      nickname: kids.nickname,
+      service: checkIns.serviceAttending,
+      checkedInAt: checkIns.checkedInAt,
+      checkedOutAt: checkIns.checkedOutAt,
+    })
     .from(checkIns)
-    .where(and(gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end)));
+    .innerJoin(kids, eq(checkIns.kidId, kids.id))
+    .where(and(gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end)))
+    .orderBy(kids.firstName, kids.lastName);
 
-  const counts = new Map<string, { checkedIn: number; checkedOut: number }>();
-  for (const service of SERVICE_OPTIONS) counts.set(service, { checkedIn: 0, checkedOut: 0 });
+  const buckets = new Map<string, ServiceAttendanceKid[]>();
+  for (const service of SERVICE_OPTIONS) buckets.set(service, []);
   for (const row of rows) {
-    if (!counts.has(row.service)) counts.set(row.service, { checkedIn: 0, checkedOut: 0 });
-    const bucket = counts.get(row.service)!;
-    if (row.checkedOutAt) bucket.checkedOut++;
-    else bucket.checkedIn++;
+    if (!buckets.has(row.service)) buckets.set(row.service, []);
+    buckets.get(row.service)!.push({
+      id: row.id,
+      firstName: row.firstName,
+      lastName: row.lastName,
+      nickname: row.nickname,
+      checkedInAt: row.checkedInAt,
+      checkedOutAt: row.checkedOutAt,
+    });
   }
 
-  return Array.from(counts.entries()).map(([service, bucket]) => ({
+  return Array.from(buckets.entries()).map(([service, serviceKids]) => ({
     service,
-    checkedIn: bucket.checkedIn,
-    checkedOut: bucket.checkedOut,
-    total: bucket.checkedIn + bucket.checkedOut,
+    checkedIn: serviceKids.filter((kid) => !kid.checkedOutAt).length,
+    checkedOut: serviceKids.filter((kid) => kid.checkedOutAt).length,
+    total: serviceKids.length,
+    kids: serviceKids,
   }));
 }
