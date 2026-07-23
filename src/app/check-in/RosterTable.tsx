@@ -59,6 +59,7 @@ export function RosterTable({ rows }: { rows: Row[] }) {
                 {!row.checkedOutAt ? (
                   <div className="flex items-center justify-end gap-2 flex-wrap">
                     <form action={checkOutKidForm.bind(null, row.id)} className="flex items-center gap-2">
+                      <input type="hidden" name="service" value={row.serviceAttending} />
                       <input
                         name="remarks"
                         placeholder="Remarks (optional)"

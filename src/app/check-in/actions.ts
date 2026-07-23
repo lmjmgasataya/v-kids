@@ -84,7 +84,7 @@ export async function checkInKid(
   }
 
   revalidatePath("/check-in");
-  redirect("/check-in");
+  redirect(`/check-in?service=${encodeURIComponent(serviceAttending)}`);
 }
 
 export async function checkOutKid(checkInId: number, _prev: { error?: string } | undefined, formData: FormData) {
@@ -92,6 +92,7 @@ export async function checkOutKid(checkInId: number, _prev: { error?: string } |
   if (!session) redirect("/login");
 
   const remarks = (formData.get("remarks") as string)?.trim() ?? "";
+  const service = (formData.get("service") as string)?.trim() ?? "";
   if (remarks.length > 500) return { error: "Remarks must be 500 characters or fewer." };
 
   const [existing] = await db
@@ -112,7 +113,7 @@ export async function checkOutKid(checkInId: number, _prev: { error?: string } |
     .where(eq(checkIns.id, checkInId));
 
   revalidatePath("/check-in");
-  redirect("/check-in");
+  redirect(service ? `/check-in?service=${encodeURIComponent(service)}` : "/check-in");
 }
 
 // Row-level checkout form on the roster table has no local pending/error UI

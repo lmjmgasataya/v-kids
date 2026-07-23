@@ -48,7 +48,9 @@ function SearchPanel({
   }
 
   const filtered = results.filter((kid) =>
-    intent === "checkin" ? !kid.openCheckIn && !kid.checkedInServicesToday.includes(service) : kid.openCheckIn
+    intent === "checkin"
+      ? !kid.openCheckIn && !kid.checkedInServicesToday.includes(service)
+      : kid.openCheckIn?.serviceAttending === service
   );
 
   return (
@@ -161,6 +163,7 @@ function CheckOutForm({
         </button>
       </div>
       <form action={action} className="flex flex-col gap-3">
+        <input type="hidden" name="service" value={openCheckIn.serviceAttending} />
         <p className="text-sm text-gray-700">
           Currently checked in to <span className="font-semibold">{openCheckIn.serviceAttending}</span> since{" "}
           {timeFormatter.format(openCheckIn.checkedInAt)}.
@@ -240,6 +243,10 @@ export function CheckInWorkspace({
       setScanError(`${kid.firstName} is not currently checked in.`);
       return;
     }
+    if (forIntent === "checkout" && kid.openCheckIn && kid.openCheckIn.serviceAttending !== service) {
+      setScanError(`${kid.firstName} is checked in to ${kid.openCheckIn.serviceAttending}, not ${service}.`);
+      return;
+    }
     setSelectedKid(kid);
   }
 
@@ -255,6 +262,7 @@ export function CheckInWorkspace({
       const kid = result.kid;
       if (kid.openCheckIn) {
         setIntent("checkout");
+        setService(kid.openCheckIn.serviceAttending);
       } else {
         setIntent("checkin");
         setService(kid.defaultService);
@@ -293,26 +301,24 @@ export function CheckInWorkspace({
         </button>
       </div>
 
-      {intent === "checkin" && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
-          <select
-            value={service}
-            onChange={(e) => {
-              setService(e.target.value);
-              setSelectedKid(null);
-              setScanError(null);
-            }}
-            className={inputCls}
-          >
-            {SERVICE_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
+        <select
+          value={service}
+          onChange={(e) => {
+            setService(e.target.value);
+            setSelectedKid(null);
+            setScanError(null);
+          }}
+          className={inputCls}
+        >
+          {SERVICE_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="flex gap-2">
         <button
