@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
@@ -58,4 +58,53 @@ export function validateCheckInInput(serviceAttending: string, remarks: string):
   if (!SERVICE_OPTIONS.includes(serviceAttending)) return "Please select a valid service.";
   if (remarks.length > 500) return "Remarks must be 500 characters or fewer.";
   return null;
+}
+
+// "Today" in Asia/Manila as a YYYY-MM-DD string, for use as a date-input default/query param.
+export function manilaDateString(reference: Date = new Date()): string {
+  const manilaNow = new Date(reference.getTime() + MANILA_OFFSET_MS);
+  return manilaNow.toISOString().slice(0, 10);
+}
+
+export function shiftDateString(dateStr: string, deltaDays: number): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + deltaDays));
+  return shifted.toISOString().slice(0, 10);
+}
+
+export function getManilaDayBoundsForDateString(dateStr: string): { start: Date; end: Date } {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day) - MANILA_OFFSET_MS);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end };
+}
+
+export interface ServiceAttendance {
+  service: string;
+  checkedIn: number;
+  checkedOut: number;
+  total: number;
+}
+
+export async function getAttendanceByService(start: Date, end: Date): Promise<ServiceAttendance[]> {
+  const rows = await db
+    .select({ service: checkIns.serviceAttending, checkedOutAt: checkIns.checkedOutAt })
+    .from(checkIns)
+    .where(and(gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end)));
+
+  const counts = new Map<string, { checkedIn: number; checkedOut: number }>();
+  for (const service of SERVICE_OPTIONS) counts.set(service, { checkedIn: 0, checkedOut: 0 });
+  for (const row of rows) {
+    if (!counts.has(row.service)) counts.set(row.service, { checkedIn: 0, checkedOut: 0 });
+    const bucket = counts.get(row.service)!;
+    if (row.checkedOutAt) bucket.checkedOut++;
+    else bucket.checkedIn++;
+  }
+
+  return Array.from(counts.entries()).map(([service, bucket]) => ({
+    service,
+    checkedIn: bucket.checkedIn,
+    checkedOut: bucket.checkedOut,
+    total: bucket.checkedIn + bucket.checkedOut,
+  }));
 }
