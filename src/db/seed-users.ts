@@ -16,7 +16,7 @@ async function main() {
       .onConflictDoUpdate({ target: users.username, set: { passwordHash, name: account.name, role: account.role } });
     console.log(`✓ ${account.username} (${account.role})`);
   }
-  console.log("\nDefault password: changeme");
+  console.log("\nAccounts seeded with the passwords set in ACCOUNTS above.");
   console.log("Change passwords before deploying to production.");
   process.exit(0);
 }

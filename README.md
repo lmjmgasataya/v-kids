@@ -23,7 +23,7 @@ nvm use 24
 npm install
 npm run db:push
 
-# 4. Seed the default admin user (admin / changeme)
+# 4. Seed the admin user(s) (see ACCOUNTS in src/db/seed-users.ts for username/password)
 npm run db:seed
 
 # 5. Run dev server
