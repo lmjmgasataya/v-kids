@@ -227,6 +227,10 @@ export function CheckInWorkspace({ initialToken }: { initialToken?: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
+        {intent === "checkin" ? "Check-In" : "Check-Out"}
+      </h2>
+
       <div className="flex gap-2">
         <button
           type="button"

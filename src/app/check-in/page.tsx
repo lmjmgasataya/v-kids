@@ -40,7 +40,6 @@ export default async function CheckInPage({
   return (
     <div className="flex flex-col gap-6">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Check-In" }]} />
-      <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Check-In</h2>
 
       <CheckInWorkspace initialToken={token} />
 
