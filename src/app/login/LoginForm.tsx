@@ -29,7 +29,7 @@ export default function LoginForm() {
               autoComplete="username"
               autoFocus
               required
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -40,7 +40,7 @@ export default function LoginForm() {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
               />
               <button
                 type="button"

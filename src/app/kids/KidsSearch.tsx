@@ -27,7 +27,7 @@ export function KidsSearch({ defaultValue }: { defaultValue: string }) {
       placeholder="Search by name…"
       value={value}
       onChange={(e) => handleChange(e.target.value)}
-      className="w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
+      className="w-full max-w-xs rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
     />
   );
 }

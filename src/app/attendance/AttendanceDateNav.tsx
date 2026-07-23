@@ -30,7 +30,7 @@ export function AttendanceDateNav({ date, today, children }: { date: string; tod
           value={date}
           max={today}
           onChange={(e) => e.target.value && navigate(e.target.value)}
-          className="px-3 py-2 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-700"
+          className="px-3 py-2 rounded-xl border-2 border-gray-200 bg-white text-sm font-medium text-gray-700"
         />
         <button
           type="button"
