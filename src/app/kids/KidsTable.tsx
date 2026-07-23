@@ -74,8 +74,8 @@ export function KidsTable({ rows, sort, dir, q }: { rows: Row[]; sort: string; d
               <td className="px-4 py-3">{row.serviceAttending}</td>
               <td className="px-4 py-3 text-gray-500">{dateFormatter.format(row.createdAt)}</td>
               <td className="px-4 py-3 text-right whitespace-nowrap">
-                <Link href={`/kids/${row.id}/qr`} className="text-kids-navy font-semibold hover:underline">
-                  QR
+                <Link href={`/kids/${row.id}/id-card`} className="text-kids-navy font-semibold hover:underline">
+                  Print ID
                 </Link>
                 <span className="text-gray-300 mx-2">|</span>
                 <Link href={`/kids/${row.id}/edit`} className="text-kids-navy font-semibold hover:underline">
