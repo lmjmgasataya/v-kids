@@ -1,0 +1,114 @@
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { QrScanner } from "@/components/QrScanner";
+import { inputCls } from "@/components/form";
+import { searchKidsBasic, resolveKidBasicByQrToken, type KcBucksKid } from "./actions";
+
+function parseQrToken(decodedText: string): string {
+  try {
+    const url = new URL(decodedText);
+    return url.searchParams.get("token") ?? decodedText;
+  } catch {
+    return decodedText;
+  }
+}
+
+export function KidLookupPanel({ onSelect }: { onSelect: (kid: KcBucksKid) => void }) {
+  const [mode, setMode] = useState<"search" | "scan">("search");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<KcBucksKid[]>([]);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleChange(next: string) {
+    setQuery(next);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      startTransition(async () => {
+        const rows = await searchKidsBasic(next);
+        setResults(rows);
+      });
+    }, 300);
+  }
+
+  async function handleDecode(decodedText: string) {
+    setScanError(null);
+    const result = await resolveKidBasicByQrToken(parseQrToken(decodedText));
+    if ("error" in result) {
+      setScanError(result.error);
+      return;
+    }
+    onSelect(result.kid);
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setMode("search")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+            mode === "search" ? "bg-kids-navy text-white" : "bg-gray-100 text-gray-500"
+          }`}
+        >
+          Search
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("scan")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+            mode === "scan" ? "bg-kids-navy text-white" : "bg-gray-100 text-gray-500"
+          }`}
+        >
+          Scan QR
+        </button>
+      </div>
+
+      {mode === "search" && (
+        <div className="flex flex-col gap-3">
+          <input
+            type="search"
+            placeholder="Search kids by name…"
+            value={query}
+            onChange={(e) => handleChange(e.target.value)}
+            className={inputCls}
+          />
+          {isPending && <p className="text-xs text-gray-400">Searching…</p>}
+          {!isPending && query.trim() && results.length === 0 && (
+            <p className="text-xs text-gray-400">No matching kids found.</p>
+          )}
+          {results.length > 0 && (
+            <ul className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
+              {results.map((kid) => (
+                <li key={kid.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(kid)}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-kids-yellow/5"
+                  >
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {kid.firstName} {kid.lastName}
+                        {kid.nickname && <span className="text-xs text-gray-400"> &quot;{kid.nickname}&quot;</span>}
+                      </div>
+                      <div className="text-xs text-gray-400">Age {kid.age}</div>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {mode === "scan" && (
+        <div className="flex flex-col gap-2">
+          <QrScanner onDecode={handleDecode} />
+          {scanError && <p className="text-sm text-red-600">{scanError}</p>}
+        </div>
+      )}
+    </div>
+  );
+}

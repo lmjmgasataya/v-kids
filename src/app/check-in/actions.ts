@@ -2,7 +2,7 @@
 
 import { eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
-import { checkIns, kids } from "@/db/schema";
+import { checkIns, kcBucksTransactions, kids } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -13,6 +13,7 @@ import {
   type CheckInSearchResult,
   type OpenCheckInSummary,
 } from "@/lib/checkIn";
+import { getCheckInCreditAmount } from "@/lib/kcBucks";
 
 export interface CheckInActionState {
   error?: string;
@@ -42,19 +43,35 @@ export async function checkInKid(
     return { error: "This kid is already checked in.", openCheckIn: existingOpen };
   }
 
+  let insertedCheckIn: { id: number };
   try {
-    await db.insert(checkIns).values({
-      kidId,
-      serviceAttending,
-      remarks: remarks || null,
-      checkedInBy: session.userId,
-    });
+    [insertedCheckIn] = await db
+      .insert(checkIns)
+      .values({
+        kidId,
+        serviceAttending,
+        remarks: remarks || null,
+        checkedInBy: session.userId,
+      })
+      .returning({ id: checkIns.id });
   } catch (err) {
     if (isUniqueViolation(err)) {
       const openCheckIn = await getOpenCheckIn(kidId);
       return { error: "This kid is already checked in.", openCheckIn: openCheckIn ?? undefined };
     }
     throw err;
+  }
+
+  const creditAmount = await getCheckInCreditAmount();
+  if (creditAmount > 0) {
+    await db.insert(kcBucksTransactions).values({
+      kidId,
+      type: "checkin",
+      amount: creditAmount,
+      reason: `Checked in for ${serviceAttending}`,
+      checkInId: insertedCheckIn.id,
+      createdBy: session.userId,
+    });
   }
 
   revalidatePath("/check-in");
@@ -109,6 +126,7 @@ export async function undoCheckIn(checkInId: number, _formData: FormData) {
 
   if (!existing || existing.checkedOutAt) return;
 
+  await db.delete(kcBucksTransactions).where(eq(kcBucksTransactions.checkInId, checkInId));
   await db.delete(checkIns).where(eq(checkIns.id, checkInId));
 
   revalidatePath("/check-in");

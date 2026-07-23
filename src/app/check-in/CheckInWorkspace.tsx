@@ -6,7 +6,7 @@ import type { CheckInSearchResult, OpenCheckInSummary } from "@/lib/checkIn";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { Select, inputCls } from "@/components/form";
 import { SubmitButton } from "@/components/SubmitButton";
-import { QrScanner } from "./QrScanner";
+import { QrScanner } from "@/components/QrScanner";
 
 type Intent = "checkin" | "checkout";
 

@@ -71,9 +71,32 @@ export const featureFlags = pgTable("feature_flags", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const kcBucksTransactionTypeEnum = pgEnum("kc_bucks_transaction_type", ["checkin", "grant", "redemption"]);
+
+export const kcBucksSettings = pgTable("kc_bucks_settings", {
+  key: text("key").primaryKey(),
+  value: integer("value").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const kcBucksTransactions = pgTable("kc_bucks_transactions", {
+  id: serial("id").primaryKey(),
+  kidId: integer("kid_id")
+    .references(() => kids.id)
+    .notNull(),
+  type: kcBucksTransactionTypeEnum("type").notNull(),
+  amount: integer("amount").notNull(),
+  reason: text("reason").notNull(),
+  checkInId: integer("check_in_id").references(() => checkIns.id),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type LoginLog = typeof loginLogs.$inferSelect;
 export type Guardian = typeof guardians.$inferSelect;
 export type Kid = typeof kids.$inferSelect;
 export type CheckIn = typeof checkIns.$inferSelect;
 export type FeatureFlag = typeof featureFlags.$inferSelect;
+export type KcBucksSettings = typeof kcBucksSettings.$inferSelect;
+export type KcBucksTransaction = typeof kcBucksTransactions.$inferSelect;
