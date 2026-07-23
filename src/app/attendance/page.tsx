@@ -29,9 +29,9 @@ export default async function AttendancePage({
     (acc, row) => ({
       checkedIn: acc.checkedIn + row.checkedIn,
       checkedOut: acc.checkedOut + row.checkedOut,
-      total: acc.total + row.total,
+      stillPresent: acc.stillPresent + row.stillPresent,
     }),
-    { checkedIn: 0, checkedOut: 0, total: 0 }
+    { checkedIn: 0, checkedOut: 0, stillPresent: 0 }
   );
 
   return (
@@ -49,7 +49,7 @@ export default async function AttendancePage({
                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Service</th>
                 <th className="px-4 py-3 text-right font-semibold text-gray-600">Checked in</th>
                 <th className="px-4 py-3 text-right font-semibold text-gray-600">Checked out</th>
-                <th className="px-4 py-3 text-right font-semibold text-gray-600">Total</th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-600">Still present</th>
               </tr>
             </thead>
             <tbody>
@@ -62,7 +62,7 @@ export default async function AttendancePage({
                 <td className="px-4 py-3">Total</td>
                 <td className="px-4 py-3 text-right">{totals.checkedIn}</td>
                 <td className="px-4 py-3 text-right">{totals.checkedOut}</td>
-                <td className="px-4 py-3 text-right">{totals.total}</td>
+                <td className="px-4 py-3 text-right">{totals.stillPresent}</td>
               </tr>
             </tfoot>
           </table>

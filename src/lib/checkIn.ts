@@ -61,9 +61,9 @@ export interface ServiceAttendanceKid {
 
 export interface ServiceAttendance {
   service: string;
-  checkedIn: number;
-  checkedOut: number;
-  total: number;
+  checkedIn: number; // total kids who checked in today, regardless of checkout status
+  checkedOut: number; // of those, how many have since checked out
+  stillPresent: number; // checkedIn - checkedOut
   kids: ServiceAttendanceKid[];
 }
 
@@ -97,11 +97,14 @@ export async function getAttendanceByService(start: Date, end: Date): Promise<Se
     });
   }
 
-  return Array.from(buckets.entries()).map(([service, serviceKids]) => ({
-    service,
-    checkedIn: serviceKids.filter((kid) => !kid.checkedOutAt).length,
-    checkedOut: serviceKids.filter((kid) => kid.checkedOutAt).length,
-    total: serviceKids.length,
-    kids: serviceKids,
-  }));
+  return Array.from(buckets.entries()).map(([service, serviceKids]) => {
+    const checkedOut = serviceKids.filter((kid) => kid.checkedOutAt).length;
+    return {
+      service,
+      checkedIn: serviceKids.length,
+      checkedOut,
+      stillPresent: serviceKids.length - checkedOut,
+      kids: serviceKids,
+    };
+  });
 }

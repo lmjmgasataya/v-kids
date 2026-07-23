@@ -7,7 +7,7 @@ const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short" });
 
 export function ServiceRow({ row }: { row: ServiceAttendance }) {
   const [open, setOpen] = useState(false);
-  const hasKids = row.total > 0;
+  const hasKids = row.checkedIn > 0;
 
   return (
     <>
@@ -28,17 +28,17 @@ export function ServiceRow({ row }: { row: ServiceAttendance }) {
             {row.service}
           </button>
         </td>
+        <td className="px-4 py-3 text-right text-gray-900">{row.checkedIn}</td>
+        <td className="px-4 py-3 text-right text-gray-500">{row.checkedOut}</td>
         <td className="px-4 py-3 text-right">
-          {row.checkedIn > 0 ? (
+          {row.stillPresent > 0 ? (
             <span className="text-xs font-semibold text-kids-green bg-kids-green/10 rounded-full px-2 py-1">
-              {row.checkedIn}
+              {row.stillPresent}
             </span>
           ) : (
             <span className="text-gray-300">0</span>
           )}
         </td>
-        <td className="px-4 py-3 text-right text-gray-500">{row.checkedOut}</td>
-        <td className="px-4 py-3 text-right font-semibold text-gray-900">{row.total}</td>
       </tr>
       {open && hasKids && (
         <tr className="border-b border-gray-100 last:border-0 bg-gray-50/70">

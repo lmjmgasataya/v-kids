@@ -42,7 +42,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition">
               <LogoMark size={40} />
               <span className="text-xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
-                Kids Church
+                Kids Church Iloilo
               </span>
             </Link>
             {session && (
