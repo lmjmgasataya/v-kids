@@ -9,7 +9,7 @@ function secret() {
   );
 }
 
-export type Role = "admin" | "user";
+export type Role = "admin" | "volunteer";
 
 export interface SessionPayload {
   userId: number;
