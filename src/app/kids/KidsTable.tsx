@@ -24,7 +24,7 @@ const COLUMNS: { key: string; label: string }[] = [
   { key: "createdAt", label: "Registered" },
 ];
 
-const dateFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium" });
+const dateFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" });
 
 export function KidsTable({ rows, sort, dir, q }: { rows: Row[]; sort: string; dir: "asc" | "desc"; q: string }) {
   function sortHref(key: string) {

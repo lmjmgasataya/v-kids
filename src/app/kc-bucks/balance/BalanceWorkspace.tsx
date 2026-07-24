@@ -20,7 +20,11 @@ function parseQrToken(decodedText: string): string {
   }
 }
 
-const dateTimeFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" });
+const dateTimeFormatter = new Intl.DateTimeFormat("en-PH", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Manila",
+});
 
 const TYPE_LABEL: Record<string, string> = {
   checkin: "Check-in",

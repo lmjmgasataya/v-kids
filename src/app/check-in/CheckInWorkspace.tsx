@@ -21,7 +21,7 @@ function parseQrToken(decodedText: string): string {
   }
 }
 
-const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short" });
+const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short", timeZone: "Asia/Manila" });
 
 function EmojiBurst({ triggerKey, emoji }: { triggerKey: number; emoji: string }) {
   if (!triggerKey) return null;

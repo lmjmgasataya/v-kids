@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ServiceAttendance } from "@/lib/checkIn";
 
-const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short" });
+const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short", timeZone: "Asia/Manila" });
 
 export function ServiceRow({ row }: { row: ServiceAttendance }) {
   const [open, setOpen] = useState(false);

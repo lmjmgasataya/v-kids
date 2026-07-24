@@ -6,7 +6,11 @@ import { KC_BUCKS_REASON_OPTIONS } from "@/lib/constants";
 import { inputCls } from "@/components/form";
 import { useToast } from "@/components/toast/ToastContext";
 
-const dateTimeFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" });
+const dateTimeFormatter = new Intl.DateTimeFormat("en-PH", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Manila",
+});
 
 export function GrantEditRow({ grant, onChanged }: { grant: GrantEntry; onChanged: () => void }) {
   const { showToast } = useToast();

@@ -14,7 +14,7 @@ interface Row {
   remarks: string | null;
 }
 
-const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short" });
+const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short", timeZone: "Asia/Manila" });
 
 export function RosterTable({ rows }: { rows: Row[] }) {
   if (rows.length === 0) {
