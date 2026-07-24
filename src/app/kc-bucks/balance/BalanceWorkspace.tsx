@@ -36,7 +36,7 @@ export function BalanceWorkspace({ initialKid }: { initialKid?: KcBucksKid | nul
   const [isSearching, startSearch] = useTransition();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [kid, setKid] = useState<KcBucksKid | null>(null);
+  const [kid, setKid] = useState<KcBucksKid | null>(initialKid ?? null);
   const [summary, setSummary] = useState<KidBalanceSummary | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [isLoadingDetail, startDetail] = useTransition();
@@ -67,7 +67,15 @@ export function BalanceWorkspace({ initialKid }: { initialKid?: KcBucksKid | nul
   }
 
   useEffect(() => {
-    if (initialKid) loadDetail(initialKid);
+    if (!initialKid) return;
+    startDetail(async () => {
+      const result = await getKidBalanceSummary(initialKid.id);
+      if ("error" in result) {
+        setDetailError(result.error);
+        return;
+      }
+      setSummary(result);
+    });
     // Only run for the kid the page loaded with — later prop changes (there are none) shouldn't re-trigger this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
