@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { readUserInput, validateUserInput } from "@/lib/userManagement";
+import { withToast } from "@/lib/toast";
 
 export async function createUser(_: unknown, formData: FormData) {
   const session = await getSession();
@@ -25,5 +26,5 @@ export async function createUser(_: unknown, formData: FormData) {
   const passwordHash = await bcrypt.hash(input.password, 12);
   await db.insert(users).values({ username: input.username, name: input.name, role: input.role, passwordHash });
 
-  redirect("/settings/users");
+  redirect(withToast("/settings/users", "success", "User created."));
 }

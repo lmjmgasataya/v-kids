@@ -8,6 +8,7 @@ import { SERVICE_OPTIONS } from "@/lib/constants";
 import { inputCls } from "@/components/form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { QrScanner } from "@/components/QrScanner";
+import { useToastOnResult } from "@/components/toast/useToastOnResult";
 
 type Intent = "checkin" | "checkout";
 
@@ -40,15 +41,43 @@ function EmojiBurst({ triggerKey, emoji }: { triggerKey: number; emoji: string }
   );
 }
 
-function SearchPanel({
-  intent,
-  service,
-  onSelect,
-}: {
-  intent: Intent;
-  service: string;
-  onSelect: (kid: CheckInSearchResult) => void;
-}) {
+function QuickCheckInButton({ kidId, service }: { kidId: number; service: string }) {
+  const checkInWithId = checkInKid.bind(null, kidId);
+  const [state, action] = useActionState(checkInWithId, undefined);
+  useToastOnResult(state);
+
+  return (
+    <form action={action} className="shrink-0">
+      <input type="hidden" name="serviceAttending" value={service} />
+      <SubmitButton
+        label="Check in"
+        pendingLabel="…"
+        icon="✅"
+        className="bg-kids-green hover:bg-kids-green/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-[transform,background-color,opacity] duration-150"
+      />
+    </form>
+  );
+}
+
+function QuickCheckOutButton({ checkInId, service }: { checkInId: number; service: string }) {
+  const checkOutWithId = checkOutKid.bind(null, checkInId);
+  const [state, action] = useActionState(checkOutWithId, undefined);
+  useToastOnResult(state);
+
+  return (
+    <form action={action} className="shrink-0">
+      <input type="hidden" name="service" value={service} />
+      <SubmitButton
+        label="Check out"
+        pendingLabel="…"
+        icon="👋"
+        className="bg-kids-magenta hover:bg-kids-magenta/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-[transform,background-color,opacity] duration-150"
+      />
+    </form>
+  );
+}
+
+function SearchPanel({ intent, service }: { intent: Intent; service: string }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CheckInSearchResult[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -89,27 +118,23 @@ function SearchPanel({
       {filtered.length > 0 && (
         <ul className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
           {filtered.map((kid) => (
-            <li key={kid.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(kid)}
-                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-kids-yellow/5"
-              >
-                <div>
-                  <div className="font-medium text-gray-900">
-                    {kid.firstName} {kid.lastName}
-                    {kid.nickname && <span className="text-xs text-gray-400"> &quot;{kid.nickname}&quot;</span>}
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    Age {kid.age} · {kid.defaultService}
-                  </div>
+            <li key={kid.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-kids-yellow/5">
+              <div>
+                <div className="font-medium text-gray-900">
+                  {kid.firstName} {kid.lastName}
+                  {kid.nickname && <span className="text-xs text-gray-400"> &quot;{kid.nickname}&quot;</span>}
                 </div>
-                {kid.openCheckIn && (
-                  <span className="text-xs font-semibold text-kids-green bg-kids-green/10 rounded-full px-2 py-1 whitespace-nowrap shrink-0">
-                    Checked in
-                  </span>
-                )}
-              </button>
+                <div className="text-xs text-gray-400">
+                  Age {kid.age} · {kid.defaultService}
+                </div>
+              </div>
+              {intent === "checkin" ? (
+                <QuickCheckInButton kidId={kid.id} service={service} />
+              ) : (
+                kid.openCheckIn && (
+                  <QuickCheckOutButton checkInId={kid.openCheckIn.id} service={kid.openCheckIn.serviceAttending} />
+                )
+              )}
             </li>
           ))}
         </ul>
@@ -122,6 +147,7 @@ function CheckInForm({ kid, service, onDone }: { kid: CheckInSearchResult; servi
   const checkInWithId = checkInKid.bind(null, kid.id);
   const [state, action] = useActionState(checkInWithId, undefined);
   const [burst, setBurst] = useState(0);
+  useToastOnResult(state);
 
   return (
     <div className="rounded-2xl border-2 border-kids-green/30 bg-kids-green/5 p-6 flex flex-col gap-4">
@@ -172,6 +198,7 @@ function CheckOutForm({
   const checkOutWithId = checkOutKid.bind(null, openCheckIn.id);
   const [state, action] = useActionState(checkOutWithId, undefined);
   const [burst, setBurst] = useState(0);
+  useToastOnResult(state);
 
   return (
     <div className="rounded-2xl border-2 border-kids-magenta/30 bg-kids-magenta/5 p-6 flex flex-col gap-4">
@@ -384,7 +411,7 @@ export function CheckInWorkspace({
         </button>
       </div>
 
-      {mode === "search" && <SearchPanel intent={intent} service={service} onSelect={setSelectedKid} />}
+      {mode === "search" && <SearchPanel intent={intent} service={service} />}
       {mode === "scan" && (
         <div className="flex flex-col gap-2">
           <QrScanner onDecode={(text) => resolveToken(text, intent)} />

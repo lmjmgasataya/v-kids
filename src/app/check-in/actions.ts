@@ -17,6 +17,7 @@ import {
   type OpenCheckInSummary,
 } from "@/lib/checkIn";
 import { getCheckInCreditAmount } from "@/lib/kcBucks";
+import { withToast } from "@/lib/toast";
 
 export interface CheckInActionState {
   error?: string;
@@ -84,7 +85,9 @@ export async function checkInKid(
   }
 
   revalidatePath("/check-in");
-  redirect(`/check-in?service=${encodeURIComponent(serviceAttending)}&intent=checkin`);
+  redirect(
+    withToast(`/check-in?service=${encodeURIComponent(serviceAttending)}&intent=checkin`, "success", "Checked in! 🎉")
+  );
 }
 
 export async function checkOutKid(checkInId: number, _prev: { error?: string } | undefined, formData: FormData) {
@@ -113,19 +116,25 @@ export async function checkOutKid(checkInId: number, _prev: { error?: string } |
     .where(eq(checkIns.id, checkInId));
 
   revalidatePath("/check-in");
-  redirect(service ? `/check-in?service=${encodeURIComponent(service)}&intent=checkout` : "/check-in?intent=checkout");
+  const nextPath = service
+    ? `/check-in?service=${encodeURIComponent(service)}&intent=checkout`
+    : "/check-in?intent=checkout";
+  redirect(withToast(nextPath, "success", "Checked out! 👋"));
 }
 
-// Row-level checkout form on the roster table has no local pending/error UI
-// (unlike CheckInWorkspace's useActionState form), so it just fires and lets
-// the redirect + revalidate above refresh the table.
-export async function checkOutKidForm(checkInId: number, formData: FormData) {
-  await checkOutKid(checkInId, undefined, formData);
+// Row-level checkout form on the roster table redirects + revalidates via
+// checkOutKid on success; on validation failure it just returns the error
+// for the caller's useActionState to surface as a toast.
+export async function checkOutKidForm(checkInId: number, _prev: { error?: string } | undefined, formData: FormData) {
+  return checkOutKid(checkInId, undefined, formData);
 }
 
 // Deletes a still-open check-in, as if it never happened. Only valid before
 // checkout — undo the checkout first if the kid has already left.
-export async function undoCheckIn(checkInId: number, _formData: FormData) {
+export async function undoCheckIn(
+  checkInId: number,
+  _formData: FormData
+): Promise<{ error?: string; success?: string }> {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -134,18 +143,23 @@ export async function undoCheckIn(checkInId: number, _formData: FormData) {
     .from(checkIns)
     .where(eq(checkIns.id, checkInId));
 
-  if (!existing || existing.checkedOutAt) return;
+  if (!existing) return { error: "This check-in no longer exists." };
+  if (existing.checkedOutAt) return { error: "This kid has already been checked out — undo the checkout first." };
 
   await db.delete(kcBucksTransactions).where(eq(kcBucksTransactions.checkInId, checkInId));
   await db.delete(checkIns).where(eq(checkIns.id, checkInId));
 
   revalidatePath("/check-in");
   revalidatePath("/attendance");
+  return { success: "Check-in undone." };
 }
 
 // Reopens a checked-out record. No-ops if the kid already has a newer open
 // check-in, since only one open check-in per kid is allowed at a time.
-export async function undoCheckOut(checkInId: number, _formData: FormData) {
+export async function undoCheckOut(
+  checkInId: number,
+  _formData: FormData
+): Promise<{ error?: string; success?: string }> {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -154,15 +168,19 @@ export async function undoCheckOut(checkInId: number, _formData: FormData) {
     .from(checkIns)
     .where(eq(checkIns.id, checkInId));
 
-  if (!existing || !existing.checkedOutAt) return;
+  if (!existing) return { error: "This check-in no longer exists." };
+  if (!existing.checkedOutAt) return { error: "This kid hasn't been checked out yet." };
 
   const alreadyOpen = await getOpenCheckIn(existing.kidId);
-  if (alreadyOpen) return;
+  if (alreadyOpen) {
+    return { error: "This kid already has a newer open check-in." };
+  }
 
   await db.update(checkIns).set({ checkedOutAt: null, checkedOutBy: null }).where(eq(checkIns.id, checkInId));
 
   revalidatePath("/check-in");
   revalidatePath("/attendance");
+  return { success: "Check-out undone." };
 }
 
 export async function searchKidsForCheckIn(query: string): Promise<CheckInSearchResult[]> {

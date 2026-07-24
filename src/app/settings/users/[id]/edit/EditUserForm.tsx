@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { updateUser } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { UserFields } from "@/components/UserFields";
+import { useToastOnResult } from "@/components/toast/useToastOnResult";
 import type { Role } from "@/lib/auth";
 
 interface UserRow {
@@ -16,6 +17,7 @@ interface UserRow {
 export default function EditUserForm({ user }: { user: UserRow }) {
   const updateUserWithId = updateUser.bind(null, user.id);
   const [state, action] = useActionState(updateUserWithId, undefined);
+  useToastOnResult(state);
 
   return (
     <form action={action} className="flex flex-col gap-6 max-w-xl mx-auto">

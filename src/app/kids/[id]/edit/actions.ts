@@ -5,6 +5,7 @@ import { guardians, kids } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { readChildInput, readGuardianInput, validateChildInput, validateGuardianInput } from "@/lib/kidRegistration";
+import { withToast } from "@/lib/toast";
 
 export async function updateKid(kidId: number, _: unknown, formData: FormData) {
   const child = readChildInput(formData);
@@ -35,5 +36,5 @@ export async function updateKid(kidId: number, _: unknown, formData: FormData) {
     })
     .where(eq(kids.id, kidId));
 
-  redirect("/kids");
+  redirect(withToast("/kids", "success", "Registration updated."));
 }

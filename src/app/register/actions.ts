@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { guardians, kids } from "@/db/schema";
 import { redirect } from "next/navigation";
 import { readChildInput, readGuardianInput, validateChildInput, validateGuardianInput } from "@/lib/kidRegistration";
+import { withToast } from "@/lib/toast";
 
 export async function registerKid(_: unknown, formData: FormData) {
   const child = readChildInput(formData);
@@ -30,5 +31,5 @@ export async function registerKid(_: unknown, formData: FormData) {
     })
     .returning({ id: kids.id });
 
-  redirect(`/register/success?kidId=${kidRow.id}`);
+  redirect(withToast(`/register/success?kidId=${kidRow.id}`, "success", "Registration submitted!"));
 }

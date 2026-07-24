@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { redeemCredits } from "./actions";
 import { Field } from "@/components/form";
 import { SubmitButton } from "@/components/SubmitButton";
+import { useToastOnResult } from "@/components/toast/useToastOnResult";
 import type { KcBucksKid } from "../actions";
 
 export function RedeemForm({
@@ -18,6 +19,7 @@ export function RedeemForm({
   const redeemWithId = redeemCredits.bind(null, kid.id);
   const [state, action] = useActionState(redeemWithId, undefined);
   const balance = state?.balance ?? initialBalance;
+  useToastOnResult(state);
 
   return (
     <div className="rounded-2xl border-2 border-kids-magenta/30 bg-kids-magenta/5 p-6 flex flex-col gap-4">

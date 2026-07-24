@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { CHECKIN_CREDIT_SETTING_KEY } from "@/lib/constants";
+import { withToast } from "@/lib/toast";
 
 export async function setCheckInCreditAmount(formData: FormData) {
   const session = await getSession();
@@ -21,5 +22,5 @@ export async function setCheckInCreditAmount(formData: FormData) {
     .onConflictDoUpdate({ target: kcBucksSettings.key, set: { value: amount, updatedAt: new Date() } });
 
   revalidatePath("/kc-bucks/settings");
-  redirect("/kc-bucks/settings");
+  redirect(withToast("/kc-bucks/settings", "success", "Credit settings saved."));
 }

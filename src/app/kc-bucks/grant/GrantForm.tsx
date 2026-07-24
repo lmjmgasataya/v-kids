@@ -5,6 +5,7 @@ import { grantCredits } from "./actions";
 import { KC_BUCKS_REASON_OPTIONS } from "@/lib/constants";
 import { Field, inputCls } from "@/components/form";
 import { SubmitButton } from "@/components/SubmitButton";
+import { useToastOnResult } from "@/components/toast/useToastOnResult";
 import type { KcBucksKid } from "../actions";
 
 const PRESET_AMOUNTS = [5, 10, 20, 50];
@@ -16,7 +17,7 @@ export function GrantForm({
 }: {
   kid: KcBucksKid;
   onDone: () => void;
-  onGranted: (message: string) => void;
+  onGranted: () => void;
 }) {
   const grantWithId = grantCredits.bind(null, kid.id);
   const [state, action] = useActionState(grantWithId, undefined);
@@ -25,8 +26,10 @@ export function GrantForm({
   const [isCustomAmount, setIsCustomAmount] = useState(false);
   const [customAmount, setCustomAmount] = useState("");
 
+  useToastOnResult(state);
+
   useEffect(() => {
-    if (state?.success) onGranted(state.success);
+    if (state?.success) onGranted();
   }, [state, onGranted]);
 
   return (

@@ -5,6 +5,7 @@ import { updateKid } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ChildFields } from "@/components/ChildFields";
 import { GuardianFields } from "@/components/GuardianFields";
+import { useToastOnResult } from "@/components/toast/useToastOnResult";
 
 interface KidWithGuardian {
   id: number;
@@ -23,6 +24,7 @@ interface KidWithGuardian {
 export default function EditKidForm({ kid }: { kid: KidWithGuardian }) {
   const updateKidWithId = updateKid.bind(null, kid.id);
   const [state, action] = useActionState(updateKidWithId, undefined);
+  useToastOnResult(state);
 
   return (
     <form action={action} className="flex flex-col gap-6 max-w-xl mx-auto">

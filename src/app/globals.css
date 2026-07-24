@@ -33,6 +33,49 @@ button {
   }
 }
 
+@keyframes toast-in {
+  from {
+    transform: translateX(1rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
+@keyframes toast-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(1rem);
+    opacity: 0;
+  }
+}
+
+.animate-toast-out {
+  animation: toast-out 0.25s ease-in forwards;
+}
+
+@keyframes toast-countdown {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-toast-countdown {
+  animation: toast-countdown 10s linear forwards;
+}
+
 @keyframes emoji-burst {
   0% {
     transform: translate(-50%, -50%) rotate(var(--burst-angle)) translateY(0) scale(1);

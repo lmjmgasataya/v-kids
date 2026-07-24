@@ -5,9 +5,11 @@ import { registerKid } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ChildFields } from "@/components/ChildFields";
 import { GuardianFields } from "@/components/GuardianFields";
+import { useToastOnResult } from "@/components/toast/useToastOnResult";
 
 export default function RegisterForm() {
   const [state, action] = useActionState(registerKid, undefined);
+  useToastOnResult(state);
 
   return (
     <form action={action} className="flex flex-col gap-6 max-w-xl mx-auto">

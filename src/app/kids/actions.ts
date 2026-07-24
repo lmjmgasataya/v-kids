@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { withToast } from "@/lib/toast";
 
 export async function deleteKid(kidId: number) {
   const session = await getSession();
@@ -27,5 +28,5 @@ export async function deleteKid(kidId: number) {
   }
 
   revalidatePath("/kids");
-  redirect("/kids?deleted=1");
+  redirect(withToast("/kids", "success", "Registration deleted."));
 }

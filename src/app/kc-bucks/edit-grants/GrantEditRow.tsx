@@ -4,10 +4,12 @@ import { useState } from "react";
 import { updateGrant, deleteGrant, type GrantEntry } from "./actions";
 import { KC_BUCKS_REASON_OPTIONS } from "@/lib/constants";
 import { inputCls } from "@/components/form";
+import { useToast } from "@/components/toast/ToastContext";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" });
 
 export function GrantEditRow({ grant, onChanged }: { grant: GrantEntry; onChanged: () => void }) {
+  const { showToast } = useToast();
   const [editing, setEditing] = useState(false);
   const presetReason = KC_BUCKS_REASON_OPTIONS.includes(grant.reason) ? grant.reason : "Other";
   const [amount, setAmount] = useState(String(grant.amount));
@@ -25,17 +27,24 @@ export function GrantEditRow({ grant, onChanged }: { grant: GrantEntry; onChange
     setIsSaving(false);
     if (result.error) {
       setError(result.error);
+      showToast("error", result.error);
       return;
     }
     setEditing(false);
+    showToast("success", "Grant updated.");
     onChanged();
   }
 
   async function handleDelete() {
     if (!confirm(`Delete this ${grant.amount}-credit grant for "${grant.reason}"?`)) return;
     setIsDeleting(true);
-    await deleteGrant(grant.id);
+    const result = await deleteGrant(grant.id);
     setIsDeleting(false);
+    if (result.error) {
+      showToast("error", result.error);
+      return;
+    }
+    showToast("success", "Grant deleted.");
     onChanged();
   }
 

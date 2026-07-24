@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { CURSOR_TRAIL_FLAG_KEY } from "@/lib/constants";
+import { withToast } from "@/lib/toast";
 
 export async function toggleCursorTrail() {
   const session = await getSession();
@@ -24,5 +25,5 @@ export async function toggleCursorTrail() {
   // The root layout reads this flag on every request; without this, its
   // cached render can keep showing the old value until a manual reload.
   revalidatePath("/", "layout");
-  redirect("/settings");
+  redirect(withToast("/settings", "success", `Cursor trail turned ${nextEnabled ? "on" : "off"}.`));
 }

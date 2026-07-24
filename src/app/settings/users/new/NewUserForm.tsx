@@ -4,9 +4,11 @@ import { useActionState } from "react";
 import { createUser } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { UserFields } from "@/components/UserFields";
+import { useToastOnResult } from "@/components/toast/useToastOnResult";
 
 export default function NewUserForm() {
   const [state, action] = useActionState(createUser, undefined);
+  useToastOnResult(state);
 
   return (
     <form action={action} className="flex flex-col gap-6 max-w-xl mx-auto">

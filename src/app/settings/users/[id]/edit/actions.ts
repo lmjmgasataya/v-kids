@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { readUserInput, validateUserInput } from "@/lib/userManagement";
+import { withToast } from "@/lib/toast";
 
 export async function updateUser(userId: number, _: unknown, formData: FormData) {
   const session = await getSession();
@@ -47,5 +48,5 @@ export async function updateUser(userId: number, _: unknown, formData: FormData)
     })
     .where(eq(users.id, userId));
 
-  redirect("/settings/users");
+  redirect(withToast("/settings/users", "success", "User updated."));
 }

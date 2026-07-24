@@ -1,7 +1,6 @@
-import { checkOutKidForm, undoCheckIn, undoCheckOut } from "./actions";
-import { SubmitButton } from "@/components/SubmitButton";
+import { undoCheckIn, undoCheckOut } from "./actions";
 import { UndoForm } from "./UndoForm";
-import { inputCls } from "@/components/form";
+import { QuickCheckOutForm } from "./QuickCheckOutForm";
 
 interface Row {
   id: number;
@@ -59,21 +58,7 @@ export function RosterTable({ rows }: { rows: Row[] }) {
               <td className="px-4 py-3 text-right">
                 {!row.checkedOutAt ? (
                   <div className="flex items-center justify-end gap-2 flex-wrap">
-                    <form action={checkOutKidForm.bind(null, row.id)} className="flex items-center gap-2">
-                      <input type="hidden" name="service" value={row.serviceAttending} />
-                      <input
-                        name="remarks"
-                        placeholder="Remarks (optional)"
-                        maxLength={500}
-                        className={`${inputCls} w-40 py-1.5`}
-                      />
-                      <SubmitButton
-                        label="Check out"
-                        pendingLabel="…"
-                        icon="👋"
-                        className="bg-kids-magenta hover:bg-kids-magenta/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-[transform,background-color,opacity] duration-150"
-                      />
-                    </form>
+                    <QuickCheckOutForm checkInId={row.id} service={row.serviceAttending} />
                     <UndoForm
                       action={undoCheckIn.bind(null, row.id)}
                       confirmText={`Undo check-in for ${row.kidFirstName} ${row.kidLastName}? This removes today's check-in record.`}
