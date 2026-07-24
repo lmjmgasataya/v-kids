@@ -3,9 +3,36 @@
 import { useEffect, useRef, useState } from "react";
 import type { Html5Qrcode } from "html5-qrcode";
 
+// iOS Safari only lets an AudioContext produce sound if it was resumed from
+// inside a real user-gesture handler. A fresh `new AudioContext()` created
+// later (e.g. from the QR decode callback) is born suspended and stays
+// silent forever. So we keep one shared context and unlock/resume it on the
+// first tap/click anywhere on the page, well before any scan succeeds.
+let sharedAudioCtx: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  if (!sharedAudioCtx) {
+    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return null;
+    sharedAudioCtx = new Ctor();
+  }
+  return sharedAudioCtx;
+}
+
+if (typeof window !== "undefined") {
+  const unlockAudio = () => {
+    getAudioContext()?.resume();
+  };
+  window.addEventListener("pointerdown", unlockAudio, { once: true, passive: true });
+  window.addEventListener("touchend", unlockAudio, { once: true, passive: true });
+}
+
 function playSuccessSound() {
   try {
-    const ctx = new AudioContext();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
