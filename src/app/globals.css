@@ -22,6 +22,15 @@ body {
   background-attachment: fixed;
 }
 
+.id-card-front-bg {
+  background-color: #fffbf0;
+  background-image:
+    radial-gradient(circle at 12% 12%, color-mix(in srgb, var(--color-kids-magenta) 20%, transparent), transparent 55%),
+    radial-gradient(circle at 88% 15%, color-mix(in srgb, var(--color-kids-navy) 18%, transparent), transparent 55%),
+    radial-gradient(circle at 15% 92%, color-mix(in srgb, var(--color-kids-green) 20%, transparent), transparent 55%),
+    radial-gradient(circle at 90% 92%, color-mix(in srgb, var(--color-kids-yellow) 26%, transparent), transparent 55%);
+}
+
 button {
   cursor: pointer;
 }

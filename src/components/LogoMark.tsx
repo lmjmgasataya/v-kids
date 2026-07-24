@@ -5,9 +5,10 @@ const ASPECT_RATIO = 492 / 404;
 interface Props {
   size?: number;
   className?: string;
+  priority?: boolean;
 }
 
-export function LogoMark({ size = 44, className }: Props) {
+export function LogoMark({ size = 44, className, priority }: Props) {
   return (
     <Image
       src="/kids-logo.webp"
@@ -15,6 +16,7 @@ export function LogoMark({ size = 44, className }: Props) {
       width={size}
       height={Math.round(size * ASPECT_RATIO)}
       className={className}
+      priority={priority}
     />
   );
 }

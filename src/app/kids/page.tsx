@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { kids, guardians } from "@/db/schema";
@@ -72,7 +73,15 @@ export default async function KidsPage({
         <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
           Registered Kids
         </h2>
-        <KidsSearch defaultValue={search} />
+        <div className="flex items-center gap-3">
+          <Link
+            href="/kids/print-ids"
+            className="shrink-0 whitespace-nowrap bg-kids-navy hover:bg-kids-navy/90 text-white text-sm font-bold px-4 py-2 rounded-full transition"
+          >
+            Print IDs
+          </Link>
+          <KidsSearch defaultValue={search} />
+        </div>
       </div>
       <KidsTable rows={rows} sort={sort} dir={dir} q={search} />
     </div>
