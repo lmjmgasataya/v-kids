@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { checkInKid, checkOutKid, resolveQrToken, searchKidsForCheckIn } from "./actions";
 import type { CheckInSearchResult, OpenCheckInSummary } from "@/lib/checkIn";
@@ -22,6 +22,10 @@ function parseQrToken(decodedText: string): string {
 }
 
 const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short", timeZone: "Asia/Manila" });
+
+function Highlight({ children }: { children: ReactNode }) {
+  return <span className="font-extrabold text-kids-navy">{children}</span>;
+}
 
 function EmojiBurst({ triggerKey, emoji }: { triggerKey: number; emoji: string }) {
   if (!triggerKey) return null;
@@ -143,14 +147,36 @@ function SearchPanel({ intent, service }: { intent: Intent; service: string }) {
   );
 }
 
-function CheckInForm({ kid, service, onDone }: { kid: CheckInSearchResult; service: string; onDone: () => void }) {
+function CheckInForm({
+  kid,
+  service,
+  mode,
+  onDone,
+}: {
+  kid: CheckInSearchResult;
+  service: string;
+  mode: "search" | "scan";
+  onDone: () => void;
+}) {
   const checkInWithId = checkInKid.bind(null, kid.id);
   const [state, action] = useActionState(checkInWithId, undefined);
   const [burst, setBurst] = useState(0);
+  const router = useRouter();
   useToastOnResult(state);
 
+  useEffect(() => {
+    // The scan flow's action returns success instead of redirecting (see checkInKid),
+    // so refresh the roster data in place and close the card without navigating —
+    // that's what keeps the camera mounted and the scroll position untouched.
+    if (state?.success) {
+      router.refresh();
+      onDone();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
   return (
-    <div className="rounded-2xl border-2 border-kids-green/30 bg-kids-green/5 p-6 flex flex-col gap-4">
+    <div className="animate-card-pop-in rounded-2xl border-4 border-t-kids-magenta border-r-kids-navy border-b-kids-green border-l-kids-yellow bg-white p-6 shadow-xl ring-1 ring-black/5 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <div className="font-bold text-lg text-kids-navy">
@@ -164,6 +190,7 @@ function CheckInForm({ kid, service, onDone }: { kid: CheckInSearchResult; servi
       </div>
       <form action={action} onSubmit={() => setBurst((b) => b + 1)} className="flex flex-col gap-3">
         <input type="hidden" name="serviceAttending" value={service} />
+        <input type="hidden" name="mode" value={mode} />
         <p className="text-sm text-gray-700">
           Checking in to <span className="font-semibold">{service}</span>.
         </p>
@@ -189,19 +216,33 @@ function CheckInForm({ kid, service, onDone }: { kid: CheckInSearchResult; servi
 function CheckOutForm({
   kid,
   openCheckIn,
+  mode,
   onDone,
 }: {
   kid: CheckInSearchResult;
   openCheckIn: OpenCheckInSummary;
+  mode: "search" | "scan";
   onDone: () => void;
 }) {
   const checkOutWithId = checkOutKid.bind(null, openCheckIn.id);
   const [state, action] = useActionState(checkOutWithId, undefined);
   const [burst, setBurst] = useState(0);
+  const router = useRouter();
   useToastOnResult(state);
 
+  useEffect(() => {
+    // The scan flow's action returns success instead of redirecting (see checkOutKid),
+    // so refresh the roster data in place and close the card without navigating —
+    // that's what keeps the camera mounted and the scroll position untouched.
+    if (state?.success) {
+      router.refresh();
+      onDone();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
   return (
-    <div className="rounded-2xl border-2 border-kids-magenta/30 bg-kids-magenta/5 p-6 flex flex-col gap-4">
+    <div className="animate-card-pop-in rounded-2xl border-4 border-t-kids-magenta border-r-kids-navy border-b-kids-green border-l-kids-yellow bg-white p-6 shadow-xl ring-1 ring-black/5 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <div className="font-bold text-lg text-kids-navy">
@@ -215,6 +256,7 @@ function CheckOutForm({
       </div>
       <form action={action} onSubmit={() => setBurst((b) => b + 1)} className="flex flex-col gap-3">
         <input type="hidden" name="service" value={openCheckIn.serviceAttending} />
+        <input type="hidden" name="mode" value={mode} />
         <p className="text-sm text-gray-700">
           Currently checked in to <span className="font-semibold">{openCheckIn.serviceAttending}</span> since{" "}
           {timeFormatter.format(openCheckIn.checkedInAt)}.
@@ -242,24 +284,54 @@ export function CheckInWorkspace({
   initialToken,
   initialService,
   initialIntent,
+  initialMode,
 }: {
   initialToken?: string;
   initialService?: string;
   initialIntent?: Intent;
+  initialMode?: "search" | "scan";
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [intent, setIntent] = useState<Intent>(initialIntent ?? "checkin");
-  const [mode, setMode] = useState<"search" | "scan">("search");
+  const [mode, setMode] = useState<"search" | "scan">(initialMode ?? "search");
   const [service, setServiceState] = useState<string>(initialService ?? SERVICE_OPTIONS[0]);
   const [selectedKid, setSelectedKid] = useState<CheckInSearchResult | null>(null);
-  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanError, setScanError] = useState<ReactNode | null>(null);
+  const modeButtonsRef = useRef<HTMLDivElement | null>(null);
+  const scanResultRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (mode === "scan" && (scanError || selectedKid)) {
+      scanResultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [mode, scanError, selectedKid]);
+
+  useEffect(() => {
+    // Recovers scroll position after checkInKid/checkOutKid redirect back to this
+    // page on success. The App Router's own post-navigation scroll-to-top runs in an
+    // effect above this component, which fires after ours — so scrolling immediately
+    // here gets clobbered. Deferring past a couple of paints lets it win instead.
+    if (initialMode !== "scan" || initialToken) return;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        modeButtonsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateUrlParams = useCallback(
-    (nextService: string, nextIntent: Intent) => {
+    (nextService: string, nextIntent: Intent, nextMode: "search" | "scan") => {
       const params = new URLSearchParams();
       params.set("service", nextService);
       params.set("intent", nextIntent);
+      params.set("mode", nextMode);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
     [router, pathname]
@@ -268,22 +340,23 @@ export function CheckInWorkspace({
   const setService = useCallback(
     (next: string) => {
       setServiceState(next);
-      updateUrlParams(next, intent);
+      updateUrlParams(next, intent, mode);
     },
-    [updateUrlParams, intent]
+    [updateUrlParams, intent, mode]
   );
 
   function switchIntent(next: Intent) {
     setIntent(next);
     setSelectedKid(null);
     setScanError(null);
-    updateUrlParams(service, next);
+    updateUrlParams(service, next, mode);
   }
 
   function switchMode(next: "search" | "scan") {
     setMode(next);
     setSelectedKid(null);
     setScanError(null);
+    updateUrlParams(service, intent, next);
   }
 
   async function resolveToken(decodedText: string, forIntent: Intent) {
@@ -297,22 +370,39 @@ export function CheckInWorkspace({
     const kid = result.kid;
     if (forIntent === "checkin" && kid.openCheckIn) {
       setScanError(
-        `${kid.firstName} is already checked in to ${kid.openCheckIn.serviceAttending} since ${timeFormatter.format(
-          kid.openCheckIn.checkedInAt
-        )}. Switch to Check Out to check them out.`
+        <>
+          <Highlight>{kid.firstName}</Highlight> is already checked in to{" "}
+          <Highlight>
+            {kid.openCheckIn.serviceAttending} since {timeFormatter.format(kid.openCheckIn.checkedInAt)}
+          </Highlight>
+          . Switch to Check Out to check them out.
+        </>
       );
       return;
     }
     if (forIntent === "checkin" && kid.checkedInServicesToday.includes(service)) {
-      setScanError(`${kid.firstName} has already checked in to ${service} today.`);
+      setScanError(
+        <>
+          <Highlight>{kid.firstName}</Highlight> has already checked in to <Highlight>{service}</Highlight> today.
+        </>
+      );
       return;
     }
     if (forIntent === "checkout" && !kid.openCheckIn) {
-      setScanError(`${kid.firstName} is not currently checked in.`);
+      setScanError(
+        <>
+          <Highlight>{kid.firstName}</Highlight> is not currently checked in.
+        </>
+      );
       return;
     }
     if (forIntent === "checkout" && kid.openCheckIn && kid.openCheckIn.serviceAttending !== service) {
-      setScanError(`${kid.firstName} is checked in to ${kid.openCheckIn.serviceAttending}, not ${service}.`);
+      setScanError(
+        <>
+          <Highlight>{kid.firstName}</Highlight> is checked in to{" "}
+          <Highlight>{kid.openCheckIn.serviceAttending}</Highlight>, not <Highlight>{service}</Highlight>.
+        </>
+      );
       return;
     }
     setSelectedKid(kid);
@@ -328,14 +418,15 @@ export function CheckInWorkspace({
         return;
       }
       const kid = result.kid;
+      setMode("scan");
       if (kid.openCheckIn) {
         setIntent("checkout");
         setServiceState(kid.openCheckIn.serviceAttending);
-        updateUrlParams(kid.openCheckIn.serviceAttending, "checkout");
+        updateUrlParams(kid.openCheckIn.serviceAttending, "checkout", "scan");
       } else {
         setIntent("checkin");
         setServiceState(kid.defaultService);
-        updateUrlParams(kid.defaultService, "checkin");
+        updateUrlParams(kid.defaultService, "checkin", "scan");
       }
       setSelectedKid(kid);
     });
@@ -396,7 +487,7 @@ export function CheckInWorkspace({
         </select>
       </div>
 
-      <div className="flex gap-2">
+      <div ref={modeButtonsRef} className="flex gap-2 scroll-mt-4">
         <button
           type="button"
           onClick={() => switchMode("search")}
@@ -419,18 +510,34 @@ export function CheckInWorkspace({
 
       {mode === "search" && <SearchPanel intent={intent} service={service} />}
       {mode === "scan" && (
-        <div className="flex flex-col gap-2">
-          <QrScanner onDecode={(text) => resolveToken(text, intent)} />
-          {scanError && <p className="text-sm text-red-600">{scanError}</p>}
-        </div>
+        <QrScanner
+          onDecode={(text) => resolveToken(text, intent)}
+          onScanAgain={() => {
+            setSelectedKid(null);
+            setScanError(null);
+          }}
+        />
       )}
 
-      {selectedKid && intent === "checkin" && (
-        <CheckInForm kid={selectedKid} service={service} onDone={() => setSelectedKid(null)} />
-      )}
-      {selectedKid && intent === "checkout" && selectedKid.openCheckIn && (
-        <CheckOutForm kid={selectedKid} openCheckIn={selectedKid.openCheckIn} onDone={() => setSelectedKid(null)} />
-      )}
+      <div ref={scanResultRef} className="flex flex-col gap-2 scroll-mt-4">
+        {mode === "scan" && scanError && (
+          <div className="animate-card-pop-in rounded-2xl border-4 border-t-kids-magenta border-r-kids-navy border-b-kids-green border-l-kids-yellow bg-white p-6 shadow-xl ring-1 ring-black/5 flex items-start gap-3">
+            <span className="text-2xl leading-none">⚠️</span>
+            <p className="text-base text-gray-700 pt-0.5">{scanError}</p>
+          </div>
+        )}
+        {selectedKid && intent === "checkin" && (
+          <CheckInForm kid={selectedKid} service={service} mode={mode} onDone={() => setSelectedKid(null)} />
+        )}
+        {selectedKid && intent === "checkout" && selectedKid.openCheckIn && (
+          <CheckOutForm
+            kid={selectedKid}
+            openCheckIn={selectedKid.openCheckIn}
+            mode={mode}
+            onDone={() => setSelectedKid(null)}
+          />
+        )}
+      </div>
     </div>
   );
 }

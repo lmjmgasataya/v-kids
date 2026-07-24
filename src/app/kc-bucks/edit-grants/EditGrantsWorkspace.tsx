@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { KidLookupPanel } from "../KidLookupPanel";
 import { getKidGrants, type GrantEntry } from "./actions";
 import { GrantEditRow } from "./GrantEditRow";
@@ -10,6 +10,11 @@ export function EditGrantsWorkspace() {
   const [kid, setKid] = useState<KcBucksKid | null>(null);
   const [grants, setGrants] = useState<GrantEntry[]>([]);
   const [isLoading, startLoading] = useTransition();
+  const resultRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (kid) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [kid]);
 
   function loadGrants(nextKid: KcBucksKid) {
     setKid(nextKid);
@@ -34,7 +39,7 @@ export function EditGrantsWorkspace() {
   }
 
   return (
-    <div className="rounded-2xl border-2 border-kids-green/30 bg-kids-green/5 p-6 flex flex-col gap-4">
+    <div ref={resultRef} className="rounded-2xl border-2 border-kids-green/30 bg-kids-green/5 p-6 flex flex-col gap-4 scroll-mt-4">
       <div className="flex items-center justify-between">
         <div>
           <div className="font-bold text-lg text-kids-navy">

@@ -105,7 +105,7 @@ export function KidLookupPanel({ onSelect }: { onSelect: (kid: KcBucksKid) => vo
 
       {mode === "scan" && (
         <div className="flex flex-col gap-2">
-          <QrScanner onDecode={handleDecode} />
+          <QrScanner onDecode={handleDecode} onScanAgain={() => setScanError(null)} />
           {scanError && <p className="text-sm text-red-600">{scanError}</p>}
         </div>
       )}

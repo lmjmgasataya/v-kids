@@ -21,7 +21,13 @@ import { withToast } from "@/lib/toast";
 
 export interface CheckInActionState {
   error?: string;
+  success?: string;
   openCheckIn?: OpenCheckInSummary;
+}
+
+export interface CheckOutActionState {
+  error?: string;
+  success?: string;
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -38,6 +44,7 @@ export async function checkInKid(
 
   const serviceAttending = (formData.get("serviceAttending") as string)?.trim() ?? "";
   const remarks = (formData.get("remarks") as string)?.trim() ?? "";
+  const mode = formData.get("mode") === "scan" ? "scan" : "search";
 
   const error = validateCheckInInput(serviceAttending, remarks);
   if (error) return { error };
@@ -85,17 +92,34 @@ export async function checkInKid(
   }
 
   revalidatePath("/check-in");
+
+  // The scan flow keeps the camera mounted and refreshes in place (see CheckInForm)
+  // instead of redirecting, so a fresh page load doesn't reset the scroll position
+  // away from the QR scanner.
+  if (mode === "scan") {
+    return { success: "Checked in! 🎉" };
+  }
+
   redirect(
-    withToast(`/check-in?service=${encodeURIComponent(serviceAttending)}&intent=checkin`, "success", "Checked in! 🎉")
+    withToast(
+      `/check-in?service=${encodeURIComponent(serviceAttending)}&intent=checkin&mode=${mode}`,
+      "success",
+      "Checked in! 🎉"
+    )
   );
 }
 
-export async function checkOutKid(checkInId: number, _prev: { error?: string } | undefined, formData: FormData) {
+export async function checkOutKid(
+  checkInId: number,
+  _prev: CheckOutActionState | undefined,
+  formData: FormData
+): Promise<CheckOutActionState> {
   const session = await getSession();
   if (!session) redirect("/login");
 
   const remarks = (formData.get("remarks") as string)?.trim() ?? "";
   const service = (formData.get("service") as string)?.trim() ?? "";
+  const mode = formData.get("mode") === "scan" ? "scan" : "search";
   if (remarks.length > 500) return { error: "Remarks must be 500 characters or fewer." };
 
   const [existing] = await db
@@ -116,9 +140,17 @@ export async function checkOutKid(checkInId: number, _prev: { error?: string } |
     .where(eq(checkIns.id, checkInId));
 
   revalidatePath("/check-in");
+
+  // The scan flow keeps the camera mounted and refreshes in place (see CheckOutForm)
+  // instead of redirecting, so a fresh page load doesn't reset the scroll position
+  // away from the QR scanner.
+  if (mode === "scan") {
+    return { success: "Checked out! 👋" };
+  }
+
   const nextPath = service
-    ? `/check-in?service=${encodeURIComponent(service)}&intent=checkout`
-    : "/check-in?intent=checkout";
+    ? `/check-in?service=${encodeURIComponent(service)}&intent=checkout&mode=${mode}`
+    : `/check-in?intent=checkout&mode=${mode}`;
   redirect(withToast(nextPath, "success", "Checked out! 👋"));
 }
 

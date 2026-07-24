@@ -44,6 +44,11 @@ export function BalanceWorkspace({ initialKid }: { initialKid?: KcBucksKid | nul
   const [summary, setSummary] = useState<KidBalanceSummary | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [isLoadingDetail, startDetail] = useTransition();
+  const resultRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (kid) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [kid]);
 
   function handleSearchChange(next: string) {
     setQuery(next);
@@ -102,7 +107,7 @@ export function BalanceWorkspace({ initialKid }: { initialKid?: KcBucksKid | nul
 
   if (kid) {
     return (
-      <div className="rounded-2xl border-2 border-kids-yellow/40 bg-kids-yellow/5 p-6 flex flex-col gap-4">
+      <div ref={resultRef} className="rounded-2xl border-2 border-kids-yellow/40 bg-kids-yellow/5 p-6 flex flex-col gap-4 scroll-mt-4">
         <div className="flex items-center justify-between">
           <div>
             <div className="font-bold text-lg text-kids-navy">
@@ -222,7 +227,7 @@ export function BalanceWorkspace({ initialKid }: { initialKid?: KcBucksKid | nul
 
       {mode === "scan" && (
         <div className="flex flex-col gap-2">
-          <QrScanner onDecode={handleDecode} />
+          <QrScanner onDecode={handleDecode} onScanAgain={() => setScanError(null)} />
           {scanError && <p className="text-sm text-red-600">{scanError}</p>}
         </div>
       )}

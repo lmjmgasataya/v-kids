@@ -100,6 +100,21 @@ button {
   animation: emoji-burst 0.55s ease-out forwards;
 }
 
+@keyframes card-pop-in {
+  from {
+    transform: translateY(0.5rem) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-card-pop-in {
+  animation: card-pop-in 0.25s ease-out;
+}
+
 @keyframes shimmer {
   0% {
     background-position: -400px 0;

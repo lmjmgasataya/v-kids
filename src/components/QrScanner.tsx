@@ -3,10 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import type { Html5Qrcode } from "html5-qrcode";
 
-export function QrScanner({ onDecode }: { onDecode: (text: string) => void }) {
+export function QrScanner({
+  onDecode,
+  onScanAgain,
+}: {
+  onDecode: (text: string) => void | Promise<void>;
+  onScanAgain?: () => void;
+}) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const onDecodeRef = useRef(onDecode);
   const [paused, setPaused] = useState(false);
+  const [resolving, setResolving] = useState(false);
 
   useEffect(() => {
     onDecodeRef.current = onDecode;
@@ -27,7 +34,8 @@ export function QrScanner({ onDecode }: { onDecode: (text: string) => void }) {
       const onSuccess = (decodedText: string) => {
         scanner.pause(true);
         setPaused(true);
-        onDecodeRef.current(decodedText);
+        setResolving(true);
+        Promise.resolve(onDecodeRef.current(decodedText)).finally(() => setResolving(false));
       };
       const onError = () => {};
 
@@ -88,15 +96,25 @@ export function QrScanner({ onDecode }: { onDecode: (text: string) => void }) {
   return (
     <div className="flex flex-col gap-3">
       <div id="qr-reader" className="rounded-2xl overflow-hidden border border-gray-200" />
-      {paused && (
+      {paused && resolving && (
+        <div className="flex items-center justify-center gap-2.5 pt-4 pb-1" aria-label="Looking up scan result…">
+          <span className="w-4 h-4 rounded-full bg-kids-magenta animate-bounce [animation-delay:-0.3s]" />
+          <span className="w-4 h-4 rounded-full bg-kids-yellow animate-bounce [animation-delay:-0.2s]" />
+          <span className="w-4 h-4 rounded-full bg-kids-green animate-bounce [animation-delay:-0.1s]" />
+          <span className="w-4 h-4 rounded-full bg-kids-navy animate-bounce" />
+        </div>
+      )}
+      {paused && !resolving && (
         <button
           type="button"
           onClick={() => {
             scannerRef.current?.resume();
             setPaused(false);
+            onScanAgain?.();
           }}
-          className="text-sm font-semibold text-kids-navy hover:underline self-start"
+          className="self-center flex items-center gap-2 rounded-full bg-kids-navy px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
         >
+          <span className="text-base leading-none">🔄</span>
           Scan another
         </button>
       )}

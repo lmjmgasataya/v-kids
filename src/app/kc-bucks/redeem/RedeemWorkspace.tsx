@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { KidLookupPanel } from "../KidLookupPanel";
 import { getKidBalanceForRedeem } from "./actions";
 import { RedeemForm } from "./RedeemForm";
@@ -11,6 +11,11 @@ export function RedeemWorkspace() {
   const [balance, setBalance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const resultRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (kid) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [kid]);
 
   function reset() {
     setKid(null);
@@ -38,7 +43,7 @@ export function RedeemWorkspace() {
 
   if (isPending || balance === null) {
     return (
-      <div className="rounded-2xl border-2 border-kids-magenta/30 bg-kids-magenta/5 p-6">
+      <div ref={resultRef} className="rounded-2xl border-2 border-kids-magenta/30 bg-kids-magenta/5 p-6 scroll-mt-4">
         {error ? (
           <p className="text-sm text-red-600">{error}</p>
         ) : (
@@ -48,5 +53,9 @@ export function RedeemWorkspace() {
     );
   }
 
-  return <RedeemForm kid={kid} initialBalance={balance} onDone={reset} />;
+  return (
+    <div ref={resultRef} className="scroll-mt-4">
+      <RedeemForm kid={kid} initialBalance={balance} onDone={reset} />
+    </div>
+  );
 }
