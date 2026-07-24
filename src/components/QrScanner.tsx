@@ -3,6 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import type { Html5Qrcode } from "html5-qrcode";
 
+function playSuccessSound() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(700, ctx.currentTime);
+    gain.gain.setValueAtTime(0.8, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch {
+    // AudioContext not available
+  }
+}
+
 export function QrScanner({
   onDecode,
   onScanAgain,
@@ -34,6 +52,7 @@ export function QrScanner({
       const onSuccess = (decodedText: string) => {
         scanner.pause(true);
         setPaused(true);
+        playSuccessSound();
         setResolving(true);
         Promise.resolve(onDecodeRef.current(decodedText)).finally(() => setResolving(false));
       };
