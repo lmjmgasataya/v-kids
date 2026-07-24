@@ -20,13 +20,9 @@ export function QrScanner({ onDecode }: { onDecode: (text: string) => void }) {
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
 
-      const config = {
+      const baseConfig = {
         fps: 20,
         qrbox: { width: 250, height: 250 },
-        videoConstraints: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
       };
       const onSuccess = (decodedText: string) => {
         scanner.pause(true);
@@ -35,17 +31,44 @@ export function QrScanner({ onDecode }: { onDecode: (text: string) => void }) {
       };
       const onError = () => {};
 
-      // Force the rear/environment lens directly via constraint instead of
-      // relying on html5-qrcode's device-list picker, which on iOS Safari
-      // can select "back camera" without actually switching the stream.
+      // When `videoConstraints` is set, html5-qrcode uses it verbatim as the
+      // getUserMedia constraints and ignores any facingMode passed as the
+      // `cameraIdOrConfig` first argument — so facingMode must live inside
+      // videoConstraints itself to actually force the rear/environment lens.
       try {
-        await scanner.start({ facingMode: { exact: "environment" } }, config, onSuccess, onError);
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            ...baseConfig,
+            videoConstraints: {
+              facingMode: { exact: "environment" },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          },
+          onSuccess,
+          onError
+        );
       } catch {
         if (cancelled) return;
         try {
-          await scanner.start({ facingMode: "environment" }, config, onSuccess, onError);
+          await scanner.start(
+            { facingMode: "environment" },
+            {
+              ...baseConfig,
+              videoConstraints: {
+                facingMode: "environment",
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+              },
+            },
+            onSuccess,
+            onError
+          );
         } catch {
-          if (!cancelled) await scanner.start({ facingMode: "user" }, config, onSuccess, onError);
+          if (!cancelled) {
+            await scanner.start({ facingMode: "user" }, baseConfig, onSuccess, onError);
+          }
         }
       }
     });
