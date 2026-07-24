@@ -350,24 +350,30 @@ export function CheckInWorkspace({
         {intent === "checkin" ? "Check-In" : "Check-Out"}
       </h2>
 
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
           onClick={() => switchIntent("checkin")}
-          className={`px-4 py-2 rounded-full text-sm font-semibold transition-[transform,background-color,color] duration-150 active:scale-90 ${
-            intent === "checkin" ? "bg-kids-green text-white scale-105" : "bg-gray-100 text-gray-500"
+          className={`group flex flex-col items-center gap-1 rounded-2xl border-2 px-4 py-4 transition-[transform,background-color,color,box-shadow,border-color] duration-150 active:scale-95 hover:-translate-y-1 hover:shadow-lg ${
+            intent === "checkin"
+              ? "bg-kids-green border-kids-green text-white shadow-md"
+              : "bg-white border-gray-200 text-gray-500 hover:border-kids-green/50 hover:text-kids-green"
           }`}
         >
-          ✅ Check In
+          <span className="text-2xl transition-transform duration-150 group-hover:scale-110">✅</span>
+          <span className="text-sm font-bold">Check In</span>
         </button>
         <button
           type="button"
           onClick={() => switchIntent("checkout")}
-          className={`px-4 py-2 rounded-full text-sm font-semibold transition-[transform,background-color,color] duration-150 active:scale-90 ${
-            intent === "checkout" ? "bg-kids-magenta text-white scale-105" : "bg-gray-100 text-gray-500"
+          className={`group flex flex-col items-center gap-1 rounded-2xl border-2 px-4 py-4 transition-[transform,background-color,color,box-shadow,border-color] duration-150 active:scale-95 hover:-translate-y-1 hover:shadow-lg ${
+            intent === "checkout"
+              ? "bg-kids-magenta border-kids-magenta text-white shadow-md"
+              : "bg-white border-gray-200 text-gray-500 hover:border-kids-magenta/50 hover:text-kids-magenta"
           }`}
         >
-          👋 Check Out
+          <span className="text-2xl transition-transform duration-150 group-hover:scale-110">👋</span>
+          <span className="text-sm font-bold">Check Out</span>
         </button>
       </div>
 

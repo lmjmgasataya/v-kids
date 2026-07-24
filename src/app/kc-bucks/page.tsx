@@ -49,6 +49,13 @@ export default async function KcBucksPage() {
           description="Fix or remove a manually granted amount"
           color="kids-green"
         />
+        <NavTile
+          href="/kc-bucks/balances"
+          icon="📊"
+          label="All Balances"
+          description="Browse every kid's KC Bucks balance"
+          color="kids-yellow"
+        />
       </div>
     </div>
   );

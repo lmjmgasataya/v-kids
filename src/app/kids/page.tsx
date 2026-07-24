@@ -4,9 +4,9 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { kids, guardians } from "@/db/schema";
 import { asc, desc, eq, ilike, or } from "drizzle-orm";
-import { KidsSearch } from "./KidsSearch";
 import { KidsTable } from "./KidsTable";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { SearchBox } from "@/components/SearchBox";
 
 const SORTABLE = {
   lastName: kids.lastName,
@@ -80,7 +80,7 @@ export default async function KidsPage({
           >
             Print IDs
           </Link>
-          <KidsSearch defaultValue={search} />
+          <SearchBox defaultValue={search} />
         </div>
       </div>
       <KidsTable rows={rows} sort={sort} dir={dir} q={search} />

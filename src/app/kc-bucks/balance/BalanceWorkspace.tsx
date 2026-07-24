@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { QrScanner } from "@/components/QrScanner";
 import { inputCls } from "@/components/form";
 import { resolveKidBasicByQrToken, type KcBucksKid } from "../actions";
@@ -28,7 +28,7 @@ const TYPE_LABEL: Record<string, string> = {
   redemption: "Redemption",
 };
 
-export function BalanceWorkspace() {
+export function BalanceWorkspace({ initialKid }: { initialKid?: KcBucksKid | null }) {
   const [mode, setMode] = useState<"search" | "scan">("search");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<KidBalanceSearchResult[]>([]);
@@ -65,6 +65,12 @@ export function BalanceWorkspace() {
       setSummary(result);
     });
   }
+
+  useEffect(() => {
+    if (initialKid) loadDetail(initialKid);
+    // Only run for the kid the page loaded with — later prop changes (there are none) shouldn't re-trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleDecode(decodedText: string) {
     setScanError(null);

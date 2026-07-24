@@ -3,7 +3,13 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 
-export function KidsSearch({ defaultValue }: { defaultValue: string }) {
+export function SearchBox({
+  defaultValue,
+  placeholder = "Search by name…",
+}: {
+  defaultValue: string;
+  placeholder?: string;
+}) {
   const [value, setValue] = useState(defaultValue);
   const router = useRouter();
   const pathname = usePathname();
@@ -17,6 +23,7 @@ export function KidsSearch({ defaultValue }: { defaultValue: string }) {
       const params = new URLSearchParams(searchParams.toString());
       if (next) params.set("q", next);
       else params.delete("q");
+      params.delete("page");
       router.replace(`${pathname}?${params.toString()}`);
     }, 300);
   }
@@ -24,7 +31,7 @@ export function KidsSearch({ defaultValue }: { defaultValue: string }) {
   return (
     <input
       type="search"
-      placeholder="Search by name…"
+      placeholder={placeholder}
       value={value}
       onChange={(e) => handleChange(e.target.value)}
       className="w-full max-w-xs rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
