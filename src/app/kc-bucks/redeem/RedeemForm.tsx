@@ -27,6 +27,7 @@ export function RedeemForm({
         <div>
           <div className="font-bold text-lg text-kids-navy">
             {kid.firstName} {kid.lastName}
+            {kid.nickname && <span className="text-xl text-black"> &quot;{kid.nickname}&quot;</span>}
           </div>
           <div className="text-xs text-gray-500">Age {kid.age}</div>
         </div>
