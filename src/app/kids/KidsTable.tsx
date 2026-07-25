@@ -26,7 +26,19 @@ const COLUMNS: { key: string; label: string }[] = [
 
 const dateFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" });
 
-export function KidsTable({ rows, sort, dir, q }: { rows: Row[]; sort: string; dir: "asc" | "desc"; q: string }) {
+export function KidsTable({
+  rows,
+  sort,
+  dir,
+  q,
+  canManage,
+}: {
+  rows: Row[];
+  sort: string;
+  dir: "asc" | "desc";
+  q: string;
+  canManage: boolean;
+}) {
   function sortHref(key: string) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -79,12 +91,16 @@ export function KidsTable({ rows, sort, dir, q }: { rows: Row[]; sort: string; d
                   <Link href={`/kids/${row.id}/id-card`} className="text-kids-navy font-semibold hover:underline">
                     Print ID
                   </Link>
-                  <span className="text-gray-300">|</span>
-                  <Link href={`/kids/${row.id}/edit`} className="text-kids-navy font-semibold hover:underline">
-                    Edit
-                  </Link>
-                  <span className="text-gray-300">|</span>
-                  <DeleteKidButton kidId={row.id} kidName={`${row.firstName} ${row.lastName}`} />
+                  {canManage && (
+                    <>
+                      <span className="text-gray-300">|</span>
+                      <Link href={`/kids/${row.id}/edit`} className="text-kids-navy font-semibold hover:underline">
+                        Edit
+                      </Link>
+                      <span className="text-gray-300">|</span>
+                      <DeleteKidButton kidId={row.id} kidName={`${row.firstName} ${row.lastName}`} />
+                    </>
+                  )}
                 </div>
               </td>
             </tr>

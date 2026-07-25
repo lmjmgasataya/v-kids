@@ -11,6 +11,7 @@ import { withToast } from "@/lib/toast";
 export async function deleteKid(kidId: number) {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/kids");
 
   const [existing] = await db.select({ guardianId: kids.guardianId }).from(kids).where(eq(kids.id, kidId));
   if (!existing) redirect("/kids");

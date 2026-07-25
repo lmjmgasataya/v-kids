@@ -4,10 +4,15 @@ import { db } from "@/db";
 import { guardians, kids } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
 import { readChildInput, readGuardianInput, validateChildInput, validateGuardianInput } from "@/lib/kidRegistration";
 import { withToast } from "@/lib/toast";
 
 export async function updateKid(kidId: number, _: unknown, formData: FormData) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/kids");
+
   const child = readChildInput(formData);
   const guardian = readGuardianInput(formData);
 

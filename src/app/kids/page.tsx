@@ -83,7 +83,7 @@ export default async function KidsPage({
           <SearchBox defaultValue={search} />
         </div>
       </div>
-      <KidsTable rows={rows} sort={sort} dir={dir} q={search} />
+      <KidsTable rows={rows} sort={sort} dir={dir} q={search} canManage={session.role === "admin"} />
     </div>
   );
 }
