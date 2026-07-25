@@ -18,8 +18,8 @@ export function IdCardFront({ displayName, fullName }: { displayName: string; fu
           Kids Church
         </span>
       </div>
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-[4mm] gap-1">
-        <div className="text-[30px] leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] break-words">
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-[4mm] gap-1 -mt-[5mm]">
+        <div className="text-[55px] leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] break-words">
           {displayName}
         </div>
         <div className="text-[9px] text-gray-500">{fullName}</div>
@@ -37,6 +37,11 @@ export function IdCardBack({ qrDataUrl, fullName }: { qrDataUrl: string; fullNam
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={qrDataUrl} alt="Check-in QR code" className="w-[28mm] h-[28mm]" />
         <div className="text-[7px] text-gray-500 text-center px-[4mm]">Scan to check in / out · {fullName}</div>
+      </div>
+      <div className="text-[6px] leading-snug text-gray-400 text-center px-[4mm] pb-[2mm]">
+        If found, please return to Victory Iloilo (033 3291529)
+        <br />
+        Paseo De Arcangeles, Benigno S. Aquino Drive, Mandurriao, Iloilo City
       </div>
     </div>
   );
