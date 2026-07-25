@@ -37,6 +37,7 @@ export async function updateGrant(
 ): Promise<{ error?: string }> {
   const session = await getSession();
   if (!session) return { error: "Please sign in again." };
+  if (session.role !== "admin") return { error: "You don't have permission to edit grants." };
 
   if (!Number.isInteger(amount) || amount <= 0) {
     return { error: "Please enter a whole number of credits greater than 0." };
@@ -63,6 +64,7 @@ export async function updateGrant(
 export async function deleteGrant(transactionId: number): Promise<{ error?: string }> {
   const session = await getSession();
   if (!session) return { error: "Please sign in again." };
+  if (session.role !== "admin") return { error: "You don't have permission to delete grants." };
 
   await db
     .delete(kcBucksTransactions)

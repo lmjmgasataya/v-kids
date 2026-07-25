@@ -6,6 +6,7 @@ import { EditGrantsWorkspace } from "./EditGrantsWorkspace";
 export default async function EditGrantsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/");
 
   return (
     <div className="flex flex-col gap-6 max-w-xl mx-auto">

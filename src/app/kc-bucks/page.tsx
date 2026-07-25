@@ -35,20 +35,24 @@ export default async function KcBucksPage() {
           description="Subtract credits for a prize"
           color="kids-magenta"
         />
-        <NavTile
-          href="/kc-bucks/settings"
-          icon="⚙️"
-          label="Credit Settings"
-          description="Set how many credits check-in earns"
-          color="kids-navy"
-        />
-        <NavTile
-          href="/kc-bucks/edit-grants"
-          icon="✏️"
-          label="Edit Grants"
-          description="Fix or remove a manually granted amount"
-          color="kids-green"
-        />
+        {session.role === "admin" && (
+          <NavTile
+            href="/kc-bucks/settings"
+            icon="⚙️"
+            label="Credit Settings"
+            description="Set how many credits check-in earns"
+            color="kids-navy"
+          />
+        )}
+        {session.role === "admin" && (
+          <NavTile
+            href="/kc-bucks/edit-grants"
+            icon="✏️"
+            label="Edit Grants"
+            description="Fix or remove a manually granted amount"
+            color="kids-green"
+          />
+        )}
         <NavTile
           href="/kc-bucks/balances"
           icon="📊"
