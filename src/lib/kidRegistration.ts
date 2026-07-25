@@ -1,3 +1,6 @@
+import { and, eq, ilike, ne } from "drizzle-orm";
+import { db } from "@/db";
+import { kids } from "@/db/schema";
 import { SERVICE_OPTIONS, MOBILE_NUMBER_REGEX } from "@/lib/constants";
 
 export type Gender = "Male" | "Female";
@@ -63,4 +66,21 @@ export function validateGuardianInput(input: GuardianInput): string | null {
     return "Please enter a valid guardian mobile number.";
   }
   return null;
+}
+
+export async function isDuplicateKid(
+  child: Pick<ChildInput, "firstName" | "lastName" | "age">,
+  excludeKidId?: number
+): Promise<boolean> {
+  const conditions = [ilike(kids.firstName, child.firstName), ilike(kids.lastName, child.lastName), eq(kids.age, child.age)];
+  if (excludeKidId !== undefined) {
+    conditions.push(ne(kids.id, excludeKidId));
+  }
+
+  const [existing] = await db
+    .select({ id: kids.id })
+    .from(kids)
+    .where(and(...conditions));
+
+  return !!existing;
 }

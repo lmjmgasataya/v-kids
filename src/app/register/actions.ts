@@ -3,7 +3,13 @@
 import { db } from "@/db";
 import { guardians, kids } from "@/db/schema";
 import { redirect } from "next/navigation";
-import { readChildInput, readGuardianInput, validateChildInput, validateGuardianInput } from "@/lib/kidRegistration";
+import {
+  isDuplicateKid,
+  readChildInput,
+  readGuardianInput,
+  validateChildInput,
+  validateGuardianInput,
+} from "@/lib/kidRegistration";
 import { withToast } from "@/lib/toast";
 
 export async function registerKid(_: unknown, formData: FormData) {
@@ -15,6 +21,10 @@ export async function registerKid(_: unknown, formData: FormData) {
 
   const guardianError = validateGuardianInput(guardian);
   if (guardianError) return { error: guardianError };
+
+  if (await isDuplicateKid(child)) {
+    return { error: "A kid with this same first name, last name, and age is already registered." };
+  }
 
   const [guardianRow] = await db.insert(guardians).values(guardian).returning({ id: guardians.id });
 

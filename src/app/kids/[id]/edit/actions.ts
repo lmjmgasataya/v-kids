@@ -5,7 +5,13 @@ import { guardians, kids } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { readChildInput, readGuardianInput, validateChildInput, validateGuardianInput } from "@/lib/kidRegistration";
+import {
+  isDuplicateKid,
+  readChildInput,
+  readGuardianInput,
+  validateChildInput,
+  validateGuardianInput,
+} from "@/lib/kidRegistration";
 import { withToast } from "@/lib/toast";
 
 export async function updateKid(kidId: number, _: unknown, formData: FormData) {
@@ -21,6 +27,10 @@ export async function updateKid(kidId: number, _: unknown, formData: FormData) {
 
   const guardianError = validateGuardianInput(guardian);
   if (guardianError) return { error: guardianError };
+
+  if (await isDuplicateKid(child, kidId)) {
+    return { error: "A kid with this same first name, last name, and age is already registered." };
+  }
 
   const [existing] = await db.select({ guardianId: kids.guardianId }).from(kids).where(eq(kids.id, kidId));
   if (!existing) {
