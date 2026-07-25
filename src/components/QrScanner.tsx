@@ -56,9 +56,16 @@ export function QrScanner({
   onScanAgain?: () => void;
 }) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const readerRef = useRef<HTMLDivElement | null>(null);
   const onDecodeRef = useRef(onDecode);
   const [paused, setPaused] = useState(false);
   const [resolving, setResolving] = useState(false);
+  const [mirrored, setMirrored] = useState(false);
+
+  useEffect(() => {
+    const video = readerRef.current?.querySelector("video");
+    if (video) video.style.transform = mirrored ? "scaleX(-1)" : "";
+  }, [mirrored]);
 
   useEffect(() => {
     onDecodeRef.current = onDecode;
@@ -75,6 +82,21 @@ export function QrScanner({
       const baseConfig = {
         fps: 20,
         qrbox: { width: 250, height: 250 },
+      };
+
+      // The actual camera the browser hands back can differ from what was
+      // requested (e.g. a laptop with no rear camera still "succeeds" at an
+      // ideal-but-not-exact `environment` request by handing back its only,
+      // front-facing webcam). Mirror like a normal front-camera preview only
+      // when the running track is actually front-facing.
+      const updateMirrorState = (fallbackFacingMode: "user" | "environment") => {
+        try {
+          const settings = scanner.getRunningTrackSettings();
+          const facingMode = settings.facingMode ?? fallbackFacingMode;
+          setMirrored(facingMode === "user");
+        } catch {
+          setMirrored(fallbackFacingMode === "user");
+        }
       };
       const onSuccess = (decodedText: string) => {
         scanner.pause(true);
@@ -103,6 +125,7 @@ export function QrScanner({
           onSuccess,
           onError
         );
+        if (!cancelled) updateMirrorState("environment");
       } catch {
         if (cancelled) return;
         try {
@@ -119,9 +142,11 @@ export function QrScanner({
             onSuccess,
             onError
           );
+          if (!cancelled) updateMirrorState("environment");
         } catch {
           if (!cancelled) {
             await scanner.start({ facingMode: "user" }, baseConfig, onSuccess, onError);
+            if (!cancelled) updateMirrorState("user");
           }
         }
       }
@@ -141,7 +166,7 @@ export function QrScanner({
 
   return (
     <div className="flex flex-col gap-3">
-      <div id="qr-reader" className="rounded-2xl overflow-hidden border border-gray-200" />
+      <div ref={readerRef} id="qr-reader" className="rounded-2xl overflow-hidden border border-gray-200" />
       {paused && resolving && (
         <div className="flex items-center justify-center gap-2.5 pt-4 pb-1" aria-label="Looking up scan result…">
           <span className="w-4 h-4 rounded-full bg-kids-magenta animate-bounce [animation-delay:-0.3s]" />

@@ -22,12 +22,12 @@ export default function RegisterForm() {
 
       <fieldset className="rounded-2xl border-2 border-kids-magenta/30 bg-kids-magenta/5 p-6 flex flex-col gap-4">
         <legend className="px-2 text-sm font-bold text-kids-magenta uppercase tracking-wide">Child</legend>
-        <ChildFields />
+        <ChildFields defaultValues={state?.values?.child} />
       </fieldset>
 
       <fieldset className="rounded-2xl border-2 border-kids-navy/30 bg-kids-navy/5 p-6 flex flex-col gap-4">
         <legend className="px-2 text-sm font-bold text-kids-navy uppercase tracking-wide">Guardian</legend>
-        <GuardianFields />
+        <GuardianFields defaultValues={state?.values?.guardian} />
       </fieldset>
 
       {state?.error && (
