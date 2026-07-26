@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, serial, text, boolean, timestamp, integer, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, serial, text, boolean, timestamp, integer, uuid, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const roleEnum = pgEnum("user_role", ["admin", "volunteer"]);
@@ -79,18 +79,27 @@ export const kcBucksSettings = pgTable("kc_bucks_settings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const kcBucksTransactions = pgTable("kc_bucks_transactions", {
-  id: serial("id").primaryKey(),
-  kidId: integer("kid_id")
-    .references(() => kids.id)
-    .notNull(),
-  type: kcBucksTransactionTypeEnum("type").notNull(),
-  amount: integer("amount").notNull(),
-  reason: text("reason").notNull(),
-  checkInId: integer("check_in_id").references(() => checkIns.id),
-  createdBy: integer("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const kcBucksTransactions = pgTable(
+  "kc_bucks_transactions",
+  {
+    id: serial("id").primaryKey(),
+    kidId: integer("kid_id")
+      .references(() => kids.id)
+      .notNull(),
+    type: kcBucksTransactionTypeEnum("type").notNull(),
+    amount: integer("amount").notNull(),
+    reason: text("reason").notNull(),
+    checkInId: integer("check_in_id").references(() => checkIns.id),
+    createdBy: integer("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    // Covers getKidBalance (equality on kidId) and getKidTransactions (kidId + order by createdAt desc)
+    index("kc_bucks_transactions_kid_created_idx").on(t.kidId, t.createdAt.desc()),
+    // Covers the check-in delete/checkout lookup by checkInId
+    index("kc_bucks_transactions_check_in_idx").on(t.checkInId),
+  ]
+);
 
 export type User = typeof users.$inferSelect;
 export type LoginLog = typeof loginLogs.$inferSelect;

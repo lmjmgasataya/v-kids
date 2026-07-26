@@ -1,0 +1,2 @@
+CREATE INDEX "kc_bucks_transactions_kid_created_idx" ON "kc_bucks_transactions" USING btree ("kid_id","created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "kc_bucks_transactions_check_in_idx" ON "kc_bucks_transactions" USING btree ("check_in_id");

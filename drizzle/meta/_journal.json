@@ -36,6 +36,13 @@
       "when": 1784803427774,
       "tag": "0004_romantic_jigsaw",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785067800000,
+      "tag": "0005_fine_mad_thinker",
+      "breakpoints": true
     }
   ]
 }
