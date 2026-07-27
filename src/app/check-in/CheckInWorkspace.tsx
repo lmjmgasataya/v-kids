@@ -23,6 +23,13 @@ function parseQrToken(decodedText: string): string {
 
 const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short", timeZone: "Asia/Manila" });
 
+// SERVICE_OPTIONS entries are "<time> - <place>" (e.g. "9AM - Mandurriao"); split for the
+// two-line card display so the dash doesn't need to render.
+function splitServiceLabel(option: string): [string, string] {
+  const [time, place] = option.split(" - ");
+  return [time, place ?? ""];
+}
+
 function Highlight({ children }: { children: ReactNode }) {
   return <span className="font-extrabold text-kids-navy">{children}</span>;
 }
@@ -287,11 +294,13 @@ export function CheckInWorkspace({
   initialService,
   initialIntent,
   initialMode,
+  serviceCardsEnabled,
 }: {
   initialToken?: string;
   initialService?: string;
   initialIntent?: Intent;
   initialMode?: "search" | "scan";
+  serviceCardsEnabled?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -472,21 +481,48 @@ export function CheckInWorkspace({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
-        <select
-          value={service}
-          onChange={(e) => {
-            setService(e.target.value);
-            setSelectedKid(null);
-            setScanError(null);
-          }}
-          className={inputCls}
-        >
-          {SERVICE_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
+        {serviceCardsEnabled ? (
+          <div className="flex gap-2 overflow-x-auto pt-2 pb-1">
+            {SERVICE_OPTIONS.map((option) => {
+              const [time, place] = splitServiceLabel(option);
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => {
+                    setService(option);
+                    setSelectedKid(null);
+                    setScanError(null);
+                  }}
+                  className={`shrink-0 whitespace-nowrap rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-[transform,background-color,color,box-shadow,border-color] duration-150 active:scale-95 hover:-translate-y-0.5 hover:shadow-md ${
+                    service === option
+                      ? "bg-kids-navy border-kids-navy text-white shadow-md"
+                      : "bg-white border-gray-200 text-gray-500 hover:border-kids-navy/50 hover:text-kids-navy"
+                  }`}
+                >
+                  <span className="block">{time}</span>
+                  <span className="block">{place}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <select
+            value={service}
+            onChange={(e) => {
+              setService(e.target.value);
+              setSelectedKid(null);
+              setScanError(null);
+            }}
+            className={inputCls}
+          >
+            {SERVICE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div ref={modeButtonsRef} className="flex gap-2 scroll-mt-4">

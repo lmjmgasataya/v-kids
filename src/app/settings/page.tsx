@@ -5,8 +5,8 @@ import { db } from "@/db";
 import { featureFlags } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { CURSOR_TRAIL_FLAG_KEY } from "@/lib/constants";
-import { toggleCursorTrail } from "./actions";
+import { CURSOR_TRAIL_FLAG_KEY, SERVICE_CARDS_FLAG_KEY } from "@/lib/constants";
+import { toggleCursorTrail, toggleServiceCards } from "./actions";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 export default async function SettingsPage() {
@@ -16,6 +16,12 @@ export default async function SettingsPage() {
 
   const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.key, CURSOR_TRAIL_FLAG_KEY));
   const enabled = flag?.enabled ?? true;
+
+  const [serviceCardsFlag] = await db
+    .select()
+    .from(featureFlags)
+    .where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY));
+  const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
 
   return (
     <div className="flex flex-col gap-6 max-w-xl mx-auto">
@@ -31,6 +37,19 @@ export default async function SettingsPage() {
         <form action={toggleCursorTrail} className="flex items-center gap-3">
           <span className="text-xs font-semibold text-gray-500 w-8 text-right">{enabled ? "On" : "Off"}</span>
           <ToggleSwitch enabled={enabled} />
+        </form>
+      </div>
+
+      <div className="rounded-2xl border-2 border-kids-navy/20 bg-white p-6 flex items-center justify-between gap-4">
+        <div>
+          <p className="font-semibold text-gray-900">Service cards on Check-In</p>
+          <p className="text-sm text-gray-500">Show the service picker as a row of cards instead of a dropdown.</p>
+        </div>
+        <form action={toggleServiceCards} className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-gray-500 w-8 text-right">
+            {serviceCardsEnabled ? "On" : "Off"}
+          </span>
+          <ToggleSwitch enabled={serviceCardsEnabled} />
         </form>
       </div>
 

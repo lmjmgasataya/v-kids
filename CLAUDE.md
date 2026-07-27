@@ -46,7 +46,7 @@ Core tables:
 - `service_team_members` — `firstName`, `lastName`, `birthday` (date), `serviceAttending` (free text), `photoKey` (nullable, private Backblaze B2 object key — not a URL; resolve to a viewable link via `getSignedPhotoUrl`); created via the public `/register/team` form. No login/check-in for these yet — registration only.
 - `users` — `username`, `passwordHash` (bcryptjs), `name`, `role` (`admin` | `user`) — staff accounts
 - `login_logs` — audit log scaffold (not currently written to; wire up in `login` action if needed)
-- `feature_flags` — `key` (primary key), `enabled` (default `true`), `updatedAt`; global on/off switches, editable at `/settings` (admin only). Currently just `cursor_trail`. Missing row ⇒ treated as enabled (see fallback pattern below).
+- `feature_flags` — `key` (primary key), `enabled` (default `true`), `updatedAt`; global on/off switches, editable at `/settings` (admin only). Currently `cursor_trail` and `service_cards` (service picker as cards vs. dropdown on `/check-in`). Missing row ⇒ treated as enabled (see fallback pattern below).
 
 ### Route sections
 - `src/app/page.tsx` — the staff dashboard, kid-friendly themed; protected (redirects to `/login` if no session, also guarded by `src/proxy.ts`); menu tiles: **Register**, **Registered Kids**, **Check-In**, **KC Bucks**, **Attendance**, **Service Team**
@@ -55,7 +55,7 @@ Core tables:
 - `src/app/kids/[id]/edit/` — edit an existing kid + guardian; `actions.ts` has the `updateKid` Server Action (bound with the kid's id via `.bind(null, id)` for use with `useActionState`)
 - `src/app/service-team/` — protected list of registered service team members (`page.tsx`), same `?q=`/`?sort=&dir=` convention as `/kids` via `queries.ts` + `ServiceTeamTable.tsx`; resolves each row's private `photoKey` to a viewable link with `getSignedPhotoUrl` before rendering. Edit/Delete are admin-only (mirrors `/kids`'s `canManage` gating): `[id]/edit/` has `EditServiceTeamForm.tsx` + the `updateServiceTeamMember` Server Action (photo is optional on edit — keeps the existing `photoKey` unless a new one is captured), `actions.ts` has `deleteServiceTeamMember`.
 - `src/app/login/` — staff login page; `actions.ts` has the `login`/`logout` Server Actions; redirects to `/` if already signed in, and to `/` on successful login
-- `src/app/settings/` — admin-only global settings (redirects non-admins to `/`); currently toggles the `cursor_trail` feature flag via the `toggleCursorTrail` Server Action in `actions.ts`
+- `src/app/settings/` — admin-only global settings (redirects non-admins to `/`); toggles the `cursor_trail` and `service_cards` feature flags via the `toggleCursorTrail`/`toggleServiceCards` Server Actions in `actions.ts`
 
 ### Patterns
 **Auth gating pattern** — any page that requires login:
@@ -65,7 +65,7 @@ if (!session) redirect("/login");
 ```
 Role checks: `session.role === "admin"`. Admin-only pages (e.g. `/settings`) redirect non-admins to `/` rather than `/login` — they're authenticated, just not authorized.
 
-**Feature flags** — read with `db.select().from(featureFlags).where(eq(featureFlags.key, KEY))`, then fall back with `flag?.enabled ?? true` (a missing row means the feature is on). `src/app/layout.tsx` reads `CURSOR_TRAIL_FLAG_KEY` on every request to decide whether to mount `<CursorTrail />`. Toggling is an upsert (`onConflictDoUpdate`) in `src/app/settings/actions.ts`, since the row may not exist yet on first toggle.
+**Feature flags** — read with `db.select().from(featureFlags).where(eq(featureFlags.key, KEY))`, then fall back with `flag?.enabled ?? true` (a missing row means the feature is on). `src/app/layout.tsx` reads `CURSOR_TRAIL_FLAG_KEY` on every request to decide whether to mount `<CursorTrail />`; `src/app/check-in/page.tsx` reads `SERVICE_CARDS_FLAG_KEY` and passes it to `CheckInWorkspace` as `serviceCardsEnabled`, which switches the service picker between a row of cards and a plain `<select>`. Toggling is an upsert (`onConflictDoUpdate`) in `src/app/settings/actions.ts`, since the row may not exist yet on first toggle.
 
 **Route protection** — `src/proxy.ts` is Next 16's middleware equivalent; its `matcher` lists every protected top-level route (`/`, `/kids`, `/settings`, `/check-in`, `/attendance`, `/kc-bucks`, `/service-team`, each with `/:path*`). Add new patterns there as protected routes are added, mirroring the `DEVELOPER_ONLY`-style regex array approach if role-specific gating is needed. `/register` is intentionally excluded — it must stay public.
 
