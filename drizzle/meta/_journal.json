@@ -43,6 +43,13 @@
       "when": 1785067800000,
       "tag": "0005_fine_mad_thinker",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785134798069,
+      "tag": "0006_romantic_firebrand",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,7 @@ const TILES = [
     href: "/register",
     icon: "📝",
     label: "Register",
-    description: "Sign up a child for Kids Church",
+    description: "Sign up a child or service team member",
     color: "kids-magenta",
   },
   {

@@ -45,5 +45,5 @@ export async function registerKid(_: unknown, formData: FormData) {
     })
     .returning({ id: kids.id });
 
-  redirect(withToast(`/register/success?kidId=${kidRow.id}`, "success", "Registration submitted!"));
+  redirect(withToast(`/register/child/success?kidId=${kidRow.id}`, "success", "Registration submitted!"));
 }

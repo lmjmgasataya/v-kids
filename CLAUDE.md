@@ -40,16 +40,17 @@ docker compose up -d  # Starts postgres:16 on :5432 and Adminer on :8080
 - **Tailwind CSS 4** for styling — custom colors `kids-magenta` / `kids-navy` / `kids-green` / `kids-yellow` defined via `@theme` in `src/app/globals.css`, matched to the Kids Church logo. Headings/buttons on kid-facing pages use the `Fredoka` font (`font-[family-name:var(--font-fredoka)]`).
 
 ### Data model
-Four tables:
+Core tables:
 - `guardians` — `firstName`, `lastName`, `contactNumber`, `gender` (`Male` | `Female`); one row is created per registration (no dedup against existing guardians yet)
 - `kids` — `firstName`, `lastName`, `nickname`, `age`, `gender`, `serviceAttending` (free text), `guardianId` (FK, not null)
+- `service_team_members` — `firstName`, `lastName`, `birthday` (date), `serviceAttending` (free text), `photoUrl` (nullable, public Backblaze B2 URL); created via the public `/register/team` form. No login/check-in for these yet — registration only.
 - `users` — `username`, `passwordHash` (bcryptjs), `name`, `role` (`admin` | `user`) — staff accounts
 - `login_logs` — audit log scaffold (not currently written to; wire up in `login` action if needed)
 - `feature_flags` — `key` (primary key), `enabled` (default `true`), `updatedAt`; global on/off switches, editable at `/settings` (admin only). Currently just `cursor_trail`. Missing row ⇒ treated as enabled (see fallback pattern below).
 
 ### Route sections
 - `src/app/page.tsx` — the staff dashboard, kid-friendly themed; protected (redirects to `/login` if no session, also guarded by `src/proxy.ts`); menu tiles: **Register**, **Registered Kids**
-- `src/app/register/` — public registration form (`RegisterForm.tsx`), `actions.ts` has the `registerKid` Server Action (inserts `guardians` row, then `kids` row referencing it), `success/` is the post-registration confirmation page
+- `src/app/register/` — public landing page with two `NavTile` choices; `child/` has the child+guardian form (`RegisterForm.tsx`, `actions.ts` with the `registerKid` Server Action, `success/` confirmation page); `team/` has the service-team-member form (`TeamRegisterForm.tsx`, `actions.ts` with the `registerServiceTeamMember` Server Action, `success/` confirmation page)
 - `src/app/kids/` — protected list of all registered kids (`page.tsx`), joined with `guardians`; supports `?q=` search (kid/guardian name, `ilike`) and `?sort=&dir=` column sorting via `KidsTable.tsx` header links; `KidsSearch.tsx` is a debounced client search box that updates the URL
 - `src/app/kids/[id]/edit/` — edit an existing kid + guardian; `actions.ts` has the `updateKid` Server Action (bound with the kid's id via `.bind(null, id)` for use with `useActionState`)
 - `src/app/login/` — staff login page; `actions.ts` has the `login`/`logout` Server Actions; redirects to `/` if already signed in, and to `/` on successful login
@@ -67,7 +68,9 @@ Role checks: `session.role === "admin"`. Admin-only pages (e.g. `/settings`) red
 
 **Route protection** — `src/proxy.ts` is Next 16's middleware equivalent; its `matcher` covers `/` and `/kids/:path*`. Add more patterns there as protected routes are added, mirroring the `DEVELOPER_ONLY`-style regex array approach if role-specific gating is needed. `/register` is intentionally excluded — it must stay public.
 
-**Mutations use Server Actions**, not API routes, following the pattern in `src/app/login/actions.ts`, `src/app/register/actions.ts`, and `src/app/kids/[id]/edit/actions.ts`.
+**Mutations use Server Actions**, not API routes, following the pattern in `src/app/login/actions.ts`, `src/app/register/child/actions.ts`, and `src/app/kids/[id]/edit/actions.ts`.
+
+**Photo upload (service team members)** — `src/app/register/team/actions.ts` reads the uploaded `File` from `FormData`, resizes/re-encodes it with `sharp` (`.rotate()` first, to fix phone EXIF orientation), then uploads via `uploadPublicPhoto` in `src/lib/storage.ts` (an S3-compatible client pointed at Backblaze B2) and stores the returned public URL on the row. `next.config.ts` raises `experimental.serverActions.bodySizeLimit` to `10mb` to allow the raw (pre-resize) upload through.
 
 **Shared registration fields/validation** — the child and guardian form fields (and their validation) are shared between `/register` and `/kids/[id]/edit` to avoid drift between the two forms:
 - `src/components/ChildFields.tsx` / `src/components/GuardianFields.tsx` — the actual `<fieldset>` inputs, each taking an optional `defaultValues` prop (unset for register, pre-filled for edit)
@@ -93,3 +96,5 @@ Role checks: `session.role === "admin"`. Admin-only pages (e.g. `/settings`) red
 - `DATABASE_URL_UNPOOLED` — direct connection (used by Drizzle migrations)
 - `SESSION_SECRET` — JWT signing secret
 - `CRON_SECRET` — bearer token required by `/api/keep-alive`
+- `B2_BUCKET` / `B2_ENDPOINT` / `B2_REGION` / `B2_KEY_ID` / `B2_APPLICATION_KEY` — Backblaze B2 bucket (S3-compatible API) used by `src/lib/storage.ts` for service-team-member photo uploads
+- `B2_PUBLIC_URL_BASE` — public base URL prefixed onto the object key to build the stored `photoUrl` (bucket must be public)

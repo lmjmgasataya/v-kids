@@ -34,7 +34,12 @@ export default async function RegisterSuccessPage({
   return (
     <div>
       <Breadcrumbs
-        items={[{ label: "Home", href: "/" }, { label: "Register", href: "/register" }, { label: "Success" }]}
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Register", href: "/register" },
+          { label: "Register a Child", href: "/register/child" },
+          { label: "Success" },
+        ]}
       />
       <div className="flex flex-col items-center gap-6 py-20 text-center">
         <span className="text-6xl">🎉</span>
