@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DeleteServiceTeamMemberButton } from "./DeleteServiceTeamMemberButton";
+import { ServiceTeamPhoto } from "./ServiceTeamPhoto";
 
 interface Row {
   id: number;
@@ -68,15 +69,7 @@ export function ServiceTeamTable({
           {rows.map((row) => (
             <tr key={row.id} className="border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5">
               <td className="px-4 py-3">
-                {row.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- signed URL changes per request, not worth next/image's remote-pattern config
-                  <img src={row.photoUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
-                ) : (
-                  <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs font-semibold">
-                    {row.firstName[0]}
-                    {row.lastName[0]}
-                  </div>
-                )}
+                <ServiceTeamPhoto photoUrl={row.photoUrl} initials={`${row.firstName[0]}${row.lastName[0]}`} />
               </td>
               <td className="px-4 py-3 font-medium text-gray-900">
                 {row.firstName} {row.lastName}

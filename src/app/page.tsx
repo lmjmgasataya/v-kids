@@ -39,20 +39,44 @@ const TILES = [
     description: "See attendance per service for a day",
     color: "kids-magenta",
   },
+] as const;
+
+const SERVICE_TEAM_TILES = [
   {
     href: "/service-team",
-    icon: "👥",
+    icon: "🙋‍♂️🙋‍♀️",
     label: "Service Team",
     description: "View registered service team members",
-    color: "kids-navy",
+    color: "kids-magenta",
   },
 ] as const;
+
+function TileGrid({ tiles }: { tiles: readonly { href: string; icon: string; label: string; description: string; color: "kids-magenta" | "kids-navy" | "kids-green" | "kids-yellow" }[] }) {
+  const isOddLeftover = tiles.length % 2 === 1;
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
+      {tiles.map((tile, i) => {
+        const isLastAlone = isOddLeftover && i === tiles.length - 1;
+        return (
+          <div key={tile.href} className={isLastAlone ? "sm:col-span-2 sm:w-1/2 sm:mx-auto" : undefined}>
+            <NavTile
+              href={tile.href}
+              icon={tile.icon}
+              label={tile.label}
+              description={tile.description}
+              color={tile.color}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default async function Home() {
   const session = await getSession();
   if (!session) redirect("/login");
-
-  const isOddLeftover = TILES.length % 2 === 1;
 
   return (
     <div className="flex flex-col items-center gap-10 py-8 text-center">
@@ -64,24 +88,10 @@ export default async function Home() {
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
-        {TILES.map((tile, i) => {
-          const isLastAlone = isOddLeftover && i === TILES.length - 1;
-          return (
-            <div
-              key={tile.href}
-              className={isLastAlone ? "sm:col-span-2 sm:w-1/2 sm:mx-auto" : undefined}
-            >
-              <NavTile
-                href={tile.href}
-                icon={tile.icon}
-                label={tile.label}
-                description={tile.description}
-                color={tile.color}
-              />
-            </div>
-          );
-        })}
+      <TileGrid tiles={TILES} />
+
+      <div className="w-full max-w-2xl border-t border-gray-200 pt-8">
+        <TileGrid tiles={SERVICE_TEAM_TILES} />
       </div>
     </div>
   );
