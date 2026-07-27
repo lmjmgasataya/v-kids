@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
-import { uploadPhoto } from "@/lib/storage";
+import { isB2Configured, uploadPhoto } from "@/lib/storage";
 import { withToast } from "@/lib/toast";
 
 interface TeamRegisterValues {
@@ -34,21 +34,24 @@ export async function registerServiceTeamMember(_: unknown, formData: FormData) 
     return { error: "Please enter a valid birthday.", values };
   }
 
-  const photo = formData.get("photo");
-  if (!(photo instanceof File) || photo.size === 0) {
-    return { error: "Please upload or take a photo.", values };
-  }
-  if (!photo.type.startsWith("image/")) {
-    return { error: "The uploaded file must be an image.", values };
-  }
+  let photoKey: string | null = null;
+  if (isB2Configured()) {
+    const photo = formData.get("photo");
+    if (!(photo instanceof File) || photo.size === 0) {
+      return { error: "Please take or upload a photo.", values };
+    }
+    if (!photo.type.startsWith("image/")) {
+      return { error: "The uploaded file must be an image.", values };
+    }
 
-  const resized = await sharp(Buffer.from(await photo.arrayBuffer()))
-    .rotate()
-    .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality: 82 })
-    .toBuffer();
+    const resized = await sharp(Buffer.from(await photo.arrayBuffer()))
+      .rotate()
+      .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 82 })
+      .toBuffer();
 
-  const photoKey = await uploadPhoto(resized, `service-team/${crypto.randomUUID()}.jpg`, "image/jpeg");
+    photoKey = await uploadPhoto(resized, `service-team/${crypto.randomUUID()}.jpg`, "image/jpeg");
+  }
 
   await db.insert(serviceTeamMembers).values({
     firstName,

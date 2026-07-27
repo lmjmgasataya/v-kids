@@ -8,7 +8,7 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
-import { uploadPhoto } from "@/lib/storage";
+import { isB2Configured, uploadPhoto } from "@/lib/storage";
 import { withToast } from "@/lib/toast";
 
 export async function updateServiceTeamMember(memberId: number, _: unknown, formData: FormData) {
@@ -42,7 +42,7 @@ export async function updateServiceTeamMember(memberId: number, _: unknown, form
 
   const photo = formData.get("photo");
   let photoKey: string | undefined;
-  if (photo instanceof File && photo.size > 0) {
+  if (isB2Configured() && photo instanceof File && photo.size > 0) {
     if (!photo.type.startsWith("image/")) {
       return { error: "The uploaded file must be an image." };
     }

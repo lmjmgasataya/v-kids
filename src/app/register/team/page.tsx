@@ -1,4 +1,5 @@
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { isB2Configured } from "@/lib/storage";
 import TeamRegisterForm from "./TeamRegisterForm";
 
 export default function RegisterTeamPage() {
@@ -11,7 +12,7 @@ export default function RegisterTeamPage() {
           { label: "Register a Service Team Member" },
         ]}
       />
-      <TeamRegisterForm />
+      <TeamRegisterForm photoEnabled={isB2Configured()} />
     </div>
   );
 }

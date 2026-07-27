@@ -16,7 +16,15 @@ interface Member {
   serviceAttending: string;
 }
 
-export default function EditServiceTeamForm({ member, photoUrl }: { member: Member; photoUrl: string | null }) {
+export default function EditServiceTeamForm({
+  member,
+  photoUrl,
+  photoEnabled,
+}: {
+  member: Member;
+  photoUrl: string | null;
+  photoEnabled: boolean;
+}) {
   const updateWithId = updateServiceTeamMember.bind(null, member.id);
   const [state, action] = useActionState(updateWithId, undefined);
   useToastOnResult(state);
@@ -45,7 +53,13 @@ export default function EditServiceTeamForm({ member, photoUrl }: { member: Memb
             defaultValue={member.serviceAttending}
           />
         </div>
-        <PhotoCapture name="photo" initialPreviewUrl={photoUrl} />
+        {photoEnabled ? (
+          <PhotoCapture name="photo" initialPreviewUrl={photoUrl} />
+        ) : (
+          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-4 text-center text-sm text-gray-400">
+            Photo capture is currently unavailable.
+          </div>
+        )}
       </fieldset>
 
       {state?.error && (

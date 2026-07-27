@@ -8,7 +8,7 @@ import { PhotoCapture } from "@/components/PhotoCapture";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 
-export default function TeamRegisterForm() {
+export default function TeamRegisterForm({ photoEnabled }: { photoEnabled: boolean }) {
   const [state, action] = useActionState(registerServiceTeamMember, undefined);
   useToastOnResult(state);
 
@@ -36,7 +36,13 @@ export default function TeamRegisterForm() {
             defaultValue={state?.values?.serviceAttending}
           />
         </div>
-        <PhotoCapture name="photo" required />
+        {photoEnabled ? (
+          <PhotoCapture name="photo" required />
+        ) : (
+          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-4 text-center text-sm text-gray-400">
+            Photo capture is currently unavailable.
+          </div>
+        )}
       </fieldset>
 
       {state?.error && (
