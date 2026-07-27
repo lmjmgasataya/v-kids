@@ -1,0 +1,50 @@
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { SearchBox } from "@/components/SearchBox";
+import { getSignedPhotoUrl } from "@/lib/storage";
+import { ServiceTeamTable } from "./ServiceTeamTable";
+import { fetchServiceTeamRows, resolveDir, resolveSort } from "./queries";
+
+export default async function ServiceTeamPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q : "";
+  const sortParam = typeof sp.sort === "string" ? sp.sort : "createdAt";
+  const dirParam = typeof sp.dir === "string" ? sp.dir : "desc";
+
+  const sort = resolveSort(sortParam);
+  const dir = resolveDir(dirParam);
+  const search = q.trim();
+
+  const rows = await fetchServiceTeamRows({ q: search, sort, dir });
+  const rowsWithPhotos = await Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      photoUrl: row.photoKey ? await getSignedPhotoUrl(row.photoKey) : null,
+    }))
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Service Team" }]} />
+      <div className="flex flex-col gap-4">
+        <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Service Team</h2>
+        <SearchBox defaultValue={search} placeholder="Search by name…" />
+      </div>
+      <ServiceTeamTable
+        rows={rowsWithPhotos}
+        sort={sort}
+        dir={dir}
+        q={search}
+        canManage={session.role === "admin"}
+      />
+    </div>
+  );
+}

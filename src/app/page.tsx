@@ -39,6 +39,13 @@ const TILES = [
     description: "See attendance per service for a day",
     color: "kids-magenta",
   },
+  {
+    href: "/service-team",
+    icon: "👥",
+    label: "Service Team",
+    description: "View registered service team members",
+    color: "kids-navy",
+  },
 ] as const;
 
 export default async function Home() {
