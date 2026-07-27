@@ -43,11 +43,10 @@ export default function TeamRegisterForm() {
             type="file"
             name="photo"
             accept="image/*"
-            capture="environment"
             required
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-kids-navy file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
           />
-          <p className="text-xs text-gray-400 mt-1">Take a photo now, or choose one from your device.</p>
+          <p className="text-xs text-gray-400 mt-1">Upload a photo from your device.</p>
         </div>
       </fieldset>
 

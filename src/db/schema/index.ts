@@ -71,7 +71,7 @@ export const serviceTeamMembers = pgTable("service_team_members", {
   lastName: text("last_name").notNull(),
   birthday: date("birthday").notNull(),
   serviceAttending: text("service_attending").notNull(),
-  photoUrl: text("photo_url"),
+  photoKey: text("photo_key"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

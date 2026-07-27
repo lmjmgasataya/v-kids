@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
-import { uploadPublicPhoto } from "@/lib/storage";
+import { uploadPhoto } from "@/lib/storage";
 import { withToast } from "@/lib/toast";
 
 interface TeamRegisterValues {
@@ -48,14 +48,14 @@ export async function registerServiceTeamMember(_: unknown, formData: FormData) 
     .jpeg({ quality: 82 })
     .toBuffer();
 
-  const photoUrl = await uploadPublicPhoto(resized, `service-team/${crypto.randomUUID()}.jpg`, "image/jpeg");
+  const photoKey = await uploadPhoto(resized, `service-team/${crypto.randomUUID()}.jpg`, "image/jpeg");
 
   await db.insert(serviceTeamMembers).values({
     firstName,
     lastName,
     birthday,
     serviceAttending,
-    photoUrl,
+    photoKey,
   });
 
   redirect(withToast("/register/team/success", "success", "Registration submitted!"));

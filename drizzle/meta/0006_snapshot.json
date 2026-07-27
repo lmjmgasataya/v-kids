@@ -1,5 +1,5 @@
 {
-  "id": "69893431-3700-4cc9-97fa-cc8095752cd3",
+  "id": "b6f292ec-07a7-4751-bd09-a44ef20a0e46",
   "prevId": "0c152345-bb82-43c7-a485-15762ee6e7b2",
   "version": "7",
   "dialect": "postgresql",
@@ -582,8 +582,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "photo_url": {
-          "name": "photo_url",
+        "photo_key": {
+          "name": "photo_key",
           "type": "text",
           "primaryKey": false,
           "notNull": false

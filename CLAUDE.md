@@ -43,7 +43,7 @@ docker compose up -d  # Starts postgres:16 on :5432 and Adminer on :8080
 Core tables:
 - `guardians` — `firstName`, `lastName`, `contactNumber`, `gender` (`Male` | `Female`); one row is created per registration (no dedup against existing guardians yet)
 - `kids` — `firstName`, `lastName`, `nickname`, `age`, `gender`, `serviceAttending` (free text), `guardianId` (FK, not null)
-- `service_team_members` — `firstName`, `lastName`, `birthday` (date), `serviceAttending` (free text), `photoUrl` (nullable, public Backblaze B2 URL); created via the public `/register/team` form. No login/check-in for these yet — registration only.
+- `service_team_members` — `firstName`, `lastName`, `birthday` (date), `serviceAttending` (free text), `photoKey` (nullable, private Backblaze B2 object key — not a URL; resolve to a viewable link via `getSignedPhotoUrl`); created via the public `/register/team` form. No login/check-in for these yet — registration only.
 - `users` — `username`, `passwordHash` (bcryptjs), `name`, `role` (`admin` | `user`) — staff accounts
 - `login_logs` — audit log scaffold (not currently written to; wire up in `login` action if needed)
 - `feature_flags` — `key` (primary key), `enabled` (default `true`), `updatedAt`; global on/off switches, editable at `/settings` (admin only). Currently just `cursor_trail`. Missing row ⇒ treated as enabled (see fallback pattern below).
@@ -70,7 +70,7 @@ Role checks: `session.role === "admin"`. Admin-only pages (e.g. `/settings`) red
 
 **Mutations use Server Actions**, not API routes, following the pattern in `src/app/login/actions.ts`, `src/app/register/child/actions.ts`, and `src/app/kids/[id]/edit/actions.ts`.
 
-**Photo upload (service team members)** — `src/app/register/team/actions.ts` reads the uploaded `File` from `FormData`, resizes/re-encodes it with `sharp` (`.rotate()` first, to fix phone EXIF orientation), then uploads via `uploadPublicPhoto` in `src/lib/storage.ts` (an S3-compatible client pointed at Backblaze B2) and stores the returned public URL on the row. `next.config.ts` raises `experimental.serverActions.bodySizeLimit` to `10mb` to allow the raw (pre-resize) upload through.
+**Photo upload (service team members)** — `src/app/register/team/actions.ts` reads the uploaded `File` from `FormData`, resizes/re-encodes it with `sharp` (`.rotate()` first, to fix phone EXIF orientation), then uploads via `uploadPhoto` in `src/lib/storage.ts` (an S3-compatible client pointed at a **private** Backblaze B2 bucket) and stores the returned object key (`photoKey`) on the row. To display a photo later, generate a time-limited link with `getSignedPhotoUrl(key)` — never store or cache a raw public URL, the bucket has no public access. `next.config.ts` raises `experimental.serverActions.bodySizeLimit` to `10mb` to allow the raw (pre-resize) upload through.
 
 **Shared registration fields/validation** — the child and guardian form fields (and their validation) are shared between `/register` and `/kids/[id]/edit` to avoid drift between the two forms:
 - `src/components/ChildFields.tsx` / `src/components/GuardianFields.tsx` — the actual `<fieldset>` inputs, each taking an optional `defaultValues` prop (unset for register, pre-filled for edit)
