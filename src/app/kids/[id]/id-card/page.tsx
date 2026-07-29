@@ -6,8 +6,7 @@ import { db } from "@/db";
 import { kids } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { IdCardFront, IdCardBack } from "@/components/IdCard";
-import { PrintButton } from "./PrintButton";
+import { IdCardViewer } from "@/components/IdCardViewer";
 
 export default async function KidIdCardPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -35,7 +34,7 @@ export default async function KidIdCardPage({ params }: { params: Promise<{ id: 
 
   return (
     <div>
-      <style>{"@page { size: 85.6mm 54mm; margin: 0; }"}</style>
+      <style>{"@page { size: 85.6mm 53.98mm; margin: 0; }"}</style>
 
       <div className="print:hidden">
         <Breadcrumbs
@@ -52,10 +51,12 @@ export default async function KidIdCardPage({ params }: { params: Promise<{ id: 
           ID Card
         </h2>
 
-        <IdCardFront displayName={displayName} fullName={fullName} />
-        <IdCardBack qrDataUrl={qrDataUrl} fullName={fullName} />
-
-        <PrintButton />
+        <IdCardViewer
+          displayName={displayName}
+          fullName={fullName}
+          qrDataUrl={qrDataUrl}
+          fileBaseName={fullName}
+        />
       </div>
     </div>
   );

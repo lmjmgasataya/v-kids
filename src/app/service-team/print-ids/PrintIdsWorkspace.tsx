@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { IdCardFront, IdCardBack } from "@/components/IdCard";
 import { inputCls } from "@/components/form";
+import { useIdCardExport } from "@/lib/useIdCardExport";
 
 interface MemberRow {
   id: number;
@@ -87,6 +88,12 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
   }
 
   const printable = sortedAll.filter((member) => selected.has(member.id));
+  const { setFrontRef, setBackRef, exportPdf, exportPngZip, exporting } = useIdCardExport();
+
+  const exportCards = printable.map((member) => ({
+    id: member.id,
+    fileBaseName: `${member.firstName} ${member.lastName}`,
+  }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -108,14 +115,32 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
         <span className="text-sm text-gray-500">
           {selected.size} of {members.length} selected
         </span>
-        <button
-          type="button"
-          disabled={printable.length === 0}
-          onClick={() => window.print()}
-          className="whitespace-nowrap bg-kids-navy hover:bg-kids-navy/90 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-6 py-2.5 rounded-xl transition"
-        >
-          Print {printable.length > 0 ? `${printable.length} ` : ""}ID{printable.length === 1 ? "" : "s"}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            disabled={printable.length === 0}
+            onClick={() => window.print()}
+            className="whitespace-nowrap bg-kids-navy hover:bg-kids-navy/90 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-6 py-2.5 rounded-xl transition"
+          >
+            Print {printable.length > 0 ? `${printable.length} ` : ""}ID{printable.length === 1 ? "" : "s"}
+          </button>
+          <button
+            type="button"
+            disabled={printable.length === 0 || exporting !== null}
+            onClick={() => exportPdf(exportCards, "service-team-id-cards.pdf")}
+            className="whitespace-nowrap bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-kids-navy font-bold px-6 py-2.5 rounded-xl border border-kids-navy transition"
+          >
+            {exporting === "pdf" ? "Exporting…" : "Export PDF"}
+          </button>
+          <button
+            type="button"
+            disabled={printable.length === 0 || exporting !== null}
+            onClick={() => exportPngZip(exportCards, "service-team-id-cards.zip")}
+            className="whitespace-nowrap bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-kids-navy font-bold px-6 py-2.5 rounded-xl border border-kids-navy transition"
+          >
+            {exporting === "png" ? "Exporting…" : "Export PNG"}
+          </button>
+        </div>
       </div>
 
       <div className="print:hidden overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -179,13 +204,14 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
         </table>
       </div>
 
-      <div className="hidden print:flex flex-col items-center print:-mx-4 print:-my-8 print:gap-0">
+      {/* Always rendered (off-screen) so html2canvas can capture cards for PDF/PNG export; repositioned into the normal flow for native printing. */}
+      <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:static print:-mx-4 print:-my-8 print:gap-0">
         {printable.map((member) => {
           const fullName = `${member.firstName} ${member.lastName}`;
           return (
             <div key={member.id} className="contents">
-              <IdCardFront displayName={member.firstName} fullName={fullName} />
-              <IdCardBack qrDataUrl={member.qrDataUrl} fullName={fullName} />
+              <IdCardFront ref={(el) => setFrontRef(member.id, el)} displayName={member.firstName} fullName={fullName} />
+              <IdCardBack ref={(el) => setBackRef(member.id, el)} qrDataUrl={member.qrDataUrl} fullName={fullName} />
             </div>
           );
         })}

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { IdCardFront, IdCardBack } from "@/components/IdCard";
 import { inputCls } from "@/components/form";
+import { useIdCardExport } from "@/lib/useIdCardExport";
 
 interface KidRow {
   id: number;
@@ -94,6 +95,12 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
   }
 
   const printable = sortedAll.filter((kid) => selected.has(kid.id));
+  const { setFrontRef, setBackRef, exportPdf, exportPngZip, exporting } = useIdCardExport();
+
+  const exportCards = printable.map((kid) => ({
+    id: kid.id,
+    fileBaseName: `${kid.firstName} ${kid.lastName}`,
+  }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -115,14 +122,32 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
         <span className="text-sm text-gray-500">
           {selected.size} of {kids.length} selected
         </span>
-        <button
-          type="button"
-          disabled={printable.length === 0}
-          onClick={() => window.print()}
-          className="whitespace-nowrap bg-kids-navy hover:bg-kids-navy/90 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-6 py-2.5 rounded-xl transition"
-        >
-          Print {printable.length > 0 ? `${printable.length} ` : ""}ID{printable.length === 1 ? "" : "s"}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            disabled={printable.length === 0}
+            onClick={() => window.print()}
+            className="whitespace-nowrap bg-kids-navy hover:bg-kids-navy/90 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-6 py-2.5 rounded-xl transition"
+          >
+            Print {printable.length > 0 ? `${printable.length} ` : ""}ID{printable.length === 1 ? "" : "s"}
+          </button>
+          <button
+            type="button"
+            disabled={printable.length === 0 || exporting !== null}
+            onClick={() => exportPdf(exportCards, "kids-id-cards.pdf")}
+            className="whitespace-nowrap bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-kids-navy font-bold px-6 py-2.5 rounded-xl border border-kids-navy transition"
+          >
+            {exporting === "pdf" ? "Exporting…" : "Export PDF"}
+          </button>
+          <button
+            type="button"
+            disabled={printable.length === 0 || exporting !== null}
+            onClick={() => exportPngZip(exportCards, "kids-id-cards.zip")}
+            className="whitespace-nowrap bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-kids-navy font-bold px-6 py-2.5 rounded-xl border border-kids-navy transition"
+          >
+            {exporting === "png" ? "Exporting…" : "Export PNG"}
+          </button>
+        </div>
       </div>
 
       <div className="print:hidden overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -193,14 +218,15 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
         </table>
       </div>
 
-      <div className="hidden print:flex flex-col items-center print:-mx-4 print:-my-8 print:gap-0">
+      {/* Always rendered (off-screen) so html2canvas can capture cards for PDF/PNG export; repositioned into the normal flow for native printing. */}
+      <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:static print:-mx-4 print:-my-8 print:gap-0">
         {printable.map((kid) => {
           const fullName = `${kid.firstName} ${kid.lastName}`;
           const displayName = kid.nickname?.trim() || kid.firstName;
           return (
             <div key={kid.id} className="contents">
-              <IdCardFront displayName={displayName} fullName={fullName} />
-              <IdCardBack qrDataUrl={kid.qrDataUrl} fullName={fullName} />
+              <IdCardFront ref={(el) => setFrontRef(kid.id, el)} displayName={displayName} fullName={fullName} />
+              <IdCardBack ref={(el) => setBackRef(kid.id, el)} qrDataUrl={kid.qrDataUrl} fullName={fullName} />
             </div>
           );
         })}

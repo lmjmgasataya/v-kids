@@ -43,7 +43,7 @@ export default async function PrintIdsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <style>{"@page { size: 85.6mm 54mm; margin: 0; }"}</style>
+      <style>{"@page { size: 85.6mm 53.98mm; margin: 0; }"}</style>
 
       <div className="print:hidden">
         <Breadcrumbs
