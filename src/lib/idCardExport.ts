@@ -11,7 +11,10 @@ export function sanitizeFileName(name: string) {
 }
 
 async function captureCardCanvas(el: HTMLElement) {
-  const { default: html2canvas } = await import("html2canvas");
+  // Tailwind 4 emits oklch()/color() for its palette, which the unmaintained html2canvas
+  // can't parse ("unsupported color function"). html2canvas-pro is a maintained fork with
+  // support for modern CSS color functions, same API otherwise.
+  const { default: html2canvas } = await import("html2canvas-pro");
   return html2canvas(el, { scale: 3, backgroundColor: "#ffffff", useCORS: true });
 }
 
