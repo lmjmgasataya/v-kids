@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SearchBox } from "@/components/SearchBox";
@@ -35,7 +36,15 @@ export default async function ServiceTeamPage({
     <div className="flex flex-col gap-6">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Service Team" }]} />
       <div className="flex flex-col gap-4">
-        <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Service Team</h2>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Service Team</h2>
+          <Link
+            href="/service-team/print-ids"
+            className="shrink-0 whitespace-nowrap bg-kids-navy hover:bg-kids-navy/90 text-white text-sm font-bold px-4 py-2 rounded-full transition"
+          >
+            Print IDs
+          </Link>
+        </div>
         <SearchBox defaultValue={search} placeholder="Search by name…" />
       </div>
       <ServiceTeamTable

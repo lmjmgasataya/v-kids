@@ -78,18 +78,24 @@ export function ServiceTeamTable({
               <td className="px-4 py-3">{row.serviceAttending}</td>
               <td className="px-4 py-3 text-gray-500">{registeredFormatter.format(row.createdAt)}</td>
               <td className="px-4 py-3 text-right whitespace-nowrap">
-                {canManage && (
-                  <div className="flex items-center justify-end gap-2">
-                    <Link href={`/service-team/${row.id}/edit`} className="text-kids-navy font-semibold hover:underline">
-                      Edit
-                    </Link>
-                    <span className="text-gray-300">|</span>
-                    <DeleteServiceTeamMemberButton
-                      memberId={row.id}
-                      memberName={`${row.firstName} ${row.lastName}`}
-                    />
-                  </div>
-                )}
+                <div className="flex items-center justify-end gap-2">
+                  <Link href={`/service-team/${row.id}/id-card`} className="text-kids-navy font-semibold hover:underline">
+                    Print ID
+                  </Link>
+                  {canManage && (
+                    <>
+                      <span className="text-gray-300">|</span>
+                      <Link href={`/service-team/${row.id}/edit`} className="text-kids-navy font-semibold hover:underline">
+                        Edit
+                      </Link>
+                      <span className="text-gray-300">|</span>
+                      <DeleteServiceTeamMemberButton
+                        memberId={row.id}
+                        memberName={`${row.firstName} ${row.lastName}`}
+                      />
+                    </>
+                  )}
+                </div>
               </td>
             </tr>
           ))}

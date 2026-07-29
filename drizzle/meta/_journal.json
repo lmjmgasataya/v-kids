@@ -50,6 +50,13 @@
       "when": 1785147259745,
       "tag": "0006_light_boomer",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785337300846,
+      "tag": "0007_tiny_demogoblin",
+      "breakpoints": true
     }
   ]
 }

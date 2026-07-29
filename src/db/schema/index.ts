@@ -72,6 +72,7 @@ export const serviceTeamMembers = pgTable("service_team_members", {
   birthday: date("birthday").notNull(),
   serviceAttending: text("service_attending").notNull(),
   photoKey: text("photo_key"),
+  qrToken: uuid("qr_token").defaultRandom().notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

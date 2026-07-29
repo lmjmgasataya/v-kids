@@ -1,0 +1,2 @@
+ALTER TABLE "service_team_members" ADD COLUMN "qr_token" uuid DEFAULT gen_random_uuid() NOT NULL;--> statement-breakpoint
+ALTER TABLE "service_team_members" ADD CONSTRAINT "service_team_members_qr_token_unique" UNIQUE("qr_token");
