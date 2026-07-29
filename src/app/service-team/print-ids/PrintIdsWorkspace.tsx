@@ -9,6 +9,7 @@ interface MemberRow {
   id: number;
   firstName: string;
   lastName: string;
+  nickname: string | null;
   birthday: string;
   serviceAttending: string;
   qrToken: string;
@@ -208,9 +209,10 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
       <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:static print:-mx-4 print:-my-8 print:gap-0">
         {printable.map((member) => {
           const fullName = `${member.firstName} ${member.lastName}`;
+          const displayName = member.nickname?.trim() || member.firstName;
           return (
             <div key={member.id} className="contents">
-              <IdCardFront ref={(el) => setFrontRef(member.id, el)} displayName={member.firstName} fullName={fullName} />
+              <IdCardFront ref={(el) => setFrontRef(member.id, el)} displayName={displayName} fullName={fullName} />
               <IdCardBack ref={(el) => setBackRef(member.id, el)} qrDataUrl={member.qrDataUrl} fullName={fullName} />
             </div>
           );

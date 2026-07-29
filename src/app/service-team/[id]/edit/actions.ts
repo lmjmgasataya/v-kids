@@ -18,6 +18,7 @@ export async function updateServiceTeamMember(memberId: number, _: unknown, form
 
   const firstName = (formData.get("firstName") as string)?.trim() ?? "";
   const lastName = (formData.get("lastName") as string)?.trim() ?? "";
+  const nickname = (formData.get("nickname") as string)?.trim() ?? "";
   const birthday = (formData.get("birthday") as string)?.trim() ?? "";
   const serviceAttending = (formData.get("serviceAttending") as string)?.trim() ?? "";
 
@@ -59,6 +60,7 @@ export async function updateServiceTeamMember(memberId: number, _: unknown, form
     .set({
       firstName,
       lastName,
+      nickname: nickname || null,
       birthday,
       serviceAttending,
       ...(photoKey ? { photoKey } : {}),

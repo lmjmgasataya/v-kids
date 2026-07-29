@@ -17,7 +17,12 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
   if (!Number.isInteger(memberId)) notFound();
 
   const [row] = await db
-    .select({ firstName: serviceTeamMembers.firstName, lastName: serviceTeamMembers.lastName, qrToken: serviceTeamMembers.qrToken })
+    .select({
+      firstName: serviceTeamMembers.firstName,
+      lastName: serviceTeamMembers.lastName,
+      nickname: serviceTeamMembers.nickname,
+      qrToken: serviceTeamMembers.qrToken,
+    })
     .from(serviceTeamMembers)
     .where(eq(serviceTeamMembers.id, memberId));
 
@@ -30,6 +35,7 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
   const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0 });
 
   const fullName = `${row.firstName} ${row.lastName}`;
+  const displayName = row.nickname?.trim() || row.firstName;
 
   return (
     <div>
@@ -51,7 +57,7 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
         </h2>
 
         <IdCardViewer
-          displayName={row.firstName}
+          displayName={displayName}
           fullName={fullName}
           qrDataUrl={qrDataUrl}
           fileBaseName={fullName}

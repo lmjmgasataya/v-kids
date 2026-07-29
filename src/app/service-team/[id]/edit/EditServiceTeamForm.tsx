@@ -12,6 +12,7 @@ interface Member {
   id: number;
   firstName: string;
   lastName: string;
+  nickname: string | null;
   birthday: string;
   serviceAttending: string;
 }
@@ -44,6 +45,7 @@ export default function EditServiceTeamForm({
           <Field label="First name" name="firstName" required defaultValue={member.firstName} />
           <Field label="Last name" name="lastName" required defaultValue={member.lastName} />
         </div>
+        <Field label="Nickname" name="nickname" defaultValue={member.nickname ?? undefined} />
         <div className="grid grid-cols-2 gap-4">
           <Field label="Birthday" name="birthday" type="date" required defaultValue={member.birthday} />
           <Select

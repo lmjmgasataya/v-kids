@@ -12,6 +12,7 @@ import { withToast } from "@/lib/toast";
 interface TeamRegisterValues {
   firstName: string;
   lastName: string;
+  nickname: string;
   birthday: string;
   serviceAttending: string;
 }
@@ -19,9 +20,10 @@ interface TeamRegisterValues {
 export async function registerServiceTeamMember(_: unknown, formData: FormData) {
   const firstName = (formData.get("firstName") as string)?.trim() ?? "";
   const lastName = (formData.get("lastName") as string)?.trim() ?? "";
+  const nickname = (formData.get("nickname") as string)?.trim() ?? "";
   const birthday = (formData.get("birthday") as string)?.trim() ?? "";
   const serviceAttending = (formData.get("serviceAttending") as string)?.trim() ?? "";
-  const values: TeamRegisterValues = { firstName, lastName, birthday, serviceAttending };
+  const values: TeamRegisterValues = { firstName, lastName, nickname, birthday, serviceAttending };
 
   if (!firstName || !lastName || !birthday || !serviceAttending) {
     return { error: "Please fill in all required fields.", values };
@@ -56,6 +58,7 @@ export async function registerServiceTeamMember(_: unknown, formData: FormData) 
   await db.insert(serviceTeamMembers).values({
     firstName,
     lastName,
+    nickname: nickname || null,
     birthday,
     serviceAttending,
     photoKey,

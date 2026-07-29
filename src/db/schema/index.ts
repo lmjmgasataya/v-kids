@@ -69,6 +69,7 @@ export const serviceTeamMembers = pgTable("service_team_members", {
   id: serial("id").primaryKey(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
+  nickname: text("nickname"),
   birthday: date("birthday").notNull(),
   serviceAttending: text("service_attending").notNull(),
   photoKey: text("photo_key"),

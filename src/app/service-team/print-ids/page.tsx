@@ -17,6 +17,7 @@ export default async function ServiceTeamPrintIdsPage() {
       id: serviceTeamMembers.id,
       firstName: serviceTeamMembers.firstName,
       lastName: serviceTeamMembers.lastName,
+      nickname: serviceTeamMembers.nickname,
       birthday: serviceTeamMembers.birthday,
       serviceAttending: serviceTeamMembers.serviceAttending,
       qrToken: serviceTeamMembers.qrToken,
