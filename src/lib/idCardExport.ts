@@ -10,20 +10,42 @@ export function sanitizeFileName(name: string) {
   return name.trim().replace(/[^a-zA-Z0-9-_]+/g, "_");
 }
 
+// Flat rgba() equivalent of the front card's decorative background, which is authored with
+// color-mix(in srgb, <brand color> P%, transparent). html2canvas-pro's color parser doesn't
+// support color-mix() (only hsl/rgb/lch/oklch/oklab/lab/color), so it drops those gradient
+// layers when capturing — replaced 1:1 here since mixing an opaque color with `transparent`
+// in srgb is exactly that color at alpha = P/100.
+const FRONT_BG_IMAGE = [
+  "radial-gradient(circle at 12% 12%, rgba(168, 64, 143, 0.20), transparent 55%)",
+  "radial-gradient(circle at 88% 15%, rgba(28, 63, 139, 0.18), transparent 55%)",
+  "radial-gradient(circle at 15% 92%, rgba(63, 169, 69, 0.20), transparent 55%)",
+  "radial-gradient(circle at 90% 92%, rgba(240, 196, 25, 0.26), transparent 55%)",
+].join(", ");
+
 async function captureCardCanvas(el: HTMLElement) {
   // Tailwind 4 emits oklch()/color() for its palette, which the unmaintained html2canvas
   // can't parse ("unsupported color function"). html2canvas-pro is a maintained fork with
   // support for modern CSS color functions, same API otherwise.
   const { default: html2canvas } = await import("html2canvas-pro");
+  // The card's CSS size (85.6mm/53.98mm) converts to a fractional CSS-pixel value. Left to
+  // its default, html2canvas rounds the crop up (Math.ceil) to the next whole pixel, so the
+  // capture overshoots the element's true edge by ~1px per side and picks up a sliver of
+  // whatever sits behind it. Passing floored width/height pins the crop inside the element's
+  // real box instead.
+  const rect = el.getBoundingClientRect();
   return html2canvas(el, {
     scale: 3,
+    width: Math.floor(rect.width),
+    height: Math.floor(rect.height),
     backgroundColor: "#ffffff",
     useCORS: true,
-    // The on-screen preview shadow (shadow-md) paints outside the card's box — capturing it
-    // bakes a soft gray margin into the exported image. Drop it so the export is a clean,
-    // edge-to-edge card, matching what already happens for print (print:shadow-none).
+    // The captured element is always a `flat` IdCardFront/IdCardBack (square corners, no
+    // shadow — see IdCard.tsx), so there's no shadow/border-radius to fight here. All that's
+    // left to patch is the color-mix() background, which html2canvas-pro can't parse.
     onclone: (_document, cloned) => {
-      cloned.style.boxShadow = "none";
+      if (cloned.classList.contains("id-card-front-bg")) {
+        cloned.style.backgroundImage = FRONT_BG_IMAGE;
+      }
     },
   });
 }

@@ -212,8 +212,13 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
           const displayName = member.nickname?.trim() || member.firstName;
           return (
             <div key={member.id} className="contents">
-              <IdCardFront ref={(el) => setFrontRef(member.id, el)} displayName={displayName} fullName={fullName} />
-              <IdCardBack ref={(el) => setBackRef(member.id, el)} qrDataUrl={member.qrDataUrl} fullName={fullName} />
+              <IdCardFront
+                ref={(el) => setFrontRef(member.id, el)}
+                displayName={displayName}
+                fullName={fullName}
+                flat
+              />
+              <IdCardBack ref={(el) => setBackRef(member.id, el)} qrDataUrl={member.qrDataUrl} fullName={fullName} flat />
             </div>
           );
         })}

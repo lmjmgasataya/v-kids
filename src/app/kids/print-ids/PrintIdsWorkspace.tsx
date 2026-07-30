@@ -225,8 +225,8 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
           const displayName = kid.nickname?.trim() || kid.firstName;
           return (
             <div key={kid.id} className="contents">
-              <IdCardFront ref={(el) => setFrontRef(kid.id, el)} displayName={displayName} fullName={fullName} />
-              <IdCardBack ref={(el) => setBackRef(kid.id, el)} qrDataUrl={kid.qrDataUrl} fullName={fullName} />
+              <IdCardFront ref={(el) => setFrontRef(kid.id, el)} displayName={displayName} fullName={fullName} flat />
+              <IdCardBack ref={(el) => setBackRef(kid.id, el)} qrDataUrl={kid.qrDataUrl} fullName={fullName} flat />
             </div>
           );
         })}

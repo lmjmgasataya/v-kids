@@ -14,12 +14,16 @@ const brandStripe = (
   </div>
 );
 
-export const IdCardFront = forwardRef<HTMLDivElement, { displayName: string; fullName: string }>(
-  function IdCardFront({ displayName, fullName }, ref) {
+export const IdCardFront = forwardRef<HTMLDivElement, { displayName: string; fullName: string; flat?: boolean }>(
+  function IdCardFront({ displayName, fullName, flat }, ref) {
     return (
       <div
         ref={ref}
-        className="id-card-front-bg w-[85.6mm] h-[53.98mm] rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300 overflow-hidden flex flex-col break-after-page"
+        className={`id-card-front-bg w-[85.6mm] h-[53.98mm] overflow-hidden flex flex-col break-after-page ${
+          flat
+            ? "rounded-none"
+            : "rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300"
+        }`}
       >
         <div className="flex items-center gap-1.5 px-[5mm] pt-[3.5mm]">
           <LogoMark size={22} priority />
@@ -39,12 +43,16 @@ export const IdCardFront = forwardRef<HTMLDivElement, { displayName: string; ful
   }
 );
 
-export const IdCardBack = forwardRef<HTMLDivElement, { qrDataUrl: string; fullName: string }>(
-  function IdCardBack({ qrDataUrl, fullName }, ref) {
+export const IdCardBack = forwardRef<HTMLDivElement, { qrDataUrl: string; fullName: string; flat?: boolean }>(
+  function IdCardBack({ qrDataUrl, fullName, flat }, ref) {
     return (
       <div
         ref={ref}
-        className="w-[85.6mm] h-[53.98mm] bg-white rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300 overflow-hidden flex flex-col"
+        className={`w-[85.6mm] h-[53.98mm] bg-white overflow-hidden flex flex-col ${
+          flat
+            ? "rounded-none"
+            : "rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300"
+        }`}
       >
         {brandStripe}
         <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
