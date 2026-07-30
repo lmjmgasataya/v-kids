@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { Html5Qrcode } from "html5-qrcode";
+import { useHardwareScanListener } from "./useHardwareScanListener";
 
 // iOS Safari only lets an AudioContext produce sound if it was resumed from
 // inside a real user-gesture handler. A fresh `new AudioContext()` created
@@ -28,7 +29,7 @@ if (typeof window !== "undefined") {
   window.addEventListener("touchend", unlockAudio, { once: true, passive: true });
 }
 
-function playSuccessSound() {
+export function playSuccessSound() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -63,11 +64,6 @@ export const QrScanner = forwardRef<QrScannerHandle, {
   const [paused, setPaused] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [mirrored, setMirrored] = useState(false);
-  const pausedRef = useRef(paused);
-
-  useEffect(() => {
-    pausedRef.current = paused;
-  }, [paused]);
 
   useEffect(() => {
     const video = readerRef.current?.querySelector("video");
@@ -184,49 +180,9 @@ export const QrScanner = forwardRef<QrScannerHandle, {
     };
   }, []);
 
-  // Hardware (keyboard-wedge) scanner: these devices just "type" the decoded
-  // text (here, the full check-in URL) followed by Enter, as fast keystrokes,
-  // wherever focus happens to be. Listen globally, but only while nothing is
-  // genuinely focused (so normal typing elsewhere, e.g. the remarks textarea,
-  // is never touched) and only while we're not already waiting on a previous
-  // scan. A burst is only treated as a scan if it arrives far faster than a
-  // human could type, since we have no fixed prefix to match against.
-  useEffect(() => {
-    let buffer = "";
-    let lastTime = 0;
-
-    function isTypingInField(): boolean {
-      const active = document.activeElement;
-      if (!active || active === document.body) return false;
-      const tag = active.tagName;
-      return tag === "INPUT" || tag === "TEXTAREA" || active.getAttribute("contenteditable") === "true";
-    }
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (pausedRef.current || isTypingInField()) return;
-
-      const now = Date.now();
-      if (now - lastTime > 75) buffer = "";
-      lastTime = now;
-
-      if (e.key === "Enter") {
-        const candidate = buffer;
-        buffer = "";
-        if (candidate.length >= 8) {
-          e.preventDefault();
-          handleDecodedRef.current(candidate);
-        }
-        return;
-      }
-
-      if (e.key.length !== 1) return;
-      buffer += e.key;
-      if (buffer.length > 500) buffer = buffer.slice(-500);
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  // Hardware (keyboard-wedge) scanner support while the camera view is
+  // mounted — paused while we're already waiting on a previous scan.
+  useHardwareScanListener((text) => handleDecodedRef.current(text), { enabled: !paused });
 
   return (
     <div className="flex flex-col gap-3">

@@ -7,7 +7,8 @@ import type { CheckInSearchResult, OpenCheckInSummary } from "@/lib/checkIn";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { inputCls } from "@/components/form";
 import { SubmitButton } from "@/components/SubmitButton";
-import { QrScanner, type QrScannerHandle } from "@/components/QrScanner";
+import { QrScanner, playSuccessSound, type QrScannerHandle } from "@/components/QrScanner";
+import { useHardwareScanListener } from "@/components/useHardwareScanListener";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 
 type Intent = "checkin" | "checkout";
@@ -313,6 +314,7 @@ export function CheckInWorkspace({
   const [service, setServiceState] = useState<string>(initialService ?? SERVICE_OPTIONS[0]);
   const [selectedKid, setSelectedKid] = useState<CheckInSearchResult | null>(null);
   const [scanError, setScanError] = useState<ReactNode | null>(null);
+  const [hwScanBusy, setHwScanBusy] = useState(false);
   const modeButtonsRef = useRef<HTMLDivElement | null>(null);
   const scanResultRef = useRef<HTMLDivElement | null>(null);
   const qrScannerRef = useRef<QrScannerHandle | null>(null);
@@ -320,10 +322,10 @@ export function CheckInWorkspace({
   // The confirm/checkout card is a fixed full-screen popup now, so only the
   // inline scan-error card (not the popup) needs to be scrolled into view.
   useEffect(() => {
-    if (mode === "scan" && scanError) {
+    if (scanError) {
       scanResultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, [mode, scanError]);
+  }, [scanError]);
 
   const closePopup = useCallback(() => {
     setSelectedKid(null);
@@ -430,6 +432,23 @@ export function CheckInWorkspace({
     }
     setSelectedKid(kid);
   }
+
+  // Mode "search" has no camera to drive the scanner off of, but a hardware
+  // (keyboard-wedge) QR scanner still just "types" the decoded text — so
+  // listen for it here too, gated off while a popup/error is already showing
+  // or a previous scan is still resolving.
+  useHardwareScanListener(
+    async (text) => {
+      setHwScanBusy(true);
+      playSuccessSound();
+      try {
+        await resolveToken(text, intent);
+      } finally {
+        setHwScanBusy(false);
+      }
+    },
+    { enabled: mode === "search" && !selectedKid && !scanError && !hwScanBusy }
+  );
 
   useEffect(() => {
     if (!initialToken) return;
@@ -571,7 +590,7 @@ export function CheckInWorkspace({
       )}
 
       <div ref={scanResultRef} className="flex flex-col gap-2 scroll-mt-4">
-        {mode === "scan" && scanError && (
+        {scanError && (
           <div className="animate-card-pop-in rounded-2xl border-4 border-t-kids-magenta border-r-kids-navy border-b-kids-green border-l-kids-yellow bg-white p-6 shadow-xl ring-1 ring-black/5 flex items-start gap-3">
             <span className="text-2xl leading-none">⚠️</span>
             <p className="text-base text-gray-700 pt-0.5">{scanError}</p>
