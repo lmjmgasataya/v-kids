@@ -69,7 +69,11 @@ export function ServiceTeamTable({
           {rows.map((row) => (
             <tr key={row.id} className="border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5">
               <td className="px-4 py-3">
-                <ServiceTeamPhoto photoUrl={row.photoUrl} initials={`${row.firstName[0]}${row.lastName[0]}`} />
+                <ServiceTeamPhoto
+                  photoUrl={row.photoUrl}
+                  initials={`${row.firstName[0]}${row.lastName[0]}`}
+                  downloadName={`${row.firstName}-${row.lastName}`}
+                />
               </td>
               <td className="px-4 py-3 font-medium text-gray-900">
                 {row.firstName} {row.lastName}

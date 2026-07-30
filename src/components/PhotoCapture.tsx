@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 
 interface Props {
   name: string;
@@ -75,11 +75,34 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
     );
   }
 
+  function closeCamera() {
+    setCameraReady(false);
+    setMode("idle");
+  }
+
   function retake() {
     setCapturedPreview(null);
     setCameraReady(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
-    setMode("live");
+    setMode("idle");
+  }
+
+  function resetToExisting() {
+    setCapturedPreview(null);
+    setCameraReady(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setMode("existing");
+  }
+
+  function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCapturedPreview(reader.result as string);
+      setMode("captured");
+    };
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -102,19 +125,31 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
             ref={fileInputRef}
             type="file"
             name={name}
+            accept="image/*"
             required={required && mode !== "existing"}
+            onChange={handleFileSelect}
             className="hidden"
           />
           <div className="relative aspect-square max-w-[240px] overflow-hidden rounded-xl border border-gray-300 bg-black">
             {mode === "idle" && (
-              <button
-                type="button"
-                onClick={() => setMode("live")}
-                className="flex h-full w-full flex-col items-center justify-center gap-2 text-white/80 hover:text-white transition"
-              >
-                <span className="text-3xl">📷</span>
-                <span className="text-sm font-semibold">Open camera</span>
-              </button>
+              <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-white/80">
+                <button
+                  type="button"
+                  onClick={() => setMode("live")}
+                  className="flex flex-col items-center gap-1 hover:text-white transition"
+                >
+                  <span className="text-3xl">📷</span>
+                  <span className="text-sm font-semibold">Open camera</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-col items-center gap-1 hover:text-white transition"
+                >
+                  <span className="text-3xl">🖼️</span>
+                  <span className="text-sm font-semibold">Upload photo</span>
+                </button>
+              </div>
             )}
             {mode === "existing" && initialPreviewUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- preview of the current stored photo
@@ -138,18 +173,36 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
           <canvas ref={canvasRef} className="hidden" />
           <div className="mt-2 flex gap-2">
             {mode === "live" && (
-              <button
-                type="button"
-                onClick={takePhoto}
-                disabled={!cameraReady}
-                className="bg-kids-navy hover:bg-kids-navy/90 disabled:opacity-50 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
-              >
-                Take photo
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={takePhoto}
+                  disabled={!cameraReady}
+                  className="bg-kids-navy hover:bg-kids-navy/90 disabled:opacity-50 text-white text-sm font-bold px-4 py-2 rounded-xl transition"
+                >
+                  Take photo
+                </button>
+                <button
+                  type="button"
+                  onClick={closeCamera}
+                  className="text-sm font-semibold text-gray-600 hover:underline"
+                >
+                  Close camera
+                </button>
+              </>
             )}
             {(mode === "existing" || mode === "captured") && (
               <button type="button" onClick={retake} className="text-sm font-semibold text-kids-navy hover:underline">
-                Retake photo
+                Change photo
+              </button>
+            )}
+            {mode === "idle" && initialPreviewUrl && (
+              <button
+                type="button"
+                onClick={resetToExisting}
+                className="text-sm font-semibold text-gray-600 hover:underline"
+              >
+                Undo, keep current photo
               </button>
             )}
           </div>

@@ -2,7 +2,34 @@
 
 import { useState } from "react";
 
-export function ServiceTeamPhoto({ photoUrl, initials }: { photoUrl: string | null; initials: string }) {
+function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 3v12" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M5 21h14" />
+    </svg>
+  );
+}
+
+export function ServiceTeamPhoto({
+  photoUrl,
+  initials,
+  downloadName,
+}: {
+  photoUrl: string | null;
+  initials: string;
+  downloadName: string;
+}) {
   const [open, setOpen] = useState(false);
 
   if (!photoUrl) {
@@ -15,10 +42,21 @@ export function ServiceTeamPhoto({ photoUrl, initials }: { photoUrl: string | nu
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="block rounded-full">
-        {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, not a static asset */}
-        <img src={photoUrl} alt="" className="h-10 w-10 rounded-full object-cover transition hover:opacity-80" />
-      </button>
+      <div className="flex items-center gap-2.5">
+        <button type="button" onClick={() => setOpen(true)} className="block rounded-full">
+          {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, not a static asset */}
+          <img src={photoUrl} alt="" className="h-10 w-10 rounded-full object-cover transition hover:opacity-80" />
+        </button>
+        <a
+          href={photoUrl}
+          download={`${downloadName}.jpg`}
+          aria-label="Download photo"
+          title="Download photo"
+          className="ml-1 text-gray-400 hover:text-kids-navy transition"
+        >
+          <DownloadIcon className="h-5 w-5" />
+        </a>
+      </div>
 
       {open && (
         <div
@@ -32,6 +70,16 @@ export function ServiceTeamPhoto({ photoUrl, initials }: { photoUrl: string | nu
             className="max-h-[80vh] max-w-full rounded-2xl shadow-xl"
             onClick={(e) => e.stopPropagation()}
           />
+          <a
+            href={photoUrl}
+            download={`${downloadName}.jpg`}
+            aria-label="Download photo"
+            title="Download photo"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-4 right-16 text-white hover:opacity-70"
+          >
+            <DownloadIcon className="h-7 w-7" />
+          </a>
           <button
             type="button"
             onClick={() => setOpen(false)}
