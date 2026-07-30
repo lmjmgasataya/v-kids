@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { Html5Qrcode } from "html5-qrcode";
 
 // iOS Safari only lets an AudioContext produce sound if it was resumed from
@@ -48,19 +48,26 @@ function playSuccessSound() {
   }
 }
 
-export function QrScanner({
-  onDecode,
-  onScanAgain,
-}: {
+export interface QrScannerHandle {
+  /** Resume scanning — used to un-pause after a confirm popup is closed. */
+  resume: () => void;
+}
+
+export const QrScanner = forwardRef<QrScannerHandle, {
   onDecode: (text: string) => void | Promise<void>;
   onScanAgain?: () => void;
-}) {
+}>(function QrScanner({ onDecode, onScanAgain }, ref) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const readerRef = useRef<HTMLDivElement | null>(null);
   const onDecodeRef = useRef(onDecode);
   const [paused, setPaused] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [mirrored, setMirrored] = useState(false);
+  const pausedRef = useRef(paused);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   useEffect(() => {
     const video = readerRef.current?.querySelector("video");
@@ -70,6 +77,25 @@ export function QrScanner({
   useEffect(() => {
     onDecodeRef.current = onDecode;
   }, [onDecode]);
+
+  function handleDecoded(decodedText: string) {
+    scannerRef.current?.pause(true);
+    setPaused(true);
+    playSuccessSound();
+    setResolving(true);
+    Promise.resolve(onDecodeRef.current(decodedText)).finally(() => setResolving(false));
+  }
+  const handleDecodedRef = useRef(handleDecoded);
+  useEffect(() => {
+    handleDecodedRef.current = handleDecoded;
+  });
+
+  function doResume() {
+    scannerRef.current?.resume();
+    setPaused(false);
+  }
+
+  useImperativeHandle(ref, () => ({ resume: doResume }), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,13 +124,7 @@ export function QrScanner({
           setMirrored(fallbackFacingMode === "user");
         }
       };
-      const onSuccess = (decodedText: string) => {
-        scanner.pause(true);
-        setPaused(true);
-        playSuccessSound();
-        setResolving(true);
-        Promise.resolve(onDecodeRef.current(decodedText)).finally(() => setResolving(false));
-      };
+      const onSuccess = (decodedText: string) => handleDecodedRef.current(decodedText);
       const onError = () => {};
 
       // When `videoConstraints` is set, html5-qrcode uses it verbatim as the
@@ -164,6 +184,50 @@ export function QrScanner({
     };
   }, []);
 
+  // Hardware (keyboard-wedge) scanner: these devices just "type" the decoded
+  // text (here, the full check-in URL) followed by Enter, as fast keystrokes,
+  // wherever focus happens to be. Listen globally, but only while nothing is
+  // genuinely focused (so normal typing elsewhere, e.g. the remarks textarea,
+  // is never touched) and only while we're not already waiting on a previous
+  // scan. A burst is only treated as a scan if it arrives far faster than a
+  // human could type, since we have no fixed prefix to match against.
+  useEffect(() => {
+    let buffer = "";
+    let lastTime = 0;
+
+    function isTypingInField(): boolean {
+      const active = document.activeElement;
+      if (!active || active === document.body) return false;
+      const tag = active.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || active.getAttribute("contenteditable") === "true";
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (pausedRef.current || isTypingInField()) return;
+
+      const now = Date.now();
+      if (now - lastTime > 75) buffer = "";
+      lastTime = now;
+
+      if (e.key === "Enter") {
+        const candidate = buffer;
+        buffer = "";
+        if (candidate.length >= 8) {
+          e.preventDefault();
+          handleDecodedRef.current(candidate);
+        }
+        return;
+      }
+
+      if (e.key.length !== 1) return;
+      buffer += e.key;
+      if (buffer.length > 500) buffer = buffer.slice(-500);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <div className="flex flex-col gap-3">
       <div ref={readerRef} id="qr-reader" className="rounded-2xl overflow-hidden border border-gray-200" />
@@ -179,8 +243,7 @@ export function QrScanner({
         <button
           type="button"
           onClick={() => {
-            scannerRef.current?.resume();
-            setPaused(false);
+            doResume();
             onScanAgain?.();
           }}
           className="self-center flex items-center gap-2 rounded-full bg-kids-navy px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
@@ -191,4 +254,4 @@ export function QrScanner({
       )}
     </div>
   );
-}
+});

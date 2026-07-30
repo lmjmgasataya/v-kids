@@ -7,7 +7,7 @@ import type { CheckInSearchResult, OpenCheckInSummary } from "@/lib/checkIn";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { inputCls } from "@/components/form";
 import { SubmitButton } from "@/components/SubmitButton";
-import { QrScanner } from "@/components/QrScanner";
+import { QrScanner, type QrScannerHandle } from "@/components/QrScanner";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 
 type Intent = "checkin" | "checkout";
@@ -183,40 +183,42 @@ function CheckInForm({
   }, [state]);
 
   return (
-    <div className="animate-card-pop-in rounded-2xl border-4 border-t-kids-magenta border-r-kids-navy border-b-kids-green border-l-kids-yellow bg-white p-6 shadow-xl ring-1 ring-black/5 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-bold text-lg text-kids-navy">
-            {kid.firstName} {kid.lastName}
-            {kid.nickname && <span className="text-xl text-black"> &quot;{kid.nickname}&quot;</span>}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="animate-card-pop-in w-full max-w-sm rounded-2xl border-4 border-t-kids-magenta border-r-kids-navy border-b-kids-green border-l-kids-yellow bg-white p-6 shadow-xl ring-1 ring-black/5 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-bold text-lg text-kids-navy">
+              {kid.firstName} {kid.lastName}
+              {kid.nickname && <span className="text-xl text-black"> &quot;{kid.nickname}&quot;</span>}
+            </div>
+            <div className="text-xs text-gray-500">Age {kid.age}</div>
           </div>
-          <div className="text-xs text-gray-500">Age {kid.age}</div>
+          <button type="button" onClick={onDone} className="text-sm text-gray-400 hover:text-kids-navy">
+            Close
+          </button>
         </div>
-        <button type="button" onClick={onDone} className="text-sm text-gray-400 hover:text-kids-navy">
-          Close
-        </button>
+        <form action={action} onSubmit={() => setBurst((b) => b + 1)} className="flex flex-col gap-3">
+          <input type="hidden" name="serviceAttending" value={service} />
+          <input type="hidden" name="mode" value={mode} />
+          <p className="text-sm text-gray-700">
+            Checking in to <span className="font-semibold">{service}</span>.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+            <textarea name="remarks" rows={2} maxLength={500} className={inputCls} />
+          </div>
+          {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+          <div className="relative">
+            <SubmitButton
+              label="Check in"
+              pendingLabel="Checking in…"
+              icon="✅"
+              className="w-full bg-kids-green hover:bg-kids-green/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white font-bold py-2.5 rounded-xl transition-[transform,background-color,opacity] duration-150"
+            />
+            <EmojiBurst triggerKey={burst} emoji="🎉" />
+          </div>
+        </form>
       </div>
-      <form action={action} onSubmit={() => setBurst((b) => b + 1)} className="flex flex-col gap-3">
-        <input type="hidden" name="serviceAttending" value={service} />
-        <input type="hidden" name="mode" value={mode} />
-        <p className="text-sm text-gray-700">
-          Checking in to <span className="font-semibold">{service}</span>.
-        </p>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-          <textarea name="remarks" rows={2} maxLength={500} className={inputCls} />
-        </div>
-        {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-        <div className="relative">
-          <SubmitButton
-            label="Check in"
-            pendingLabel="Checking in…"
-            icon="✅"
-            className="w-full bg-kids-green hover:bg-kids-green/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white font-bold py-2.5 rounded-xl transition-[transform,background-color,opacity] duration-150"
-          />
-          <EmojiBurst triggerKey={burst} emoji="🎉" />
-        </div>
-      </form>
     </div>
   );
 }
@@ -250,41 +252,43 @@ function CheckOutForm({
   }, [state]);
 
   return (
-    <div className="animate-card-pop-in rounded-2xl border-4 border-t-kids-magenta border-r-kids-navy border-b-kids-green border-l-kids-yellow bg-white p-6 shadow-xl ring-1 ring-black/5 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-bold text-lg text-kids-navy">
-            {kid.firstName} {kid.lastName}
-            {kid.nickname && <span className="text-xl text-black"> &quot;{kid.nickname}&quot;</span>}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="animate-card-pop-in w-full max-w-sm rounded-2xl border-4 border-t-kids-magenta border-r-kids-navy border-b-kids-green border-l-kids-yellow bg-white p-6 shadow-xl ring-1 ring-black/5 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-bold text-lg text-kids-navy">
+              {kid.firstName} {kid.lastName}
+              {kid.nickname && <span className="text-xl text-black"> &quot;{kid.nickname}&quot;</span>}
+            </div>
+            <div className="text-xs text-gray-500">Age {kid.age}</div>
           </div>
-          <div className="text-xs text-gray-500">Age {kid.age}</div>
+          <button type="button" onClick={onDone} className="text-sm text-gray-400 hover:text-kids-navy">
+            Close
+          </button>
         </div>
-        <button type="button" onClick={onDone} className="text-sm text-gray-400 hover:text-kids-navy">
-          Close
-        </button>
+        <form action={action} onSubmit={() => setBurst((b) => b + 1)} className="flex flex-col gap-3">
+          <input type="hidden" name="service" value={openCheckIn.serviceAttending} />
+          <input type="hidden" name="mode" value={mode} />
+          <p className="text-sm text-gray-700">
+            Currently checked in to <span className="font-semibold">{openCheckIn.serviceAttending}</span> since{" "}
+            {timeFormatter.format(openCheckIn.checkedInAt)}.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+            <textarea name="remarks" rows={2} maxLength={500} className={inputCls} />
+          </div>
+          {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+          <div className="relative">
+            <SubmitButton
+              label="Check out"
+              pendingLabel="Checking out…"
+              icon="👋"
+              className="w-full bg-kids-magenta hover:bg-kids-magenta/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white font-bold py-2.5 rounded-xl transition-[transform,background-color,opacity] duration-150"
+            />
+            <EmojiBurst triggerKey={burst} emoji="✨" />
+          </div>
+        </form>
       </div>
-      <form action={action} onSubmit={() => setBurst((b) => b + 1)} className="flex flex-col gap-3">
-        <input type="hidden" name="service" value={openCheckIn.serviceAttending} />
-        <input type="hidden" name="mode" value={mode} />
-        <p className="text-sm text-gray-700">
-          Currently checked in to <span className="font-semibold">{openCheckIn.serviceAttending}</span> since{" "}
-          {timeFormatter.format(openCheckIn.checkedInAt)}.
-        </p>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-          <textarea name="remarks" rows={2} maxLength={500} className={inputCls} />
-        </div>
-        {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-        <div className="relative">
-          <SubmitButton
-            label="Check out"
-            pendingLabel="Checking out…"
-            icon="👋"
-            className="w-full bg-kids-magenta hover:bg-kids-magenta/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white font-bold py-2.5 rounded-xl transition-[transform,background-color,opacity] duration-150"
-          />
-          <EmojiBurst triggerKey={burst} emoji="✨" />
-        </div>
-      </form>
     </div>
   );
 }
@@ -311,12 +315,20 @@ export function CheckInWorkspace({
   const [scanError, setScanError] = useState<ReactNode | null>(null);
   const modeButtonsRef = useRef<HTMLDivElement | null>(null);
   const scanResultRef = useRef<HTMLDivElement | null>(null);
+  const qrScannerRef = useRef<QrScannerHandle | null>(null);
 
+  // The confirm/checkout card is a fixed full-screen popup now, so only the
+  // inline scan-error card (not the popup) needs to be scrolled into view.
   useEffect(() => {
-    if (mode === "scan" && (scanError || selectedKid)) {
+    if (mode === "scan" && scanError) {
       scanResultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, [mode, scanError, selectedKid]);
+  }, [mode, scanError]);
+
+  const closePopup = useCallback(() => {
+    setSelectedKid(null);
+    if (mode === "scan") qrScannerRef.current?.resume();
+  }, [mode]);
 
   useEffect(() => {
     // Recovers scroll position after checkInKid/checkOutKid redirect back to this
@@ -549,6 +561,7 @@ export function CheckInWorkspace({
       {mode === "search" && <SearchPanel intent={intent} service={service} />}
       {mode === "scan" && (
         <QrScanner
+          ref={qrScannerRef}
           onDecode={(text) => resolveToken(text, intent)}
           onScanAgain={() => {
             setSelectedKid(null);
@@ -565,14 +578,14 @@ export function CheckInWorkspace({
           </div>
         )}
         {selectedKid && intent === "checkin" && (
-          <CheckInForm kid={selectedKid} service={service} mode={mode} onDone={() => setSelectedKid(null)} />
+          <CheckInForm kid={selectedKid} service={service} mode={mode} onDone={closePopup} />
         )}
         {selectedKid && intent === "checkout" && selectedKid.openCheckIn && (
           <CheckOutForm
             kid={selectedKid}
             openCheckIn={selectedKid.openCheckIn}
             mode={mode}
-            onDone={() => setSelectedKid(null)}
+            onDone={closePopup}
           />
         )}
       </div>
