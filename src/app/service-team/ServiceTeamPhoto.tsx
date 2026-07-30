@@ -23,12 +23,12 @@ function DownloadIcon({ className }: { className?: string }) {
 
 export function ServiceTeamPhoto({
   photoUrl,
+  downloadUrl,
   initials,
-  downloadName,
 }: {
   photoUrl: string | null;
+  downloadUrl: string | null;
   initials: string;
-  downloadName: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -48,8 +48,7 @@ export function ServiceTeamPhoto({
           <img src={photoUrl} alt="" className="h-10 w-10 rounded-full object-cover transition hover:opacity-80" />
         </button>
         <a
-          href={photoUrl}
-          download={`${downloadName}.jpg`}
+          href={downloadUrl ?? photoUrl}
           aria-label="Download photo"
           title="Download photo"
           className="ml-1 text-gray-400 hover:text-kids-navy transition"
@@ -71,8 +70,7 @@ export function ServiceTeamPhoto({
             onClick={(e) => e.stopPropagation()}
           />
           <a
-            href={photoUrl}
-            download={`${downloadName}.jpg`}
+            href={downloadUrl ?? photoUrl}
             aria-label="Download photo"
             title="Download photo"
             onClick={(e) => e.stopPropagation()}

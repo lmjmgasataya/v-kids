@@ -45,13 +45,30 @@ export async function uploadPhoto(buffer: Buffer, key: string, contentType: stri
 // Generates a time-limited signed URL for viewing a private photo (default 15 minutes).
 // Never throws — returns null if storage isn't configured or the request fails, so photo
 // display degrades to a placeholder instead of breaking the page.
-export async function getSignedPhotoUrl(key: string, expiresInSeconds = 900): Promise<string | null> {
+// Passing downloadFileName sets Content-Disposition: attachment on the response, so the
+// browser saves the file instead of navigating to it — needed since the `download` attribute
+// on an <a> tag is ignored for cross-origin URLs like this signed one.
+export async function getSignedPhotoUrl(
+  key: string,
+  expiresInSeconds = 900,
+  downloadFileName?: string
+): Promise<string | null> {
   if (!isB2Configured()) return null;
   try {
-    const command = new GetObjectCommand({ Bucket: process.env.B2_BUCKET!, Key: key });
+    const command = new GetObjectCommand({
+      Bucket: process.env.B2_BUCKET!,
+      Key: key,
+      ...(downloadFileName
+        ? { ResponseContentDisposition: `attachment; filename="${sanitizeFileName(downloadFileName)}"` }
+        : {}),
+    });
     return await getSignedUrl(getClient(), command, { expiresIn: expiresInSeconds });
   } catch (err) {
     console.error("Failed to generate signed photo URL", err);
     return null;
   }
+}
+
+function sanitizeFileName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9. _-]/g, "_");
 }

@@ -9,6 +9,7 @@ interface Row {
   birthday: string;
   serviceAttending: string;
   photoUrl: string | null;
+  downloadUrl: string | null;
   createdAt: Date;
 }
 
@@ -71,8 +72,8 @@ export function ServiceTeamTable({
               <td className="px-4 py-3">
                 <ServiceTeamPhoto
                   photoUrl={row.photoUrl}
+                  downloadUrl={row.downloadUrl}
                   initials={`${row.firstName[0]}${row.lastName[0]}`}
-                  downloadName={`${row.firstName}-${row.lastName}`}
                 />
               </td>
               <td className="px-4 py-3 font-medium text-gray-900">

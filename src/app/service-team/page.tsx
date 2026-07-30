@@ -29,6 +29,9 @@ export default async function ServiceTeamPage({
     rows.map(async (row) => ({
       ...row,
       photoUrl: row.photoKey ? await getSignedPhotoUrl(row.photoKey) : null,
+      downloadUrl: row.photoKey
+        ? await getSignedPhotoUrl(row.photoKey, 900, `${row.firstName}-${row.lastName}.jpg`)
+        : null,
     }))
   );
 
