@@ -37,6 +37,22 @@ export function buildKidImportTemplate(): string {
     .join("\r\n");
 }
 
+export const SERVICE_TEAM_IMPORT_HEADERS = [
+  "First Name",
+  "Last Name",
+  "Nickname",
+  "Birthday (YYYY-MM-DD)",
+  "Service Attending",
+] as const;
+
+const SERVICE_TEAM_TEMPLATE_EXAMPLE_ROW = ["Juan", "Dela Cruz", "Jun", "1995-04-12", "9AM - Mandurriao"];
+
+export function buildServiceTeamImportTemplate(): string {
+  return [SERVICE_TEAM_IMPORT_HEADERS, SERVICE_TEAM_TEMPLATE_EXAMPLE_ROW]
+    .map((row) => row.map(escapeCsvField).join(","))
+    .join("\r\n");
+}
+
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
