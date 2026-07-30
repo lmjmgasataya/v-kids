@@ -130,46 +130,47 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
             onChange={handleFileSelect}
             className="hidden"
           />
-          <div className="relative aspect-square max-w-[240px] overflow-hidden rounded-xl border border-gray-300 bg-black">
-            {mode === "idle" && (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-white/80">
-                <button
-                  type="button"
-                  onClick={() => setMode("live")}
-                  className="flex flex-col items-center gap-1 hover:text-white transition"
-                >
-                  <span className="text-3xl">📷</span>
-                  <span className="text-sm font-semibold">Open camera</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center gap-1 hover:text-white transition"
-                >
-                  <span className="text-3xl">🖼️</span>
-                  <span className="text-sm font-semibold">Upload photo</span>
-                </button>
-              </div>
-            )}
-            {mode === "existing" && initialPreviewUrl && (
-              // eslint-disable-next-line @next/next/no-img-element -- preview of the current stored photo
-              <img src={initialPreviewUrl} alt="Current photo" className="h-full w-full object-cover" />
-            )}
-            {mode === "captured" && capturedPreview && (
-              // eslint-disable-next-line @next/next/no-img-element -- frame captured from the live camera canvas
-              <img src={capturedPreview} alt="Captured photo" className="h-full w-full object-cover" />
-            )}
-            {mode === "live" && (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="h-full w-full object-cover"
-                style={mirrored ? { transform: "scaleX(-1)" } : undefined}
-              />
-            )}
-          </div>
+          {mode === "idle" ? (
+            <div className="grid max-w-[280px] grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setMode("live")}
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-6 text-gray-500 transition-[transform,background-color,color,box-shadow,border-color] duration-150 active:scale-95 hover:-translate-y-0.5 hover:border-kids-navy/50 hover:text-kids-navy hover:shadow-md"
+              >
+                <span className="text-3xl">📷</span>
+                <span className="text-sm font-semibold">Open Camera</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-6 text-gray-500 transition-[transform,background-color,color,box-shadow,border-color] duration-150 active:scale-95 hover:-translate-y-0.5 hover:border-kids-navy/50 hover:text-kids-navy hover:shadow-md"
+              >
+                <span className="text-3xl">🖼️</span>
+                <span className="text-sm font-semibold">Upload Photo</span>
+              </button>
+            </div>
+          ) : (
+            <div className="relative aspect-square max-w-[240px] overflow-hidden rounded-xl border border-gray-300 bg-black">
+              {mode === "existing" && initialPreviewUrl && (
+                // eslint-disable-next-line @next/next/no-img-element -- preview of the current stored photo
+                <img src={initialPreviewUrl} alt="Current photo" className="h-full w-full object-cover" />
+              )}
+              {mode === "captured" && capturedPreview && (
+                // eslint-disable-next-line @next/next/no-img-element -- frame captured from the live camera canvas
+                <img src={capturedPreview} alt="Captured photo" className="h-full w-full object-cover" />
+              )}
+              {mode === "live" && (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="h-full w-full object-cover"
+                  style={mirrored ? { transform: "scaleX(-1)" } : undefined}
+                />
+              )}
+            </div>
+          )}
           <canvas ref={canvasRef} className="hidden" />
           <div className="mt-2 flex gap-2">
             {mode === "live" && (

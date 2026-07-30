@@ -6,6 +6,7 @@ interface Row {
   id: number;
   firstName: string;
   lastName: string;
+  nickname: string | null;
   birthday: string;
   serviceAttending: string;
   photoUrl: string | null;
@@ -77,7 +78,10 @@ export function ServiceTeamTable({
                 />
               </td>
               <td className="px-4 py-3 font-medium text-gray-900">
-                {row.firstName} {row.lastName}
+                <div>
+                  {row.firstName} {row.lastName}
+                </div>
+                {row.nickname && <div className="text-xs text-gray-400">&quot;{row.nickname}&quot;</div>}
               </td>
               <td className="px-4 py-3">{birthdayFormatter.format(new Date(row.birthday))}</td>
               <td className="px-4 py-3">{row.serviceAttending}</td>

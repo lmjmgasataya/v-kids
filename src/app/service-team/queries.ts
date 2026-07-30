@@ -31,6 +31,7 @@ export async function fetchServiceTeamRows({ q, sort, dir }: { q: string; sort: 
       id: serviceTeamMembers.id,
       firstName: serviceTeamMembers.firstName,
       lastName: serviceTeamMembers.lastName,
+      nickname: serviceTeamMembers.nickname,
       birthday: serviceTeamMembers.birthday,
       serviceAttending: serviceTeamMembers.serviceAttending,
       photoKey: serviceTeamMembers.photoKey,
