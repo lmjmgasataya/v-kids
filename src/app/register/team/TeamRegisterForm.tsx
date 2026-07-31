@@ -30,13 +30,14 @@ export default function TeamRegisterForm({ photoEnabled }: { photoEnabled: boole
         <Field label="Nickname" name="nickname" defaultValue={state?.values?.nickname} />
         <div className="grid grid-cols-2 gap-4">
           <Field label="Birthday" name="birthday" type="date" required defaultValue={state?.values?.birthday} />
-          <Select
-            label="Time of service"
-            name="serviceAttending"
-            options={SERVICE_OPTIONS}
-            defaultValue={state?.values?.serviceAttending}
-          />
+          <Select label="Gender" name="gender" options={["Male", "Female"]} defaultValue={state?.values?.gender} />
         </div>
+        <Select
+          label="Time of service"
+          name="serviceAttending"
+          options={SERVICE_OPTIONS}
+          defaultValue={state?.values?.serviceAttending}
+        />
         {photoEnabled ? (
           <PhotoCapture name="photo" required />
         ) : (

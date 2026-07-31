@@ -41,11 +41,12 @@ export const SERVICE_TEAM_IMPORT_HEADERS = [
   "First Name",
   "Last Name",
   "Nickname",
+  "Gender (Male/Female)",
   "Birthday (YYYY-MM-DD)",
   "Service Attending",
 ] as const;
 
-const SERVICE_TEAM_TEMPLATE_EXAMPLE_ROW = ["Juan", "Dela Cruz", "Jun", "1995-04-12", "9AM - Mandurriao"];
+const SERVICE_TEAM_TEMPLATE_EXAMPLE_ROW = ["Juan", "Dela Cruz", "Jun", "Male", "1995-04-12", "9AM - Mandurriao"];
 
 export function buildServiceTeamImportTemplate(): string {
   return [SERVICE_TEAM_IMPORT_HEADERS, SERVICE_TEAM_TEMPLATE_EXAMPLE_ROW]

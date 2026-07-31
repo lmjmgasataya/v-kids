@@ -36,6 +36,7 @@ export async function exportServiceTeamExcel(q: string, sortParam: string, dirPa
     "First Name": row.firstName,
     "Last Name": row.lastName,
     Nickname: row.nickname ?? "",
+    Gender: row.gender ?? "",
     Birthday: row.birthday,
     "Service Attending": row.serviceAttending,
     Registered: row.createdAt.toISOString().slice(0, 10),
@@ -94,11 +95,16 @@ export async function importServiceTeamCsv(csvText: string): Promise<ImportSumma
     const firstName = (cols[0] ?? "").trim();
     const lastName = (cols[1] ?? "").trim();
     const nickname = (cols[2] ?? "").trim();
-    const birthday = (cols[3] ?? "").trim();
-    const serviceAttending = (cols[4] ?? "").trim();
+    const gender = (cols[3] ?? "").trim();
+    const birthday = (cols[4] ?? "").trim();
+    const serviceAttending = (cols[5] ?? "").trim();
 
-    if (!firstName || !lastName || !birthday || !serviceAttending) {
+    if (!firstName || !lastName || !gender || !birthday || !serviceAttending) {
       errors.push({ row: rowNum, message: "Please fill in all required fields." });
+      continue;
+    }
+    if (gender !== "Male" && gender !== "Female") {
+      errors.push({ row: rowNum, message: "Invalid gender." });
       continue;
     }
     if (!SERVICE_OPTIONS.includes(serviceAttending)) {
@@ -122,6 +128,7 @@ export async function importServiceTeamCsv(csvText: string): Promise<ImportSumma
       firstName,
       lastName,
       nickname: nickname || null,
+      gender: gender as "Male" | "Female",
       birthday,
       serviceAttending,
     });

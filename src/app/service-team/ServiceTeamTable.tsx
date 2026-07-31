@@ -7,6 +7,7 @@ interface Row {
   firstName: string;
   lastName: string;
   nickname: string | null;
+  gender: string | null;
   birthday: string;
   serviceAttending: string;
   photoUrl: string | null;
@@ -16,6 +17,7 @@ interface Row {
 
 const COLUMNS: { key: string; label: string }[] = [
   { key: "lastName", label: "Name" },
+  { key: "gender", label: "Gender" },
   { key: "birthday", label: "Birthday" },
   { key: "serviceAttending", label: "Service" },
   { key: "createdAt", label: "Registered" },
@@ -83,6 +85,7 @@ export function ServiceTeamTable({
                 </div>
                 {row.nickname && <div className="text-xs text-gray-400">&quot;{row.nickname}&quot;</div>}
               </td>
+              <td className="px-4 py-3">{row.gender ?? "—"}</td>
               <td className="px-4 py-3">{birthdayFormatter.format(new Date(row.birthday))}</td>
               <td className="px-4 py-3">{row.serviceAttending}</td>
               <td className="px-4 py-3 text-gray-500">{registeredFormatter.format(row.createdAt)}</td>

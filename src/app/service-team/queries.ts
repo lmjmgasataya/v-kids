@@ -4,6 +4,7 @@ import { asc, desc, ilike, or } from "drizzle-orm";
 
 export const SORTABLE = {
   lastName: serviceTeamMembers.lastName,
+  gender: serviceTeamMembers.gender,
   birthday: serviceTeamMembers.birthday,
   serviceAttending: serviceTeamMembers.serviceAttending,
   createdAt: serviceTeamMembers.createdAt,
@@ -32,6 +33,7 @@ export async function fetchServiceTeamRows({ q, sort, dir }: { q: string; sort: 
       firstName: serviceTeamMembers.firstName,
       lastName: serviceTeamMembers.lastName,
       nickname: serviceTeamMembers.nickname,
+      gender: serviceTeamMembers.gender,
       birthday: serviceTeamMembers.birthday,
       serviceAttending: serviceTeamMembers.serviceAttending,
       photoKey: serviceTeamMembers.photoKey,

@@ -70,6 +70,7 @@ export const serviceTeamMembers = pgTable("service_team_members", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   nickname: text("nickname"),
+  gender: genderEnum("gender"),
   birthday: date("birthday").notNull(),
   serviceAttending: text("service_attending").notNull(),
   photoKey: text("photo_key"),

@@ -22,6 +22,7 @@ export default async function EditServiceTeamPage({ params }: { params: Promise<
       firstName: serviceTeamMembers.firstName,
       lastName: serviceTeamMembers.lastName,
       nickname: serviceTeamMembers.nickname,
+      gender: serviceTeamMembers.gender,
       birthday: serviceTeamMembers.birthday,
       serviceAttending: serviceTeamMembers.serviceAttending,
       photoKey: serviceTeamMembers.photoKey,

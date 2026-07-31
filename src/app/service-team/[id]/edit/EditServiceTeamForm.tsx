@@ -13,6 +13,7 @@ interface Member {
   firstName: string;
   lastName: string;
   nickname: string | null;
+  gender: string | null;
   birthday: string;
   serviceAttending: string;
 }
@@ -48,13 +49,14 @@ export default function EditServiceTeamForm({
         <Field label="Nickname" name="nickname" defaultValue={member.nickname ?? undefined} />
         <div className="grid grid-cols-2 gap-4">
           <Field label="Birthday" name="birthday" type="date" required defaultValue={member.birthday} />
-          <Select
-            label="Time of service"
-            name="serviceAttending"
-            options={SERVICE_OPTIONS}
-            defaultValue={member.serviceAttending}
-          />
+          <Select label="Gender" name="gender" options={["Male", "Female"]} defaultValue={member.gender ?? undefined} />
         </div>
+        <Select
+          label="Time of service"
+          name="serviceAttending"
+          options={SERVICE_OPTIONS}
+          defaultValue={member.serviceAttending}
+        />
         {photoEnabled ? (
           <PhotoCapture name="photo" initialPreviewUrl={photoUrl} />
         ) : (
