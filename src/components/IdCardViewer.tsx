@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { IdCardFront, IdCardBack } from "./IdCard";
+import { IdCardFront, IdCardBack, ServiceTeamIdCardFront } from "./IdCard";
 import { exportIdCardsToPdf, exportIdCardsToPngZip, sanitizeFileName } from "@/lib/idCardExport";
 
 export function IdCardViewer({
@@ -10,13 +10,16 @@ export function IdCardViewer({
   qrDataUrl,
   fileBaseName,
   backSubtitle,
+  variant = "kid",
 }: {
   displayName: string;
   fullName: string;
   qrDataUrl: string;
   fileBaseName: string;
   backSubtitle?: string;
+  variant?: "kid" | "team";
 }) {
+  const Front = variant === "team" ? ServiceTeamIdCardFront : IdCardFront;
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"pdf" | "png" | null>(null);
@@ -51,14 +54,14 @@ export function IdCardViewer({
 
   return (
     <>
-      <IdCardFront displayName={displayName} fullName={fullName} />
+      <Front displayName={displayName} fullName={fullName} />
       <IdCardBack qrDataUrl={qrDataUrl} fullName={fullName} subtitle={backSubtitle} />
 
       {/* Hidden flat (square, shadowless) copies dedicated to PDF/PNG capture — html2canvas
           doesn't reliably respect the preview's shadow/rounded corners, so export uses its
           own always-flat instance instead of fighting that in the capture step. */}
       <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:hidden">
-        <IdCardFront ref={frontRef} displayName={displayName} fullName={fullName} flat />
+        <Front ref={frontRef} displayName={displayName} fullName={fullName} flat />
         <IdCardBack ref={backRef} qrDataUrl={qrDataUrl} fullName={fullName} subtitle={backSubtitle} flat />
       </div>
 

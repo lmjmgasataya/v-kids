@@ -43,6 +43,39 @@ export const IdCardFront = forwardRef<HTMLDivElement, { displayName: string; ful
   }
 );
 
+// Service team front: same layout, colors, and opacity level as the kid card, just swapping
+// the radial-dot background for a diagonal sweep (see .id-card-front-bg-team) so the two are
+// still visually related but distinguishable at a glance.
+export const ServiceTeamIdCardFront = forwardRef<
+  HTMLDivElement,
+  { displayName: string; fullName: string; flat?: boolean }
+>(function ServiceTeamIdCardFront({ displayName, fullName, flat }, ref) {
+  return (
+    <div
+      ref={ref}
+      className={`id-card-front-bg-team w-[85.6mm] h-[53.98mm] overflow-hidden flex flex-col break-after-page ${
+        flat
+          ? "rounded-none"
+          : "rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300"
+      }`}
+    >
+      <div className="flex items-center gap-1.5 px-[5mm] pt-[3.5mm]">
+        <LogoMark size={22} priority />
+        <span className="text-[7px] font-bold tracking-widest text-kids-navy uppercase font-[family-name:var(--font-fredoka)]">
+          Kids Church
+        </span>
+      </div>
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-[4mm] gap-1 -mt-[5mm]">
+        <div className="text-[55px] leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] break-words">
+          {displayName}
+        </div>
+        <div className="text-[9px] text-gray-500">{fullName}</div>
+      </div>
+      {brandStripe}
+    </div>
+  );
+});
+
 export const IdCardBack = forwardRef<
   HTMLDivElement,
   { qrDataUrl: string; fullName: string; flat?: boolean; subtitle?: string }

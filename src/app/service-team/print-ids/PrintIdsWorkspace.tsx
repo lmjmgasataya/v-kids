@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { IdCardFront, IdCardBack } from "@/components/IdCard";
+import { ServiceTeamIdCardFront, IdCardBack } from "@/components/IdCard";
 import { inputCls } from "@/components/form";
 import { useIdCardExport } from "@/lib/useIdCardExport";
 
@@ -212,7 +212,7 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
           const displayName = member.nickname?.trim() || member.firstName;
           return (
             <div key={member.id} className="contents">
-              <IdCardFront
+              <ServiceTeamIdCardFront
                 ref={(el) => setFrontRef(member.id, el)}
                 displayName={displayName}
                 fullName={fullName}

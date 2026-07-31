@@ -31,6 +31,21 @@ body {
     radial-gradient(circle at 90% 92%, color-mix(in srgb, var(--color-kids-yellow) 26%, transparent), transparent 55%);
 }
 
+/* Service team front: same cream base and opacity level as the kid card's .id-card-front-bg,
+   just a diagonal sweep through the brand colors instead of four radial dots. Written as flat
+   rgba() (the color-mix-at-P%-over-transparent equivalent) rather than color-mix() so
+   html2canvas-pro can capture it without an onclone patch — see idCardExport.ts. */
+.id-card-front-bg-team {
+  background-color: #fffbf0;
+  background-image: linear-gradient(
+    135deg,
+    rgba(168, 64, 143, 0.2) 0%,
+    rgba(28, 63, 139, 0.18) 33%,
+    rgba(63, 169, 69, 0.2) 66%,
+    rgba(240, 196, 25, 0.26) 100%
+  );
+}
+
 button {
   cursor: pointer;
 }
