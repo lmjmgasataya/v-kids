@@ -21,8 +21,9 @@ export function BalanceWorkspace() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
+  const initialMode = searchParams.get("mode") === "scan" ? "scan" : "search";
 
-  const [mode, setMode] = useState<"search" | "scan">("search");
+  const [mode, setMode] = useState<"search" | "scan">(initialMode);
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<KidBalanceSearchResult[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -66,12 +67,21 @@ export function BalanceWorkspace() {
     router.push(`/kc-bucks/balance/${result.kid.id}`);
   }
 
+  // Keep the active tab in the URL so it survives a back-navigation from the kid detail page.
+  function switchMode(next: "search" | "scan") {
+    setMode(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "scan") params.set("mode", "scan");
+    else params.delete("mode");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => setMode("search")}
+          onClick={() => switchMode("search")}
           className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
             mode === "search" ? "bg-kids-navy text-white" : "bg-gray-100 text-gray-500"
           }`}
@@ -80,7 +90,7 @@ export function BalanceWorkspace() {
         </button>
         <button
           type="button"
-          onClick={() => setMode("scan")}
+          onClick={() => switchMode("scan")}
           className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
             mode === "scan" ? "bg-kids-navy text-white" : "bg-gray-100 text-gray-500"
           }`}
