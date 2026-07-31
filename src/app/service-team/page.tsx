@@ -50,8 +50,12 @@ export default async function ServiceTeamPage({
             >
               Print IDs
             </Link>
-            <ExportExcelButton q={search} sort={sort} dir={dir} />
-            <ImportServiceTeamModal />
+            {session.role === "admin" && (
+              <>
+                <ExportExcelButton q={search} sort={sort} dir={dir} />
+                <ImportServiceTeamModal />
+              </>
+            )}
           </div>
         </div>
         <SearchBox defaultValue={search} placeholder="Search by name…" />

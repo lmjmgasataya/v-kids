@@ -26,6 +26,7 @@ export async function deleteServiceTeamMember(memberId: number) {
 export async function exportServiceTeamExcel(q: string, sortParam: string, dirParam: string) {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/service-team");
 
   const sort = resolveSort(sortParam);
   const dir = resolveDir(dirParam);
@@ -78,6 +79,7 @@ async function isDuplicateServiceTeamMember(firstName: string, lastName: string,
 export async function importServiceTeamCsv(csvText: string): Promise<ImportSummary> {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/service-team");
 
   const rows = parseCsv(csvText);
   const dataRows = rows.slice(1); // first row is always the header

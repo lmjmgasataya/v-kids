@@ -46,6 +46,7 @@ export async function deleteKid(kidId: number) {
 export async function exportKidsExcel(q: string, sortParam: string, dirParam: string) {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/kids");
 
   const sort = resolveSort(sortParam);
   const dir = resolveDir(dirParam);
@@ -88,6 +89,7 @@ export interface ImportSummary {
 export async function importKidsCsv(csvText: string): Promise<ImportSummary> {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/kids");
 
   const rows = parseCsv(csvText);
   const dataRows = rows.slice(1); // first row is always the header

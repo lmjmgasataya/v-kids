@@ -42,8 +42,12 @@ export default async function KidsPage({
             >
               Print IDs
             </Link>
-            <ExportExcelButton q={search} sort={sort} dir={dir} />
-            <ImportKidsModal />
+            {session.role === "admin" && (
+              <>
+                <ExportExcelButton q={search} sort={sort} dir={dir} />
+                <ImportKidsModal />
+              </>
+            )}
           </div>
         </div>
         <SearchBox defaultValue={search} />
