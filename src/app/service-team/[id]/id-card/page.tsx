@@ -61,6 +61,7 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
           fullName={fullName}
           qrDataUrl={qrDataUrl}
           fileBaseName={fullName}
+          backSubtitle="Service Team Member"
         />
       </div>
     </div>

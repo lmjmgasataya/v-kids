@@ -218,7 +218,13 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
                 fullName={fullName}
                 flat
               />
-              <IdCardBack ref={(el) => setBackRef(member.id, el)} qrDataUrl={member.qrDataUrl} fullName={fullName} flat />
+              <IdCardBack
+                ref={(el) => setBackRef(member.id, el)}
+                qrDataUrl={member.qrDataUrl}
+                fullName={fullName}
+                subtitle="Service Team Member"
+                flat
+              />
             </div>
           );
         })}

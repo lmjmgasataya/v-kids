@@ -43,29 +43,32 @@ export const IdCardFront = forwardRef<HTMLDivElement, { displayName: string; ful
   }
 );
 
-export const IdCardBack = forwardRef<HTMLDivElement, { qrDataUrl: string; fullName: string; flat?: boolean }>(
-  function IdCardBack({ qrDataUrl, fullName, flat }, ref) {
-    return (
-      <div
-        ref={ref}
-        className={`w-[85.6mm] h-[53.98mm] bg-white overflow-hidden flex flex-col ${
-          flat
-            ? "rounded-none"
-            : "rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300"
-        }`}
-      >
-        {brandStripe}
-        <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qrDataUrl} alt="Check-in QR code" className="w-[28mm] h-[28mm]" />
-          <div className="text-[7px] text-gray-500 text-center px-[4mm]">Scan to check in / out · {fullName}</div>
-        </div>
-        <div className="text-[6px] leading-snug text-gray-400 text-center px-[4mm] pb-[2mm]">
-          If found, please return to Victory Iloilo (033 3291529)
-          <br />
-          Paseo De Arcangeles, Benigno S. Aquino Drive, Mandurriao, Iloilo City
+export const IdCardBack = forwardRef<
+  HTMLDivElement,
+  { qrDataUrl: string; fullName: string; flat?: boolean; subtitle?: string }
+>(function IdCardBack({ qrDataUrl, fullName, flat, subtitle = "Scan to check in / out" }, ref) {
+  return (
+    <div
+      ref={ref}
+      className={`w-[85.6mm] h-[53.98mm] bg-white overflow-hidden flex flex-col ${
+        flat
+          ? "rounded-none"
+          : "rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300"
+      }`}
+    >
+      {brandStripe}
+      <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={qrDataUrl} alt="Check-in QR code" className="w-[28mm] h-[28mm]" />
+        <div className="text-[7px] text-gray-500 text-center px-[4mm]">
+          {subtitle} · {fullName}
         </div>
       </div>
-    );
-  }
-);
+      <div className="text-[6px] leading-snug text-gray-400 text-center px-[4mm] pb-[2mm]">
+        If found, please return to Victory Iloilo (033 3291529)
+        <br />
+        Paseo De Arcangeles, Benigno S. Aquino Drive, Mandurriao, Iloilo City
+      </div>
+    </div>
+  );
+});
