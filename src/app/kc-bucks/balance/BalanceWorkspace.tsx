@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { QrScanner } from "@/components/QrScanner";
 import { inputCls } from "@/components/form";
-import { resolveKidBasicByQrToken, type KcBucksKid } from "../actions";
-import {
-  getKidBalanceSummary,
-  searchKidsWithBalance,
-  type KidBalanceSearchResult,
-  type KidBalanceSummary,
-} from "./actions";
+import { resolveKidBasicByQrToken } from "../actions";
+import { searchKidsWithBalance, type KidBalanceSearchResult } from "./actions";
 
 function parseQrToken(decodedText: string): string {
   try {
@@ -20,74 +16,45 @@ function parseQrToken(decodedText: string): string {
   }
 }
 
-const dateTimeFormatter = new Intl.DateTimeFormat("en-PH", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "Asia/Manila",
-});
+export function BalanceWorkspace() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
 
-const TYPE_LABEL: Record<string, string> = {
-  checkin: "Check-in",
-  grant: "Grant",
-  redemption: "Redemption",
-};
-
-export function BalanceWorkspace({ initialKid }: { initialKid?: KcBucksKid | null }) {
   const [mode, setMode] = useState<"search" | "scan">("search");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<KidBalanceSearchResult[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
   const [isSearching, startSearch] = useTransition();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [kid, setKid] = useState<KcBucksKid | null>(initialKid ?? null);
-  const [summary, setSummary] = useState<KidBalanceSummary | null>(null);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const [isLoadingDetail, startDetail] = useTransition();
-  const resultRef = useRef<HTMLDivElement | null>(null);
+  function runSearch(value: string) {
+    startSearch(async () => {
+      const rows = await searchKidsWithBalance(value);
+      setResults(rows);
+    });
+  }
 
   useEffect(() => {
-    if (kid) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [kid]);
+    if (initialQuery) runSearch(initialQuery);
+    // Only re-run the search the page loaded with (e.g. returning via back button) — later
+    // keystrokes are handled by handleSearchChange's own debounce, not this mount effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleSearchChange(next: string) {
     setQuery(next);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
-      startSearch(async () => {
-        const rows = await searchKidsWithBalance(next);
-        setResults(rows);
-      });
+      // Keep the query in the URL so it survives a back-navigation from the kid detail page.
+      const params = new URLSearchParams(searchParams.toString());
+      if (next) params.set("q", next);
+      else params.delete("q");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      runSearch(next);
     }, 300);
   }
-
-  function loadDetail(nextKid: KcBucksKid) {
-    setKid(nextKid);
-    setSummary(null);
-    setDetailError(null);
-    startDetail(async () => {
-      const result = await getKidBalanceSummary(nextKid.id);
-      if ("error" in result) {
-        setDetailError(result.error);
-        return;
-      }
-      setSummary(result);
-    });
-  }
-
-  useEffect(() => {
-    if (!initialKid) return;
-    startDetail(async () => {
-      const result = await getKidBalanceSummary(initialKid.id);
-      if ("error" in result) {
-        setDetailError(result.error);
-        return;
-      }
-      setSummary(result);
-    });
-    // Only run for the kid the page loaded with — later prop changes (there are none) shouldn't re-trigger this.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function handleDecode(decodedText: string) {
     setScanError(null);
@@ -96,70 +63,7 @@ export function BalanceWorkspace({ initialKid }: { initialKid?: KcBucksKid | nul
       setScanError(result.error);
       return;
     }
-    loadDetail(result.kid);
-  }
-
-  function reset() {
-    setKid(null);
-    setSummary(null);
-    setDetailError(null);
-  }
-
-  if (kid) {
-    return (
-      <div ref={resultRef} className="rounded-2xl border-2 border-kids-yellow/40 bg-kids-yellow/5 p-6 flex flex-col gap-4 scroll-mt-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="font-bold text-lg text-kids-navy">
-              {kid.firstName} {kid.lastName}
-              {kid.nickname && <span className="text-xl text-black"> &quot;{kid.nickname}&quot;</span>}
-            </div>
-            <div className="text-xs text-gray-500">Age {kid.age}</div>
-          </div>
-          <button type="button" onClick={reset} className="text-sm text-gray-400 hover:text-kids-navy">
-            Back to search
-          </button>
-        </div>
-
-        {isLoadingDetail && <p className="text-sm text-gray-400">Loading balance…</p>}
-        {detailError && <p className="text-sm text-red-600">{detailError}</p>}
-
-        {summary && (
-          <>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
-                {summary.balance}
-              </span>
-              <span className="text-sm text-gray-500">KC Bucks</span>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Recent activity</p>
-              {summary.transactions.length === 0 ? (
-                <p className="text-sm text-gray-400">No transactions yet.</p>
-              ) : (
-                <ul className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
-                  {summary.transactions.map((tx) => (
-                    <li key={tx.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                      <div>
-                        <div className="text-gray-900">{tx.reason}</div>
-                        <div className="text-xs text-gray-400">
-                          {TYPE_LABEL[tx.type]} · {dateTimeFormatter.format(tx.createdAt)}
-                        </div>
-                      </div>
-                      <span className={`font-semibold ${tx.amount >= 0 ? "text-kids-green" : "text-kids-magenta"}`}>
-                        {tx.amount >= 0 ? "+" : ""}
-                        {tx.amount}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    );
+    router.push(`/kc-bucks/balance/${result.kid.id}`);
   }
 
   return (
@@ -204,7 +108,7 @@ export function BalanceWorkspace({ initialKid }: { initialKid?: KcBucksKid | nul
                 <li key={result.id}>
                   <button
                     type="button"
-                    onClick={() => loadDetail(result)}
+                    onClick={() => router.push(`/kc-bucks/balance/${result.id}`)}
                     className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-kids-yellow/5"
                   >
                     <div>

@@ -58,7 +58,7 @@ export function BalancesTable({ rows, sort, dir, q }: { rows: Row[]; sort: strin
           {rows.map((row) => (
             <tr
               key={row.id}
-              onClick={() => router.push(`/kc-bucks/balance?kidId=${row.id}`)}
+              onClick={() => router.push(`/kc-bucks/balance/${row.id}`)}
               className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5"
             >
               <td className="px-4 py-3">

@@ -46,3 +46,11 @@ export async function resolveKidBasicByQrToken(token: string): Promise<{ kid: Kc
   if (!row) return { error: "No kid found for this QR code." };
   return { kid: row };
 }
+
+export async function getKidBasicById(kidId: number): Promise<KcBucksKid | null> {
+  const session = await getSession();
+  if (!session) return null;
+
+  const [row] = await db.select(kidColumns).from(kids).where(eq(kids.id, kidId));
+  return row ?? null;
+}

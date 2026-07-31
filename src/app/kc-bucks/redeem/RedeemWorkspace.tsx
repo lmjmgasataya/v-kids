@@ -1,61 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { KidLookupPanel } from "../KidLookupPanel";
-import { getKidBalanceForRedeem } from "./actions";
-import { RedeemForm } from "./RedeemForm";
 import type { KcBucksKid } from "../actions";
 
 export function RedeemWorkspace() {
-  const [kid, setKid] = useState<KcBucksKid | null>(null);
-  const [balance, setBalance] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const resultRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
-  useEffect(() => {
-    if (kid) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [kid]);
-
-  function reset() {
-    setKid(null);
-    setBalance(null);
-    setError(null);
+  function goToKid(kid: KcBucksKid) {
+    router.push(`/kc-bucks/redeem/${kid.id}`);
   }
 
-  function handleSelect(nextKid: KcBucksKid) {
-    setKid(nextKid);
-    setBalance(null);
-    setError(null);
-    startTransition(async () => {
-      const result = await getKidBalanceForRedeem(nextKid.id);
-      if (typeof result === "object") {
-        setError(result.error);
-        return;
-      }
-      setBalance(result);
-    });
-  }
-
-  if (!kid) {
-    return <KidLookupPanel onSelect={handleSelect} />;
-  }
-
-  if (isPending || balance === null) {
-    return (
-      <div ref={resultRef} className="rounded-2xl border-2 border-kids-magenta/30 bg-kids-magenta/5 p-6 scroll-mt-4">
-        {error ? (
-          <p className="text-sm text-red-600">{error}</p>
-        ) : (
-          <p className="text-sm text-gray-400">Loading balance…</p>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div ref={resultRef} className="scroll-mt-4">
-      <RedeemForm kid={kid} initialBalance={balance} onDone={reset} />
-    </div>
-  );
+  return <KidLookupPanel onSelect={goToKid} />;
 }

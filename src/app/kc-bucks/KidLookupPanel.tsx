@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { QrScanner } from "@/components/QrScanner";
 import { inputCls } from "@/components/form";
 import { searchKidsBasic, resolveKidBasicByQrToken, type KcBucksKid } from "./actions";
@@ -15,21 +16,42 @@ function parseQrToken(decodedText: string): string {
 }
 
 export function KidLookupPanel({ onSelect }: { onSelect: (kid: KcBucksKid) => void }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
+
   const [mode, setMode] = useState<"search" | "scan">("search");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<KcBucksKid[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  function runSearch(value: string) {
+    startTransition(async () => {
+      const rows = await searchKidsBasic(value);
+      setResults(rows);
+    });
+  }
+
+  useEffect(() => {
+    if (initialQuery) runSearch(initialQuery);
+    // Only re-run the search the page loaded with (e.g. returning via back button) — later
+    // keystrokes are handled by handleChange's own debounce, not this mount effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleChange(next: string) {
     setQuery(next);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
-      startTransition(async () => {
-        const rows = await searchKidsBasic(next);
-        setResults(rows);
-      });
+      // Keep the query in the URL so it survives a back-navigation from the kid detail page.
+      const params = new URLSearchParams(searchParams.toString());
+      if (next) params.set("q", next);
+      else params.delete("q");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      runSearch(next);
     }, 300);
   }
 
