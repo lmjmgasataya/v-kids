@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
-import { asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { kids, kcBucksTransactions } from "@/db/schema";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SearchBox } from "@/components/SearchBox";
+import { FilterSelect } from "@/components/FilterSelect";
+import { SERVICE_OPTIONS } from "@/lib/constants";
 import { BalancesTable } from "./BalancesTable";
 import { Pagination } from "./Pagination";
 
@@ -32,16 +34,21 @@ export default async function KcBucksBalancesPage({
   const q = typeof sp.q === "string" ? sp.q : "";
   const sortParam = typeof sp.sort === "string" ? sp.sort : "lastName";
   const dirParam = typeof sp.dir === "string" ? sp.dir : "asc";
+  const serviceParam = typeof sp.service === "string" ? sp.service : "";
   const requestedPage = typeof sp.page === "string" ? parseInt(sp.page, 10) : 1;
 
   const sort: SortKey = sortParam in SORTABLE ? (sortParam as SortKey) : "lastName";
   const dir = dirParam === "desc" ? "desc" : "asc";
   const orderFn = dir === "asc" ? asc : desc;
+  const service = (SERVICE_OPTIONS as readonly string[]).includes(serviceParam) ? serviceParam : "";
 
   const search = q.trim();
-  const whereClause = search
-    ? or(ilike(kids.firstName, `%${search}%`), ilike(kids.lastName, `%${search}%`), ilike(kids.nickname, `%${search}%`))
-    : undefined;
+  const conditions = [];
+  if (search) {
+    conditions.push(or(ilike(kids.firstName, `%${search}%`), ilike(kids.lastName, `%${search}%`), ilike(kids.nickname, `%${search}%`)));
+  }
+  if (service) conditions.push(eq(kids.serviceAttending, service));
+  const whereClause = conditions.length ? and(...conditions) : undefined;
 
   const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(kids).where(whereClause);
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
@@ -71,10 +78,13 @@ export default async function KcBucksBalancesPage({
       />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">All Balances</h2>
-        <SearchBox defaultValue={search} />
+        <div className="flex items-center gap-3 flex-wrap">
+          <SearchBox defaultValue={search} />
+          <FilterSelect paramName="service" value={service} options={SERVICE_OPTIONS} allLabel="All services" />
+        </div>
       </div>
-      <BalancesTable rows={rows} sort={sort} dir={dir} q={search} />
-      <Pagination page={page} totalPages={totalPages} totalCount={count} q={search} sort={sort} dir={dir} />
+      <BalancesTable rows={rows} sort={sort} dir={dir} q={search} service={service} />
+      <Pagination page={page} totalPages={totalPages} totalCount={count} q={search} sort={sort} dir={dir} service={service} />
     </div>
   );
 }

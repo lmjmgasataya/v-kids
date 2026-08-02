@@ -7,6 +7,7 @@ export function Pagination({
   q,
   sort,
   dir,
+  service,
 }: {
   page: number;
   totalPages: number;
@@ -14,12 +15,14 @@ export function Pagination({
   q: string;
   sort: string;
   dir: "asc" | "desc";
+  service: string;
 }) {
   if (totalCount === 0) return null;
 
   function pageHref(target: number) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
+    if (service) params.set("service", service);
     params.set("sort", sort);
     params.set("dir", dir);
     params.set("page", String(target));

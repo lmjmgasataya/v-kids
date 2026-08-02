@@ -19,12 +19,25 @@ const COLUMNS: { key: string; label: string; align?: "right" }[] = [
   { key: "balance", label: "Balance", align: "right" },
 ];
 
-export function BalancesTable({ rows, sort, dir, q }: { rows: Row[]; sort: string; dir: "asc" | "desc"; q: string }) {
+export function BalancesTable({
+  rows,
+  sort,
+  dir,
+  q,
+  service,
+}: {
+  rows: Row[];
+  sort: string;
+  dir: "asc" | "desc";
+  q: string;
+  service: string;
+}) {
   const router = useRouter();
 
   function sortHref(key: string) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
+    if (service) params.set("service", service);
     params.set("sort", key);
     params.set("dir", sort === key && dir === "asc" ? "desc" : "asc");
     return `/kc-bucks/balances?${params.toString()}`;
