@@ -5,6 +5,7 @@ import { kids, guardians } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import EditKidForm from "./EditKidForm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { capitalizeName } from "@/lib/format";
 
 export default async function EditKidPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -41,7 +42,7 @@ export default async function EditKidPage({ params }: { params: Promise<{ id: st
         items={[
           { label: "Home", href: "/" },
           { label: "Registered Kids", href: "/kids" },
-          { label: `${row.firstName} ${row.lastName}` },
+          { label: `${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}` },
         ]}
       />
       <EditKidForm kid={row} />

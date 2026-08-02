@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import type { KcBucksKid } from "../actions";
 import type { KidBalanceSummary } from "./actions";
+import { capitalizeName } from "@/lib/format";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "medium",
@@ -24,8 +25,8 @@ export function BalanceDetail({ kid, summary }: { kid: KcBucksKid; summary: KidB
       <div className="flex items-center justify-between">
         <div>
           <div className="font-bold text-lg text-kids-navy">
-            {kid.firstName} {kid.lastName}
-            {kid.nickname && <span className="text-xl text-black"> &quot;{kid.nickname}&quot;</span>}
+            {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
+            {kid.nickname && <span className="text-xl text-black"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
           </div>
           <div className="text-xs text-gray-500">Age {kid.age}</div>
         </div>

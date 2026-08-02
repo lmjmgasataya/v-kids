@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { QrScanner } from "@/components/QrScanner";
 import { inputCls } from "@/components/form";
 import { searchKidsBasic, resolveKidBasicByQrToken, type KcBucksKid } from "./actions";
+import { capitalizeName } from "@/lib/format";
 
 function parseQrToken(decodedText: string): string {
   try {
@@ -122,8 +123,8 @@ export function KidLookupPanel({ onSelect }: { onSelect: (kid: KcBucksKid) => vo
                   >
                     <div>
                       <div className="font-medium text-gray-900">
-                        {kid.firstName} {kid.lastName}
-                        {kid.nickname && <span className="text-xs text-gray-400"> &quot;{kid.nickname}&quot;</span>}
+                        {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
+                        {kid.nickname && <span className="text-xs text-gray-400"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
                       </div>
                       <div className="text-xs text-gray-400">Age {kid.age}</div>
                     </div>

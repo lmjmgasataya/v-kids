@@ -10,6 +10,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { QrScanner, playSuccessSound, type QrScannerHandle } from "@/components/QrScanner";
 import { useHardwareScanListener } from "@/components/useHardwareScanListener";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
+import { capitalizeName } from "@/lib/format";
 
 type Intent = "checkin" | "checkout";
 
@@ -133,8 +134,8 @@ function SearchPanel({ intent, service }: { intent: Intent; service: string }) {
             <li key={kid.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-kids-yellow/5">
               <div>
                 <div className="font-medium text-gray-900">
-                  {kid.firstName} {kid.lastName}
-                  {kid.nickname && <span className="text-xs text-gray-400"> &quot;{kid.nickname}&quot;</span>}
+                  {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
+                  {kid.nickname && <span className="text-xs text-gray-400"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
                 </div>
                 <div className="text-xs text-gray-400">
                   Age {kid.age} · {kid.defaultService}
@@ -189,8 +190,8 @@ function CheckInForm({
         <div className="flex items-center justify-between">
           <div>
             <div className="font-bold text-lg text-kids-navy">
-              {kid.firstName} {kid.lastName}
-              {kid.nickname && <span className="text-xl text-black"> &quot;{kid.nickname}&quot;</span>}
+              {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
+              {kid.nickname && <span className="text-xl text-black"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
             </div>
             <div className="text-xs text-gray-500">Age {kid.age}</div>
           </div>
@@ -258,8 +259,8 @@ function CheckOutForm({
         <div className="flex items-center justify-between">
           <div>
             <div className="font-bold text-lg text-kids-navy">
-              {kid.firstName} {kid.lastName}
-              {kid.nickname && <span className="text-xl text-black"> &quot;{kid.nickname}&quot;</span>}
+              {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
+              {kid.nickname && <span className="text-xl text-black"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
             </div>
             <div className="text-xs text-gray-500">Age {kid.age}</div>
           </div>
@@ -396,7 +397,7 @@ export function CheckInWorkspace({
     if (forIntent === "checkin" && kid.openCheckIn) {
       setScanError(
         <>
-          <Highlight>{kid.firstName}</Highlight> is already checked in to{" "}
+          <Highlight>{capitalizeName(kid.firstName)}</Highlight> is already checked in to{" "}
           <Highlight>
             {kid.openCheckIn.serviceAttending} since {timeFormatter.format(kid.openCheckIn.checkedInAt)}
           </Highlight>
@@ -408,7 +409,7 @@ export function CheckInWorkspace({
     if (forIntent === "checkin" && kid.checkedInServicesToday.includes(service)) {
       setScanError(
         <>
-          <Highlight>{kid.firstName}</Highlight> has already checked in to <Highlight>{service}</Highlight> today.
+          <Highlight>{capitalizeName(kid.firstName)}</Highlight> has already checked in to <Highlight>{service}</Highlight> today.
         </>
       );
       return;
@@ -416,7 +417,7 @@ export function CheckInWorkspace({
     if (forIntent === "checkout" && !kid.openCheckIn) {
       setScanError(
         <>
-          <Highlight>{kid.firstName}</Highlight> is not currently checked in.
+          <Highlight>{capitalizeName(kid.firstName)}</Highlight> is not currently checked in.
         </>
       );
       return;
@@ -424,7 +425,7 @@ export function CheckInWorkspace({
     if (forIntent === "checkout" && kid.openCheckIn && kid.openCheckIn.serviceAttending !== service) {
       setScanError(
         <>
-          <Highlight>{kid.firstName}</Highlight> is checked in to{" "}
+          <Highlight>{capitalizeName(kid.firstName)}</Highlight> is checked in to{" "}
           <Highlight>{kid.openCheckIn.serviceAttending}</Highlight>, not <Highlight>{service}</Highlight>.
         </>
       );

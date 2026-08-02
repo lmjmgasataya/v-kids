@@ -4,6 +4,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getKidBasicById } from "../../actions";
 import { getKidBalanceSummary } from "../actions";
 import { BalanceDetail } from "../BalanceDetail";
+import { capitalizeName } from "@/lib/format";
 
 export default async function CheckBalanceKidPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -19,7 +20,7 @@ export default async function CheckBalanceKidPage({ params }: { params: Promise<
   const summaryResult = await getKidBalanceSummary(kid.id);
   if ("error" in summaryResult) notFound();
 
-  const fullName = `${kid.firstName} ${kid.lastName}`;
+  const fullName = `${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}`;
 
   return (
     <div className="flex flex-col gap-6 max-w-xl mx-auto">

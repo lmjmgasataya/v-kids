@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { IdCardFront, IdCardBack } from "@/components/IdCard";
 import { inputCls } from "@/components/form";
 import { useIdCardExport } from "@/lib/useIdCardExport";
+import { capitalizeName } from "@/lib/format";
 
 interface KidRow {
   id: number;
@@ -196,20 +197,20 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
                     type="checkbox"
                     checked={selected.has(kid.id)}
                     onChange={() => toggleOne(kid.id)}
-                    aria-label={`Select ${kid.firstName} ${kid.lastName}`}
+                    aria-label={`Select ${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}`}
                     className="h-4 w-4 accent-kids-navy"
                   />
                 </td>
                 <td className="px-4 py-3">
                   <div className="font-medium text-gray-900">
-                    {kid.firstName} {kid.lastName}
+                    {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
                   </div>
-                  {kid.nickname && <div className="text-xs text-gray-400">&quot;{kid.nickname}&quot;</div>}
+                  {kid.nickname && <div className="text-xs text-gray-400">&quot;{capitalizeName(kid.nickname)}&quot;</div>}
                 </td>
                 <td className="px-4 py-3">{kid.age}</td>
                 <td className="px-4 py-3">{kid.gender}</td>
                 <td className="px-4 py-3">
-                  {kid.guardianFirstName} {kid.guardianLastName}
+                  {capitalizeName(kid.guardianFirstName)} {capitalizeName(kid.guardianLastName)}
                 </td>
                 <td className="px-4 py-3">{kid.serviceAttending}</td>
               </tr>
@@ -221,8 +222,8 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
       {/* Always rendered (off-screen) so html2canvas can capture cards for PDF/PNG export; repositioned into the normal flow for native printing. */}
       <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:static print:-mx-4 print:-my-8 print:gap-0">
         {printable.map((kid) => {
-          const fullName = `${kid.firstName} ${kid.lastName}`;
-          const displayName = kid.nickname?.trim() || kid.firstName;
+          const fullName = `${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}`;
+          const displayName = capitalizeName(kid.nickname?.trim() || kid.firstName);
           return (
             <div key={kid.id} className="contents">
               <IdCardFront ref={(el) => setFrontRef(kid.id, el)} displayName={displayName} fullName={fullName} flat />

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { capitalizeName } from "@/lib/format";
 
 interface Row {
   id: number;
@@ -63,9 +64,9 @@ export function BalancesTable({ rows, sort, dir, q }: { rows: Row[]; sort: strin
             >
               <td className="px-4 py-3">
                 <div className="font-medium text-gray-900">
-                  {row.firstName} {row.lastName}
+                  {capitalizeName(row.firstName)} {capitalizeName(row.lastName)}
                 </div>
-                {row.nickname && <div className="text-xs text-gray-400">&quot;{row.nickname}&quot;</div>}
+                {row.nickname && <div className="text-xs text-gray-400">&quot;{capitalizeName(row.nickname)}&quot;</div>}
               </td>
               <td className="px-4 py-3">{row.age}</td>
               <td className="px-4 py-3 text-right">

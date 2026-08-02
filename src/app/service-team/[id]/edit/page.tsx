@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getSignedPhotoUrl, isB2Configured } from "@/lib/storage";
+import { capitalizeName } from "@/lib/format";
 import EditServiceTeamForm from "./EditServiceTeamForm";
 
 export default async function EditServiceTeamPage({ params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +41,7 @@ export default async function EditServiceTeamPage({ params }: { params: Promise<
         items={[
           { label: "Home", href: "/" },
           { label: "Service Team", href: "/service-team" },
-          { label: `${row.firstName} ${row.lastName}` },
+          { label: `${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}` },
         ]}
       />
       <EditServiceTeamForm member={row} photoUrl={photoUrl} photoEnabled={isB2Configured()} />

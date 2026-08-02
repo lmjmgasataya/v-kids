@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DeleteServiceTeamMemberButton } from "./DeleteServiceTeamMemberButton";
 import { ServiceTeamPhoto } from "./ServiceTeamPhoto";
+import { capitalizeName } from "@/lib/format";
 
 interface Row {
   id: number;
@@ -76,14 +77,14 @@ export function ServiceTeamTable({
                 <ServiceTeamPhoto
                   photoUrl={row.photoUrl}
                   downloadUrl={row.downloadUrl}
-                  initials={`${row.firstName[0]}${row.lastName[0]}`}
+                  initials={`${row.firstName[0].toUpperCase()}${row.lastName[0].toUpperCase()}`}
                 />
               </td>
               <td className="px-4 py-3 font-medium text-gray-900">
                 <div>
-                  {row.firstName} {row.lastName}
+                  {capitalizeName(row.firstName)} {capitalizeName(row.lastName)}
                 </div>
-                {row.nickname && <div className="text-xs text-gray-400">&quot;{row.nickname}&quot;</div>}
+                {row.nickname && <div className="text-xs text-gray-400">&quot;{capitalizeName(row.nickname)}&quot;</div>}
               </td>
               <td className="px-4 py-3">{row.gender ?? "—"}</td>
               <td className="px-4 py-3">{birthdayFormatter.format(new Date(row.birthday))}</td>
@@ -103,7 +104,7 @@ export function ServiceTeamTable({
                       <span className="text-gray-300">|</span>
                       <DeleteServiceTeamMemberButton
                         memberId={row.id}
-                        memberName={`${row.firstName} ${row.lastName}`}
+                        memberName={`${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`}
                       />
                     </>
                   )}

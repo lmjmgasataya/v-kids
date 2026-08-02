@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { kids } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { getOpenCheckIn } from "@/lib/checkIn";
+import { capitalizeName } from "@/lib/format";
 import { CheckInNowForm } from "./CheckInNowForm";
 
 export default async function RegisterSuccessPage({
@@ -23,7 +24,7 @@ export default async function RegisterSuccessPage({
       .select({ id: kids.id, firstName: kids.firstName, serviceAttending: kids.serviceAttending })
       .from(kids)
       .where(eq(kids.id, kidId));
-    kid = row;
+    kid = row && { ...row, firstName: capitalizeName(row.firstName) };
     if (kid) {
       alreadyCheckedIn = !!(await getOpenCheckIn(kid.id));
     }

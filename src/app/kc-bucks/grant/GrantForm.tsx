@@ -7,6 +7,7 @@ import { Field, inputCls } from "@/components/form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 import type { KcBucksKid } from "../actions";
+import { capitalizeName } from "@/lib/format";
 
 const PRESET_AMOUNTS = [5, 10, 20, 50];
 
@@ -37,8 +38,8 @@ export function GrantForm({
       <div className="flex items-center justify-between">
         <div>
           <div className="font-bold text-lg text-kids-navy">
-            {kid.firstName} {kid.lastName}
-            {kid.nickname && <span className="text-xl text-black"> &quot;{kid.nickname}&quot;</span>}
+            {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
+            {kid.nickname && <span className="text-xl text-black"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
           </div>
           <div className="text-xs text-gray-500">Age {kid.age}</div>
         </div>

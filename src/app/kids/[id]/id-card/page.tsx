@@ -7,6 +7,7 @@ import { kids } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { IdCardViewer } from "@/components/IdCardViewer";
+import { capitalizeName } from "@/lib/format";
 
 export default async function KidIdCardPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -29,8 +30,8 @@ export default async function KidIdCardPage({ params }: { params: Promise<{ id: 
   const payload = `${proto}://${host}/check-in?token=${row.qrToken}`;
   const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0 });
 
-  const fullName = `${row.firstName} ${row.lastName}`;
-  const displayName = row.nickname?.trim() || row.firstName;
+  const fullName = `${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`;
+  const displayName = capitalizeName(row.nickname?.trim() || row.firstName);
 
   return (
     <div>

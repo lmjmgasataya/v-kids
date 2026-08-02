@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ServiceTeamIdCardFront, IdCardBack } from "@/components/IdCard";
 import { inputCls } from "@/components/form";
 import { useIdCardExport } from "@/lib/useIdCardExport";
+import { capitalizeName } from "@/lib/format";
 
 interface MemberRow {
   id: number;
@@ -190,12 +191,12 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
                     type="checkbox"
                     checked={selected.has(member.id)}
                     onChange={() => toggleOne(member.id)}
-                    aria-label={`Select ${member.firstName} ${member.lastName}`}
+                    aria-label={`Select ${capitalizeName(member.firstName)} ${capitalizeName(member.lastName)}`}
                     className="h-4 w-4 accent-kids-navy"
                   />
                 </td>
                 <td className="px-4 py-3 font-medium text-gray-900">
-                  {member.firstName} {member.lastName}
+                  {capitalizeName(member.firstName)} {capitalizeName(member.lastName)}
                 </td>
                 <td className="px-4 py-3">{birthdayFormatter.format(new Date(member.birthday))}</td>
                 <td className="px-4 py-3">{member.serviceAttending}</td>
@@ -208,8 +209,8 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
       {/* Always rendered (off-screen) so html2canvas can capture cards for PDF/PNG export; repositioned into the normal flow for native printing. */}
       <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:static print:-mx-4 print:-my-8 print:gap-0">
         {printable.map((member) => {
-          const fullName = `${member.firstName} ${member.lastName}`;
-          const displayName = member.nickname?.trim() || member.firstName;
+          const fullName = `${capitalizeName(member.firstName)} ${capitalizeName(member.lastName)}`;
+          const displayName = capitalizeName(member.nickname?.trim() || member.firstName);
           return (
             <div key={member.id} className="contents">
               <ServiceTeamIdCardFront

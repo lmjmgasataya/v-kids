@@ -6,6 +6,7 @@ import { QrScanner } from "@/components/QrScanner";
 import { inputCls } from "@/components/form";
 import { resolveKidBasicByQrToken } from "../actions";
 import { searchKidsWithBalance, type KidBalanceSearchResult } from "./actions";
+import { capitalizeName } from "@/lib/format";
 
 function parseQrToken(decodedText: string): string {
   try {
@@ -123,8 +124,8 @@ export function BalanceWorkspace() {
                   >
                     <div>
                       <div className="font-medium text-gray-900">
-                        {result.firstName} {result.lastName}
-                        {result.nickname && <span className="text-xs text-gray-400"> &quot;{result.nickname}&quot;</span>}
+                        {capitalizeName(result.firstName)} {capitalizeName(result.lastName)}
+                        {result.nickname && <span className="text-xs text-gray-400"> &quot;{capitalizeName(result.nickname)}&quot;</span>}
                       </div>
                       <div className="text-xs text-gray-400">Age {result.age}</div>
                     </div>

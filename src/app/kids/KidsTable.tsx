@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DeleteKidButton } from "./DeleteKidButton";
+import { capitalizeName } from "@/lib/format";
 
 interface Row {
   id: number;
@@ -72,15 +73,15 @@ export function KidsTable({
             <tr key={row.id} className="border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5">
               <td className="px-4 py-3">
                 <div className="font-medium text-gray-900">
-                  {row.firstName} {row.lastName}
+                  {capitalizeName(row.firstName)} {capitalizeName(row.lastName)}
                 </div>
-                {row.nickname && <div className="text-xs text-gray-400">&quot;{row.nickname}&quot;</div>}
+                {row.nickname && <div className="text-xs text-gray-400">&quot;{capitalizeName(row.nickname)}&quot;</div>}
               </td>
               <td className="px-4 py-3">{row.age}</td>
               <td className="px-4 py-3">{row.gender}</td>
               <td className="px-4 py-3">
                 <div>
-                  {row.guardianFirstName} {row.guardianLastName}
+                  {capitalizeName(row.guardianFirstName)} {capitalizeName(row.guardianLastName)}
                 </div>
                 <div className="text-xs text-gray-400">{row.guardianContactNumber}</div>
               </td>
@@ -98,7 +99,7 @@ export function KidsTable({
                         Edit
                       </Link>
                       <span className="text-gray-300">|</span>
-                      <DeleteKidButton kidId={row.id} kidName={`${row.firstName} ${row.lastName}`} />
+                      <DeleteKidButton kidId={row.id} kidName={`${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`} />
                     </>
                   )}
                 </div>

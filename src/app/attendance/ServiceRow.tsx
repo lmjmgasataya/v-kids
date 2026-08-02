@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ServiceAttendance } from "@/lib/checkIn";
+import { capitalizeName } from "@/lib/format";
 
 const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short", timeZone: "Asia/Manila" });
 
@@ -47,8 +48,8 @@ export function ServiceRow({ row }: { row: ServiceAttendance }) {
               {row.kids.map((kid) => (
                 <li key={kid.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="text-gray-800">
-                    {kid.firstName} {kid.lastName}
-                    {kid.nickname && <span className="text-xs text-gray-400"> &quot;{kid.nickname}&quot;</span>}
+                    {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
+                    {kid.nickname && <span className="text-xs text-gray-400"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
                     <span className="text-xs text-gray-400"> · Age {kid.age}</span>
                   </span>
                   {kid.checkedOutAt ? (

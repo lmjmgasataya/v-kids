@@ -4,6 +4,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getKidBasicById } from "../../actions";
 import { getKidBalanceForRedeem } from "../actions";
 import { RedeemDetail } from "../RedeemDetail";
+import { capitalizeName } from "@/lib/format";
 
 export default async function RedeemCreditsKidPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -18,7 +19,7 @@ export default async function RedeemCreditsKidPage({ params }: { params: Promise
 
   const balanceResult = await getKidBalanceForRedeem(kid.id);
   const initialBalance = typeof balanceResult === "number" ? balanceResult : 0;
-  const fullName = `${kid.firstName} ${kid.lastName}`;
+  const fullName = `${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}`;
 
   return (
     <div className="flex flex-col gap-6 max-w-xl mx-auto">

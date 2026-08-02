@@ -4,6 +4,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getKidBasicById } from "../../actions";
 import { getKidGrants } from "../actions";
 import { EditGrantsDetail } from "../EditGrantsDetail";
+import { capitalizeName } from "@/lib/format";
 
 export default async function EditGrantsKidPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -18,7 +19,7 @@ export default async function EditGrantsKidPage({ params }: { params: Promise<{ 
   if (!kid) notFound();
 
   const grants = await getKidGrants(kid.id);
-  const fullName = `${kid.firstName} ${kid.lastName}`;
+  const fullName = `${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}`;
 
   return (
     <div className="flex flex-col gap-6 max-w-xl mx-auto">
