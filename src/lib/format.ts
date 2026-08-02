@@ -7,3 +7,10 @@ export function capitalizeName(value: string): string {
     .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
     .join(" ");
 }
+
+/** The short name shown on ID cards: the nickname if set, otherwise just the first word of the first name. */
+export function idCardDisplayName(firstName: string, nickname: string | null | undefined): string {
+  const trimmedNickname = nickname?.trim();
+  if (trimmedNickname) return capitalizeName(trimmedNickname);
+  return capitalizeName(firstName.trim().split(/\s+/)[0] ?? firstName);
+}

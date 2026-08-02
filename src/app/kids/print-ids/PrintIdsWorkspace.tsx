@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { IdCardFront, IdCardBack } from "@/components/IdCard";
 import { inputCls } from "@/components/form";
 import { useIdCardExport } from "@/lib/useIdCardExport";
-import { capitalizeName } from "@/lib/format";
+import { capitalizeName, idCardDisplayName } from "@/lib/format";
 
 interface KidRow {
   id: number;
@@ -223,7 +223,7 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
       <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:static print:-mx-4 print:-my-8 print:gap-0">
         {printable.map((kid) => {
           const fullName = `${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}`;
-          const displayName = capitalizeName(kid.nickname?.trim() || kid.firstName);
+          const displayName = idCardDisplayName(kid.firstName, kid.nickname);
           return (
             <div key={kid.id} className="contents">
               <IdCardFront ref={(el) => setFrontRef(kid.id, el)} displayName={displayName} fullName={fullName} flat />

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ServiceTeamIdCardFront, IdCardBack } from "@/components/IdCard";
 import { inputCls } from "@/components/form";
 import { useIdCardExport } from "@/lib/useIdCardExport";
-import { capitalizeName } from "@/lib/format";
+import { capitalizeName, idCardDisplayName } from "@/lib/format";
 
 interface MemberRow {
   id: number;
@@ -210,7 +210,7 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
       <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:static print:-mx-4 print:-my-8 print:gap-0">
         {printable.map((member) => {
           const fullName = `${capitalizeName(member.firstName)} ${capitalizeName(member.lastName)}`;
-          const displayName = capitalizeName(member.nickname?.trim() || member.firstName);
+          const displayName = idCardDisplayName(member.firstName, member.nickname);
           return (
             <div key={member.id} className="contents">
               <ServiceTeamIdCardFront
