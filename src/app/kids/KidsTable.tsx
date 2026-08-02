@@ -32,17 +32,23 @@ export function KidsTable({
   sort,
   dir,
   q,
+  gender,
+  service,
   canManage,
 }: {
   rows: Row[];
   sort: string;
   dir: "asc" | "desc";
   q: string;
+  gender: string;
+  service: string;
   canManage: boolean;
 }) {
   function sortHref(key: string) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
+    if (gender) params.set("gender", gender);
+    if (service) params.set("service", service);
     params.set("sort", key);
     params.set("dir", sort === key && dir === "asc" ? "desc" : "asc");
     return `/kids?${params.toString()}`;

@@ -1,3 +1,5 @@
+export const GENDER_OPTIONS = ["Male", "Female"] as const;
+
 export const SERVICE_OPTIONS = [
   "9AM - Mandurriao",
   "11AM - Mandurriao",

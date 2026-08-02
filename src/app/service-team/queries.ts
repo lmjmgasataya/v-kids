@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
-import { asc, desc, ilike, or } from "drizzle-orm";
+import { GENDER_OPTIONS, SERVICE_OPTIONS } from "@/lib/constants";
+import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
 
 export const SORTABLE = {
   lastName: serviceTeamMembers.lastName,
@@ -20,12 +21,35 @@ export function resolveDir(dirParam: string): "asc" | "desc" {
   return dirParam === "asc" ? "asc" : "desc";
 }
 
-export async function fetchServiceTeamRows({ q, sort, dir }: { q: string; sort: SortKey; dir: "asc" | "desc" }) {
+export function resolveGender(genderParam: string): string {
+  return (GENDER_OPTIONS as readonly string[]).includes(genderParam) ? genderParam : "";
+}
+
+export function resolveService(serviceParam: string): string {
+  return (SERVICE_OPTIONS as readonly string[]).includes(serviceParam) ? serviceParam : "";
+}
+
+export async function fetchServiceTeamRows({
+  q,
+  sort,
+  dir,
+  gender,
+  service,
+}: {
+  q: string;
+  sort: SortKey;
+  dir: "asc" | "desc";
+  gender?: string;
+  service?: string;
+}) {
   const orderFn = dir === "asc" ? asc : desc;
   const search = q.trim();
-  const whereClause = search
-    ? or(ilike(serviceTeamMembers.firstName, `%${search}%`), ilike(serviceTeamMembers.lastName, `%${search}%`))
-    : undefined;
+  const conditions = [];
+  if (search) {
+    conditions.push(or(ilike(serviceTeamMembers.firstName, `%${search}%`), ilike(serviceTeamMembers.lastName, `%${search}%`)));
+  }
+  if (gender) conditions.push(eq(serviceTeamMembers.gender, gender as "Male" | "Female"));
+  if (service) conditions.push(eq(serviceTeamMembers.serviceAttending, service));
 
   return db
     .select({
@@ -41,6 +65,6 @@ export async function fetchServiceTeamRows({ q, sort, dir }: { q: string; sort: 
       createdAt: serviceTeamMembers.createdAt,
     })
     .from(serviceTeamMembers)
-    .where(whereClause)
+    .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(orderFn(SORTABLE[sort]));
 }

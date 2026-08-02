@@ -3,11 +3,13 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SearchBox } from "@/components/SearchBox";
+import { FilterSelect } from "@/components/FilterSelect";
+import { GENDER_OPTIONS, SERVICE_OPTIONS } from "@/lib/constants";
 import { getSignedPhotoUrl } from "@/lib/storage";
 import { ServiceTeamTable } from "./ServiceTeamTable";
 import { ExportExcelButton } from "./ExportExcelButton";
 import { ImportServiceTeamModal } from "./ImportServiceTeamModal";
-import { fetchServiceTeamRows, resolveDir, resolveSort } from "./queries";
+import { fetchServiceTeamRows, resolveDir, resolveGender, resolveService, resolveSort } from "./queries";
 
 export default async function ServiceTeamPage({
   searchParams,
@@ -21,12 +23,16 @@ export default async function ServiceTeamPage({
   const q = typeof sp.q === "string" ? sp.q : "";
   const sortParam = typeof sp.sort === "string" ? sp.sort : "createdAt";
   const dirParam = typeof sp.dir === "string" ? sp.dir : "desc";
+  const genderParam = typeof sp.gender === "string" ? sp.gender : "";
+  const serviceParam = typeof sp.service === "string" ? sp.service : "";
 
   const sort = resolveSort(sortParam);
   const dir = resolveDir(dirParam);
+  const gender = resolveGender(genderParam);
+  const service = resolveService(serviceParam);
   const search = q.trim();
 
-  const rows = await fetchServiceTeamRows({ q: search, sort, dir });
+  const rows = await fetchServiceTeamRows({ q: search, sort, dir, gender, service });
   const rowsWithPhotos = await Promise.all(
     rows.map(async (row) => ({
       ...row,
@@ -58,13 +64,19 @@ export default async function ServiceTeamPage({
             )}
           </div>
         </div>
-        <SearchBox defaultValue={search} placeholder="Search by name…" />
+        <div className="flex items-center gap-3 flex-wrap">
+          <SearchBox defaultValue={search} placeholder="Search by name…" />
+          <FilterSelect paramName="gender" value={gender} options={GENDER_OPTIONS} allLabel="All genders" />
+          <FilterSelect paramName="service" value={service} options={SERVICE_OPTIONS} allLabel="All services" />
+        </div>
       </div>
       <ServiceTeamTable
         rows={rowsWithPhotos}
         sort={sort}
         dir={dir}
         q={search}
+        gender={gender}
+        service={service}
         canManage={session.role === "admin"}
       />
     </div>

@@ -4,9 +4,11 @@ import { getSession } from "@/lib/auth";
 import { KidsTable } from "./KidsTable";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SearchBox } from "@/components/SearchBox";
+import { FilterSelect } from "@/components/FilterSelect";
+import { GENDER_OPTIONS, SERVICE_OPTIONS } from "@/lib/constants";
 import { ExportExcelButton } from "./ExportExcelButton";
 import { ImportKidsModal } from "./ImportKidsModal";
-import { fetchKidsRows, resolveDir, resolveSort } from "./queries";
+import { fetchKidsRows, resolveDir, resolveGender, resolveService, resolveSort } from "./queries";
 
 export default async function KidsPage({
   searchParams,
@@ -20,12 +22,16 @@ export default async function KidsPage({
   const q = typeof sp.q === "string" ? sp.q : "";
   const sortParam = typeof sp.sort === "string" ? sp.sort : "createdAt";
   const dirParam = typeof sp.dir === "string" ? sp.dir : "desc";
+  const genderParam = typeof sp.gender === "string" ? sp.gender : "";
+  const serviceParam = typeof sp.service === "string" ? sp.service : "";
 
   const sort = resolveSort(sortParam);
   const dir = resolveDir(dirParam);
+  const gender = resolveGender(genderParam);
+  const service = resolveService(serviceParam);
   const search = q.trim();
 
-  const rows = await fetchKidsRows({ q: search, sort, dir });
+  const rows = await fetchKidsRows({ q: search, sort, dir, gender, service });
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,9 +56,21 @@ export default async function KidsPage({
             )}
           </div>
         </div>
-        <SearchBox defaultValue={search} />
+        <div className="flex items-center gap-3 flex-wrap">
+          <SearchBox defaultValue={search} />
+          <FilterSelect paramName="gender" value={gender} options={GENDER_OPTIONS} allLabel="All genders" />
+          <FilterSelect paramName="service" value={service} options={SERVICE_OPTIONS} allLabel="All services" />
+        </div>
       </div>
-      <KidsTable rows={rows} sort={sort} dir={dir} q={search} canManage={session.role === "admin"} />
+      <KidsTable
+        rows={rows}
+        sort={sort}
+        dir={dir}
+        q={search}
+        gender={gender}
+        service={service}
+        canManage={session.role === "admin"}
+      />
     </div>
   );
 }
