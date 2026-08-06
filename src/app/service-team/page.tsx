@@ -9,7 +9,16 @@ import { getSignedPhotoUrl } from "@/lib/storage";
 import { ServiceTeamTable } from "./ServiceTeamTable";
 import { ExportExcelButton } from "./ExportExcelButton";
 import { ImportServiceTeamModal } from "./ImportServiceTeamModal";
-import { fetchServiceTeamRows, resolveDir, resolveGender, resolveService, resolveSort } from "./queries";
+import { Pagination } from "@/components/Pagination";
+import {
+  countServiceTeamRows,
+  fetchServiceTeamRows,
+  PAGE_SIZE,
+  resolveDir,
+  resolveGender,
+  resolveService,
+  resolveSort,
+} from "./queries";
 
 export default async function ServiceTeamPage({
   searchParams,
@@ -25,6 +34,7 @@ export default async function ServiceTeamPage({
   const dirParam = typeof sp.dir === "string" ? sp.dir : "desc";
   const genderParam = typeof sp.gender === "string" ? sp.gender : "";
   const serviceParam = typeof sp.service === "string" ? sp.service : "";
+  const requestedPage = typeof sp.page === "string" ? parseInt(sp.page, 10) : 1;
 
   const sort = resolveSort(sortParam);
   const dir = resolveDir(dirParam);
@@ -32,7 +42,11 @@ export default async function ServiceTeamPage({
   const service = resolveService(serviceParam);
   const search = q.trim();
 
-  const rows = await fetchServiceTeamRows({ q: search, sort, dir, gender, service });
+  const count = await countServiceTeamRows({ q: search, gender, service });
+  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+
+  const rows = await fetchServiceTeamRows({ q: search, sort, dir, gender, service, page });
   const rowsWithPhotos = await Promise.all(
     rows.map(async (row) => ({
       ...row,
@@ -78,6 +92,14 @@ export default async function ServiceTeamPage({
         gender={gender}
         service={service}
         canManage={session.role === "admin"}
+      />
+      <Pagination
+        basePath="/service-team"
+        page={page}
+        totalPages={totalPages}
+        totalCount={count}
+        params={{ q: search, sort, dir, gender, service }}
+        itemLabel="member"
       />
     </div>
   );

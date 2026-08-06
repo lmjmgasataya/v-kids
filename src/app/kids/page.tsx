@@ -8,7 +8,8 @@ import { FilterSelect } from "@/components/FilterSelect";
 import { GENDER_OPTIONS, SERVICE_OPTIONS } from "@/lib/constants";
 import { ExportExcelButton } from "./ExportExcelButton";
 import { ImportKidsModal } from "./ImportKidsModal";
-import { fetchKidsRows, resolveDir, resolveGender, resolveService, resolveSort } from "./queries";
+import { Pagination } from "@/components/Pagination";
+import { countKidsRows, fetchKidsRows, PAGE_SIZE, resolveDir, resolveGender, resolveService, resolveSort } from "./queries";
 
 export default async function KidsPage({
   searchParams,
@@ -24,6 +25,7 @@ export default async function KidsPage({
   const dirParam = typeof sp.dir === "string" ? sp.dir : "desc";
   const genderParam = typeof sp.gender === "string" ? sp.gender : "";
   const serviceParam = typeof sp.service === "string" ? sp.service : "";
+  const requestedPage = typeof sp.page === "string" ? parseInt(sp.page, 10) : 1;
 
   const sort = resolveSort(sortParam);
   const dir = resolveDir(dirParam);
@@ -31,7 +33,11 @@ export default async function KidsPage({
   const service = resolveService(serviceParam);
   const search = q.trim();
 
-  const rows = await fetchKidsRows({ q: search, sort, dir, gender, service });
+  const count = await countKidsRows({ q: search, gender, service });
+  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+
+  const rows = await fetchKidsRows({ q: search, sort, dir, gender, service, page });
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,6 +76,14 @@ export default async function KidsPage({
         gender={gender}
         service={service}
         canManage={session.role === "admin"}
+      />
+      <Pagination
+        basePath="/kids"
+        page={page}
+        totalPages={totalPages}
+        totalCount={count}
+        params={{ q: search, sort, dir, gender, service }}
+        itemLabel="kid"
       />
     </div>
   );

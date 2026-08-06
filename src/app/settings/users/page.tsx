@@ -2,22 +2,41 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { asc } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { Pagination } from "@/components/Pagination";
 import { DeleteUserButton } from "./DeleteUserButton";
 
-export default async function UsersPage() {
+const PAGE_SIZE = 20;
+
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "admin") redirect("/");
 
+  const sp = await searchParams;
+  const requestedPage = typeof sp.page === "string" ? parseInt(sp.page, 10) : 1;
+
+  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(users);
+  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+
+  const [{ adminCount }] = await db
+    .select({ adminCount: sql<number>`count(*)::int` })
+    .from(users)
+    .where(eq(users.role, "admin"));
+
   const rows = await db
     .select({ id: users.id, username: users.username, name: users.name, role: users.role })
     .from(users)
-    .orderBy(asc(users.username));
-
-  const adminCount = rows.filter((r) => r.role === "admin").length;
+    .orderBy(asc(users.username))
+    .limit(PAGE_SIZE)
+    .offset((page - 1) * PAGE_SIZE);
 
   return (
     <div className="flex flex-col gap-6">
@@ -79,6 +98,7 @@ export default async function UsersPage() {
           </tbody>
         </table>
       </div>
+      <Pagination basePath="/settings/users" page={page} totalPages={totalPages} totalCount={count} params={{}} itemLabel="user" />
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { SearchBox } from "@/components/SearchBox";
 import { FilterSelect } from "@/components/FilterSelect";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { BalancesTable } from "./BalancesTable";
-import { Pagination } from "./Pagination";
+import { Pagination } from "@/components/Pagination";
 
 const PAGE_SIZE = 20;
 
@@ -84,7 +84,14 @@ export default async function KcBucksBalancesPage({
         </div>
       </div>
       <BalancesTable rows={rows} sort={sort} dir={dir} q={search} service={service} />
-      <Pagination page={page} totalPages={totalPages} totalCount={count} q={search} sort={sort} dir={dir} service={service} />
+      <Pagination
+        basePath="/kc-bucks/balances"
+        page={page}
+        totalPages={totalPages}
+        totalCount={count}
+        params={{ q: search, sort, dir, service }}
+        itemLabel="kid"
+      />
     </div>
   );
 }

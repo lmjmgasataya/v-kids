@@ -1,7 +1,9 @@
 import { db } from "@/db";
 import { kids, guardians } from "@/db/schema";
 import { GENDER_OPTIONS, SERVICE_OPTIONS } from "@/lib/constants";
-import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+
+export const PAGE_SIZE = 20;
 
 export const SORTABLE = {
   lastName: kids.lastName,
@@ -30,20 +32,7 @@ export function resolveService(serviceParam: string): string {
   return (SERVICE_OPTIONS as readonly string[]).includes(serviceParam) ? serviceParam : "";
 }
 
-export async function fetchKidsRows({
-  q,
-  sort,
-  dir,
-  gender,
-  service,
-}: {
-  q: string;
-  sort: SortKey;
-  dir: "asc" | "desc";
-  gender?: string;
-  service?: string;
-}) {
-  const orderFn = dir === "asc" ? asc : desc;
+function buildKidsWhere({ q, gender, service }: { q: string; gender?: string; service?: string }) {
   const search = q.trim();
   const conditions = [];
   if (search) {
@@ -59,8 +48,44 @@ export async function fetchKidsRows({
   }
   if (gender) conditions.push(eq(kids.gender, gender as "Male" | "Female"));
   if (service) conditions.push(eq(kids.serviceAttending, service));
+  return conditions.length ? and(...conditions) : undefined;
+}
 
-  return db
+export async function countKidsRows({
+  q,
+  gender,
+  service,
+}: {
+  q: string;
+  gender?: string;
+  service?: string;
+}) {
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(kids)
+    .innerJoin(guardians, eq(kids.guardianId, guardians.id))
+    .where(buildKidsWhere({ q, gender, service }));
+  return count;
+}
+
+export async function fetchKidsRows({
+  q,
+  sort,
+  dir,
+  gender,
+  service,
+  page,
+}: {
+  q: string;
+  sort: SortKey;
+  dir: "asc" | "desc";
+  gender?: string;
+  service?: string;
+  page?: number;
+}) {
+  const orderFn = dir === "asc" ? asc : desc;
+
+  const query = db
     .select({
       id: kids.id,
       firstName: kids.firstName,
@@ -76,6 +101,9 @@ export async function fetchKidsRows({
     })
     .from(kids)
     .innerJoin(guardians, eq(kids.guardianId, guardians.id))
-    .where(conditions.length ? and(...conditions) : undefined)
+    .where(buildKidsWhere({ q, gender, service }))
     .orderBy(orderFn(SORTABLE[sort]));
+
+  if (page) return query.limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE);
+  return query;
 }

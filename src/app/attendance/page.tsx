@@ -4,6 +4,7 @@ import { getAttendanceByService, getManilaDayBoundsForDateString, manilaDateStri
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { AttendanceDateNav } from "./AttendanceDateNav";
 import { ServiceRow } from "./ServiceRow";
+import { ExportExcelButton } from "./ExportExcelButton";
 
 const dateHeadingFormatter = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "full",
@@ -37,7 +38,10 @@ export default async function AttendancePage({
   return (
     <div className="flex flex-col gap-6">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Attendance" }]} />
-      <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Attendance</h2>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Attendance</h2>
+        <ExportExcelButton date={date} />
+      </div>
 
       <AttendanceDateNav date={date} today={manilaDateString()}>
         <p className="text-sm text-gray-500 mb-6">{dateHeadingFormatter.format(start)}</p>

@@ -1,7 +1,9 @@
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { GENDER_OPTIONS, SERVICE_OPTIONS } from "@/lib/constants";
-import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+
+export const PAGE_SIZE = 20;
 
 export const SORTABLE = {
   lastName: serviceTeamMembers.lastName,
@@ -29,20 +31,7 @@ export function resolveService(serviceParam: string): string {
   return (SERVICE_OPTIONS as readonly string[]).includes(serviceParam) ? serviceParam : "";
 }
 
-export async function fetchServiceTeamRows({
-  q,
-  sort,
-  dir,
-  gender,
-  service,
-}: {
-  q: string;
-  sort: SortKey;
-  dir: "asc" | "desc";
-  gender?: string;
-  service?: string;
-}) {
-  const orderFn = dir === "asc" ? asc : desc;
+function buildServiceTeamWhere({ q, gender, service }: { q: string; gender?: string; service?: string }) {
   const search = q.trim();
   const conditions = [];
   if (search) {
@@ -50,8 +39,43 @@ export async function fetchServiceTeamRows({
   }
   if (gender) conditions.push(eq(serviceTeamMembers.gender, gender as "Male" | "Female"));
   if (service) conditions.push(eq(serviceTeamMembers.serviceAttending, service));
+  return conditions.length ? and(...conditions) : undefined;
+}
 
-  return db
+export async function countServiceTeamRows({
+  q,
+  gender,
+  service,
+}: {
+  q: string;
+  gender?: string;
+  service?: string;
+}) {
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(serviceTeamMembers)
+    .where(buildServiceTeamWhere({ q, gender, service }));
+  return count;
+}
+
+export async function fetchServiceTeamRows({
+  q,
+  sort,
+  dir,
+  gender,
+  service,
+  page,
+}: {
+  q: string;
+  sort: SortKey;
+  dir: "asc" | "desc";
+  gender?: string;
+  service?: string;
+  page?: number;
+}) {
+  const orderFn = dir === "asc" ? asc : desc;
+
+  const query = db
     .select({
       id: serviceTeamMembers.id,
       firstName: serviceTeamMembers.firstName,
@@ -65,6 +89,9 @@ export async function fetchServiceTeamRows({
       createdAt: serviceTeamMembers.createdAt,
     })
     .from(serviceTeamMembers)
-    .where(conditions.length ? and(...conditions) : undefined)
+    .where(buildServiceTeamWhere({ q, gender, service }))
     .orderBy(orderFn(SORTABLE[sort]));
+
+  if (page) return query.limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE);
+  return query;
 }

@@ -1,38 +1,36 @@
 import Link from "next/link";
 
 export function Pagination({
+  basePath,
   page,
   totalPages,
   totalCount,
-  q,
-  sort,
-  dir,
-  service,
+  params,
+  itemLabel = "item",
 }: {
+  basePath: string;
   page: number;
   totalPages: number;
   totalCount: number;
-  q: string;
-  sort: string;
-  dir: "asc" | "desc";
-  service: string;
+  params: Record<string, string>;
+  itemLabel?: string;
 }) {
   if (totalCount === 0) return null;
 
   function pageHref(target: number) {
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    if (service) params.set("service", service);
-    params.set("sort", sort);
-    params.set("dir", dir);
-    params.set("page", String(target));
-    return `/kc-bucks/balances?${params.toString()}`;
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value) search.set(key, value);
+    }
+    search.set("page", String(target));
+    return `${basePath}?${search.toString()}`;
   }
 
   return (
     <div className="flex items-center justify-between text-sm text-gray-500">
       <span>
-        {totalCount} kid{totalCount === 1 ? "" : "s"} · Page {page} of {totalPages}
+        {totalCount} {itemLabel}
+        {totalCount === 1 ? "" : "s"} · Page {page} of {totalPages}
       </span>
       <div className="flex items-center gap-2">
         {page > 1 ? (
