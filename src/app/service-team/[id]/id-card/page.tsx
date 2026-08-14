@@ -12,6 +12,7 @@ import { capitalizeName, idCardDisplayName } from "@/lib/format";
 export default async function ServiceTeamIdCardPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/service-team");
 
   const { id } = await params;
   const memberId = Number(id);

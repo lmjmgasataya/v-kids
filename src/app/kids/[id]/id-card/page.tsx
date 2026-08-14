@@ -12,6 +12,7 @@ import { capitalizeName, idCardDisplayName } from "@/lib/format";
 export default async function KidIdCardPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/kids");
 
   const { id } = await params;
   const kidId = Number(id);

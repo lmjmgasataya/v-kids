@@ -48,14 +48,14 @@ export default async function KidsPage({
             Registered Kids
           </h2>
           <div className="flex items-center gap-3 flex-wrap">
-            <Link
-              href="/kids/print-ids"
-              className="shrink-0 whitespace-nowrap bg-kids-navy hover:bg-kids-navy/90 text-white text-sm font-bold px-4 py-2 rounded-full transition"
-            >
-              Print IDs
-            </Link>
             {session.role === "admin" && (
               <>
+                <Link
+                  href="/kids/print-ids"
+                  className="shrink-0 whitespace-nowrap bg-kids-navy hover:bg-kids-navy/90 text-white text-sm font-bold px-4 py-2 rounded-full transition"
+                >
+                  Print IDs
+                </Link>
                 <ExportExcelButton q={search} sort={sort} dir={dir} />
                 <ImportKidsModal />
               </>

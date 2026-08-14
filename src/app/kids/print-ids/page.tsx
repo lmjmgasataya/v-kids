@@ -11,6 +11,7 @@ import { PrintIdsWorkspace } from "./PrintIdsWorkspace";
 export default async function PrintIdsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/kids");
 
   const rows = await db
     .select({
