@@ -41,20 +41,19 @@ export async function registerServiceTeamMember(_: unknown, formData: FormData) 
   let photoKey: string | null = null;
   if (isB2Configured()) {
     const photo = formData.get("photo");
-    if (!(photo instanceof File) || photo.size === 0) {
-      return { error: "Please take or upload a photo.", values };
-    }
-    if (!photo.type.startsWith("image/")) {
-      return { error: "The uploaded file must be an image.", values };
-    }
+    if (photo instanceof File && photo.size > 0) {
+      if (!photo.type.startsWith("image/")) {
+        return { error: "The uploaded file must be an image.", values };
+      }
 
-    const resized = await sharp(Buffer.from(await photo.arrayBuffer()))
-      .rotate()
-      .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 82 })
-      .toBuffer();
+      const resized = await sharp(Buffer.from(await photo.arrayBuffer()))
+        .rotate()
+        .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 82 })
+        .toBuffer();
 
-    photoKey = await uploadPhoto(resized, `service-team/${crypto.randomUUID()}.jpg`, "image/jpeg");
+      photoKey = await uploadPhoto(resized, `service-team/${crypto.randomUUID()}.jpg`, "image/jpeg");
+    }
   }
 
   await db.insert(serviceTeamMembers).values({

@@ -39,7 +39,7 @@ export default function TeamRegisterForm({ photoEnabled }: { photoEnabled: boole
           defaultValue={state?.values?.serviceAttending}
         />
         {photoEnabled ? (
-          <PhotoCapture name="photo" required />
+          <PhotoCapture name="photo" />
         ) : (
           <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-4 text-center text-sm text-gray-400">
             Photo capture is currently unavailable.
