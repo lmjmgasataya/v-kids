@@ -17,6 +17,11 @@ export default function Loading() {
           <SkeletonBar className="h-10 w-36 rounded-xl" />
           <SkeletonBar className="h-10 w-28 rounded-xl" />
         </div>
+        <div className="flex gap-2">
+          <SkeletonBar className="h-14 w-24 rounded-xl" />
+          <SkeletonBar className="h-14 w-24 rounded-xl" />
+          <SkeletonBar className="h-14 w-24 rounded-xl" />
+        </div>
         <SkeletonBar className="h-4 w-48" />
         <AttendanceSkeleton />
       </div>

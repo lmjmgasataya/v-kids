@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
+  checkOutAllOpenInService,
   getCheckedInServicesTodayByKidIds,
   getManilaDayBounds,
   getOpenCheckIn,
@@ -49,12 +50,22 @@ export async function checkInKid(
   const error = validateCheckInInput(serviceAttending, remarks);
   if (error) return { error };
 
-  const existingOpen = await getOpenCheckIn(kidId);
-  if (existingOpen) {
+  const { start, end } = getManilaDayBounds();
+
+  const existingOpen = await getOpenCheckIn(kidId, start);
+  if (existingOpen?.isToday) {
     return { error: "This kid is already checked in.", openCheckIn: existingOpen };
   }
+  if (existingOpen) {
+    // Stale open check-in carried over from a previous day (the kid was never
+    // checked out then) — close it out here so today's check-in can proceed;
+    // the partial unique index only allows one open check-in per kid at a time.
+    await db
+      .update(checkIns)
+      .set({ checkedOutAt: new Date(), checkedOutBy: session.userId })
+      .where(eq(checkIns.id, existingOpen.id));
+  }
 
-  const { start, end } = getManilaDayBounds();
   const alreadyCheckedInService = await hasCheckedInServiceToday(kidId, serviceAttending, start, end);
   if (alreadyCheckedInService) {
     return { error: `This kid has already checked in to ${serviceAttending} today.` };
@@ -73,7 +84,7 @@ export async function checkInKid(
       .returning({ id: checkIns.id });
   } catch (err) {
     if (isUniqueViolation(err)) {
-      const openCheckIn = await getOpenCheckIn(kidId);
+      const openCheckIn = await getOpenCheckIn(kidId, start);
       return { error: "This kid is already checked in.", openCheckIn: openCheckIn ?? undefined };
     }
     throw err;
@@ -154,6 +165,26 @@ export async function checkOutKid(
   redirect(withToast(nextPath, "success", "Checked out! 👋"));
 }
 
+// Checks out every kid still checked in to the given service today — a cleanup
+// tool for the end of a service, since kids are often left forgotten open.
+export async function checkOutAllInService(
+  service: string,
+  _prev: CheckOutActionState | undefined,
+  _formData: FormData
+): Promise<CheckOutActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const { start, end } = getManilaDayBounds();
+  const closedCount = await checkOutAllOpenInService(service, start, end, session.userId);
+
+  revalidatePath("/check-in");
+  revalidatePath("/attendance");
+
+  if (closedCount === 0) return { success: "No kids to check out." };
+  return { success: `Checked out ${closedCount} kid${closedCount === 1 ? "" : "s"}. 👋` };
+}
+
 // Row-level checkout form on the roster table redirects + revalidates via
 // checkOutKid on success; on validation failure it just returns the error
 // for the caller's useActionState to surface as a toast.
@@ -203,7 +234,8 @@ export async function undoCheckOut(
   if (!existing) return { error: "This check-in no longer exists." };
   if (!existing.checkedOutAt) return { error: "This kid hasn't been checked out yet." };
 
-  const alreadyOpen = await getOpenCheckIn(existing.kidId);
+  const { start } = getManilaDayBounds();
+  const alreadyOpen = await getOpenCheckIn(existing.kidId, start);
   if (alreadyOpen) {
     return { error: "This kid already has a newer open check-in." };
   }
@@ -238,7 +270,7 @@ export async function searchKidsForCheckIn(query: string): Promise<CheckInSearch
   const kidIds = rows.map((row) => row.id);
   const { start, end } = getManilaDayBounds();
   const [openByKid, servicesByKid] = await Promise.all([
-    getOpenCheckInsByKidIds(kidIds),
+    getOpenCheckInsByKidIds(kidIds, start),
     getCheckedInServicesTodayByKidIds(kidIds, start, end),
   ]);
 
@@ -275,7 +307,7 @@ export async function resolveQrToken(token: string): Promise<{ kid: CheckInSearc
 
   const { start, end } = getManilaDayBounds();
   const [openCheckIn, servicesByKid] = await Promise.all([
-    getOpenCheckIn(row.id),
+    getOpenCheckIn(row.id, start),
     getCheckedInServicesTodayByKidIds([row.id], start, end),
   ]);
 

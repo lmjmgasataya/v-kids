@@ -17,6 +17,9 @@ export const MOBILE_NUMBER_HELP = "Enter a valid mobile number: 09XXXXXXXXX, 639
 export const CURSOR_TRAIL_FLAG_KEY = "cursor_trail";
 export const SERVICE_CARDS_FLAG_KEY = "service_cards";
 
+export const REGISTRATION_FORM_TYPES = ["child", "team"] as const;
+export type RegistrationFormType = (typeof REGISTRATION_FORM_TYPES)[number];
+
 export const ROLE_OPTIONS = ["admin", "volunteer"] as const;
 
 export const CHECKIN_CREDIT_SETTING_KEY = "checkin_credit_amount";

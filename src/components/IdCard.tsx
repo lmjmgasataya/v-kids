@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { LogoMark } from "./LogoMark";
+import { idCardNameFontSize } from "@/lib/format";
 
 // Standard CR80 card size: 85.60mm x 53.98mm (3.37in x 2.125in)
 export const ID_CARD_WIDTH_MM = 85.6;
@@ -14,42 +15,46 @@ const brandStripe = (
   </div>
 );
 
-export const IdCardFront = forwardRef<HTMLDivElement, { displayName: string; fullName: string; flat?: boolean }>(
-  function IdCardFront({ displayName, fullName, flat }, ref) {
-    return (
-      <div
-        ref={ref}
-        className={`id-card-front-bg w-[85.6mm] h-[53.98mm] overflow-hidden flex flex-col break-after-page ${
-          flat
-            ? "rounded-none"
-            : "rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300"
-        }`}
-      >
-        <div className="flex items-center gap-1.5 px-[5mm] pt-[3.5mm]">
-          <LogoMark size={22} priority />
-          <span className="text-[7px] font-bold tracking-widest text-kids-navy uppercase font-[family-name:var(--font-fredoka)]">
-            Kids Church
-          </span>
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-[4mm] gap-1 -mt-[5mm]">
-          <div className="text-[55px] leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] break-words">
-            {displayName}
-          </div>
-          <div className="text-[9px] text-gray-500">{fullName}</div>
-        </div>
-        {brandStripe}
+export const IdCardFront = forwardRef<
+  HTMLDivElement,
+  { displayName: string; fullName: string; flat?: boolean; nameFontSize?: number }
+>(function IdCardFront({ displayName, fullName, flat, nameFontSize }, ref) {
+  return (
+    <div
+      ref={ref}
+      className={`id-card-front-bg w-[85.6mm] h-[53.98mm] overflow-hidden flex flex-col break-after-page ${
+        flat
+          ? "rounded-none"
+          : "rounded-[3mm] print:rounded-none shadow-md print:shadow-none border border-gray-200 print:border print:border-gray-300"
+      }`}
+    >
+      <div className="flex items-center gap-1.5 px-[5mm] pt-[3.5mm]">
+        <LogoMark size={22} priority />
+        <span className="text-[7px] font-bold tracking-widest text-kids-navy uppercase font-[family-name:var(--font-fredoka)]">
+          Kids Church
+        </span>
       </div>
-    );
-  }
-);
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-[4mm] gap-1 -mt-[5mm]">
+        <div
+          style={{ fontSize: nameFontSize ?? idCardNameFontSize(displayName) }}
+          className="leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] break-words"
+        >
+          {displayName}
+        </div>
+        <div className="text-[9px] text-gray-500">{fullName}</div>
+      </div>
+      {brandStripe}
+    </div>
+  );
+});
 
 // Service team front: same layout, colors, and opacity level as the kid card, just swapping
 // the radial-dot background for a diagonal sweep (see .id-card-front-bg-team) so the two are
 // still visually related but distinguishable at a glance.
 export const ServiceTeamIdCardFront = forwardRef<
   HTMLDivElement,
-  { displayName: string; fullName: string; flat?: boolean }
->(function ServiceTeamIdCardFront({ displayName, fullName, flat }, ref) {
+  { displayName: string; fullName: string; flat?: boolean; nameFontSize?: number }
+>(function ServiceTeamIdCardFront({ displayName, fullName, flat, nameFontSize }, ref) {
   return (
     <div
       ref={ref}
@@ -66,7 +71,10 @@ export const ServiceTeamIdCardFront = forwardRef<
         </span>
       </div>
       <div className="flex-1 flex flex-col items-center justify-center text-center px-[4mm] gap-1 -mt-[5mm]">
-        <div className="text-[55px] leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] break-words">
+        <div
+          style={{ fontSize: nameFontSize ?? idCardNameFontSize(displayName) }}
+          className="leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] break-words"
+        >
           {displayName}
         </div>
         <div className="text-[9px] text-gray-500">{fullName}</div>
@@ -92,7 +100,7 @@ export const IdCardBack = forwardRef<
       {brandStripe}
       <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={qrDataUrl} alt="Check-in QR code" className="w-[28mm] h-[28mm]" />
+        <img src={qrDataUrl} alt="Check-in QR code" className="w-[32mm] h-[32mm]" />
         <div className="text-[7px] text-gray-500 text-center px-[4mm]">
           {subtitle} · {fullName}
         </div>

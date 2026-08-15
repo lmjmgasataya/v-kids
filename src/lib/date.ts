@@ -30,3 +30,22 @@ export function getManilaDayBoundsForDateString(dateStr: string): { start: Date;
   const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
   return { start, end };
 }
+
+// "This month" in Asia/Manila as a YYYY-MM string, for use as a month-input default/query param.
+export function manilaMonthString(reference: Date = new Date()): string {
+  const manilaNow = new Date(reference.getTime() + MANILA_OFFSET_MS);
+  return manilaNow.toISOString().slice(0, 7);
+}
+
+export function shiftMonthString(monthStr: string, deltaMonths: number): string {
+  const [year, month] = monthStr.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1 + deltaMonths, 1));
+  return shifted.toISOString().slice(0, 7);
+}
+
+export function getManilaMonthBoundsForMonthString(monthStr: string): { start: Date; end: Date } {
+  const [year, month] = monthStr.split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, 1) - MANILA_OFFSET_MS);
+  const end = new Date(Date.UTC(year, month, 1) - MANILA_OFFSET_MS);
+  return { start, end };
+}

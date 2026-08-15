@@ -71,6 +71,13 @@
       "when": 1785469115378,
       "tag": "0009_burly_zaran",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786799734704,
+      "tag": "0010_steep_iron_patriot",
+      "breakpoints": true
     }
   ]
 }

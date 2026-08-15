@@ -33,5 +33,7 @@ export const config = {
     "/attendance/:path*",
     "/kc-bucks/:path*",
     "/service-team/:path*",
+    "/register/child",
+    "/register/team",
   ],
 };

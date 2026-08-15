@@ -2,6 +2,7 @@ import { and, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, kids } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
+import { manilaDateString } from "@/lib/date";
 
 export * from "@/lib/date";
 
@@ -9,6 +10,9 @@ export interface OpenCheckInSummary {
   id: number;
   serviceAttending: string;
   checkedInAt: Date;
+  // False when this open check-in is a stale carry-over from a previous day
+  // (the kid was never checked out) rather than today's actual check-in.
+  isToday: boolean;
 }
 
 export interface CheckInSearchResult {
@@ -22,15 +26,19 @@ export interface CheckInSearchResult {
   checkedInServicesToday: string[];
 }
 
-export async function getOpenCheckIn(kidId: number): Promise<OpenCheckInSummary | null> {
+export async function getOpenCheckIn(kidId: number, todayStart: Date): Promise<OpenCheckInSummary | null> {
   const [row] = await db
     .select({ id: checkIns.id, serviceAttending: checkIns.serviceAttending, checkedInAt: checkIns.checkedInAt })
     .from(checkIns)
     .where(and(eq(checkIns.kidId, kidId), isNull(checkIns.checkedOutAt)));
-  return row ?? null;
+  if (!row) return null;
+  return { ...row, isToday: row.checkedInAt >= todayStart };
 }
 
-export async function getOpenCheckInsByKidIds(kidIds: number[]): Promise<Map<number, OpenCheckInSummary>> {
+export async function getOpenCheckInsByKidIds(
+  kidIds: number[],
+  todayStart: Date
+): Promise<Map<number, OpenCheckInSummary>> {
   if (kidIds.length === 0) return new Map();
   const rows = await db
     .select({
@@ -41,7 +49,7 @@ export async function getOpenCheckInsByKidIds(kidIds: number[]): Promise<Map<num
     })
     .from(checkIns)
     .where(and(inArray(checkIns.kidId, kidIds), isNull(checkIns.checkedOutAt)));
-  return new Map(rows.map((row) => [row.kidId, row]));
+  return new Map(rows.map((row) => [row.kidId, { ...row, isToday: row.checkedInAt >= todayStart }]));
 }
 
 export async function getCheckedInServicesTodayByKidIds(
@@ -82,6 +90,59 @@ export async function hasCheckedInServiceToday(
     )
     .limit(1);
   return !!row;
+}
+
+export interface DateAttendanceSummary {
+  date: string; // YYYY-MM-DD, Manila calendar date
+  checkedIn: number;
+  stillPresent: number;
+}
+
+// Since services only run on a handful of days a month (usually just Sundays),
+// this buckets a month's check-ins by Manila calendar date in JS rather than
+// pushing a timezone-aware date_trunc into SQL.
+export async function getAttendanceDatesInMonth(start: Date, end: Date): Promise<DateAttendanceSummary[]> {
+  const rows = await db
+    .select({ checkedInAt: checkIns.checkedInAt, checkedOutAt: checkIns.checkedOutAt })
+    .from(checkIns)
+    .where(and(gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end)));
+
+  const buckets = new Map<string, { checkedIn: number; stillPresent: number }>();
+  for (const row of rows) {
+    const dateStr = manilaDateString(row.checkedInAt);
+    const bucket = buckets.get(dateStr) ?? { checkedIn: 0, stillPresent: 0 };
+    bucket.checkedIn += 1;
+    if (!row.checkedOutAt) bucket.stillPresent += 1;
+    buckets.set(dateStr, bucket);
+  }
+
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([date, bucket]) => ({ date, ...bucket }));
+}
+
+// Checks out every still-open check-in for a service within a day window.
+// Shared by the check-in page's (today-only) and attendance page's (any date)
+// bulk checkout buttons. Returns the number of check-ins closed.
+export async function checkOutAllOpenInService(
+  service: string,
+  start: Date,
+  end: Date,
+  checkedOutBy: number
+): Promise<number> {
+  const closed = await db
+    .update(checkIns)
+    .set({ checkedOutAt: new Date(), checkedOutBy })
+    .where(
+      and(
+        eq(checkIns.serviceAttending, service),
+        gte(checkIns.checkedInAt, start),
+        lt(checkIns.checkedInAt, end),
+        isNull(checkIns.checkedOutAt)
+      )
+    )
+    .returning({ id: checkIns.id });
+  return closed.length;
 }
 
 export function validateCheckInInput(serviceAttending: string, remarks: string): string | null {

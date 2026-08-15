@@ -2,8 +2,9 @@
 
 import * as XLSX from "xlsx";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
-import { getAttendanceByService, getManilaDayBoundsForDateString } from "@/lib/checkIn";
+import { checkOutAllOpenInService, getAttendanceByService, getManilaDayBoundsForDateString } from "@/lib/checkIn";
 
 export async function exportAttendanceExcel(date: string) {
   const session = await getSession();
@@ -41,4 +42,29 @@ export async function exportAttendanceExcel(date: string) {
     filename: `attendance-${date}.xlsx`,
     base64: buffer.toString("base64"),
   };
+}
+
+export interface CheckOutAllActionState {
+  error?: string;
+  success?: string;
+}
+
+export async function checkOutAllInServiceForDate(
+  service: string,
+  date: string,
+  _prev: CheckOutAllActionState | undefined,
+  _formData: FormData
+): Promise<CheckOutAllActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Invalid date." };
+
+  const { start, end } = getManilaDayBoundsForDateString(date);
+  const closedCount = await checkOutAllOpenInService(service, start, end, session.userId);
+
+  revalidatePath("/attendance");
+  revalidatePath("/check-in");
+
+  if (closedCount === 0) return { success: "No kids to check out." };
+  return { success: `Checked out ${closedCount} kid${closedCount === 1 ? "" : "s"}. 👋` };
 }

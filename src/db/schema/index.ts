@@ -84,6 +84,15 @@ export const featureFlags = pgTable("feature_flags", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const registrationFormTypeEnum = pgEnum("registration_form_type", ["child", "team"]);
+
+export const registrationLinks = pgTable("registration_links", {
+  formType: registrationFormTypeEnum("form_type").primaryKey(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const kcBucksTransactionTypeEnum = pgEnum("kc_bucks_transaction_type", ["checkin", "grant", "redemption"]);
 
 export const kcBucksSettings = pgTable("kc_bucks_settings", {
@@ -121,5 +130,6 @@ export type Kid = typeof kids.$inferSelect;
 export type ServiceTeamMember = typeof serviceTeamMembers.$inferSelect;
 export type CheckIn = typeof checkIns.$inferSelect;
 export type FeatureFlag = typeof featureFlags.$inferSelect;
+export type RegistrationLink = typeof registrationLinks.$inferSelect;
 export type KcBucksSettings = typeof kcBucksSettings.$inferSelect;
 export type KcBucksTransaction = typeof kcBucksTransactions.$inferSelect;

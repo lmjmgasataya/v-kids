@@ -1,13 +1,15 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
-import { featureFlags } from "@/db/schema";
+import { featureFlags, registrationLinks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CURSOR_TRAIL_FLAG_KEY, SERVICE_CARDS_FLAG_KEY } from "@/lib/constants";
-import { toggleCursorTrail, toggleServiceCards } from "./actions";
+import { toggleCursorTrail, toggleServiceCards, generateRegistrationLink, deleteRegistrationLink } from "./actions";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import { RegistrationLinkCard } from "@/components/RegistrationLinkCard";
 
 export default async function SettingsPage() {
   const session = await getSession();
@@ -22,6 +24,15 @@ export default async function SettingsPage() {
     .from(featureFlags)
     .where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY));
   const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
+
+  const links = await db.select().from(registrationLinks);
+  const childLink = links.find((l) => l.formType === "child");
+  const teamLink = links.find((l) => l.formType === "team");
+
+  const h = await headers();
+  const host = h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
+  const origin = `${proto}://${host}`;
 
   return (
     <div className="flex flex-col gap-6 max-w-xl mx-auto">
@@ -51,6 +62,34 @@ export default async function SettingsPage() {
           </span>
           <ToggleSwitch enabled={serviceCardsEnabled} />
         </form>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h3 className="text-lg font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
+          Shareable registration links
+        </h3>
+        <p className="text-sm text-gray-500 -mt-2">
+          Generate a public link for each form that stops working after it expires — hand it out for a specific
+          event without leaving registration open forever.
+        </p>
+
+        <RegistrationLinkCard
+          title="Child registration"
+          description="Public link to the child + guardian sign-up form."
+          url={childLink ? `${origin}/register/child/link/${childLink.token}` : null}
+          expiresAt={childLink?.expiresAt.toISOString() ?? null}
+          action={generateRegistrationLink.bind(null, "child")}
+          deleteAction={deleteRegistrationLink.bind(null, "child")}
+        />
+
+        <RegistrationLinkCard
+          title="Service team registration"
+          description="Public link to the service team member sign-up form."
+          url={teamLink ? `${origin}/register/team/link/${teamLink.token}` : null}
+          expiresAt={teamLink?.expiresAt.toISOString() ?? null}
+          action={generateRegistrationLink.bind(null, "team")}
+          deleteAction={deleteRegistrationLink.bind(null, "team")}
+        />
       </div>
 
       <Link

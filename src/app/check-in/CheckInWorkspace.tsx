@@ -24,6 +24,7 @@ function parseQrToken(decodedText: string): string {
 }
 
 const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short", timeZone: "Asia/Manila" });
+const dateFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" });
 
 // SERVICE_OPTIONS entries are "<time> - <place>" (e.g. "9AM - Mandurriao"); split for the
 // two-line card display so the dash doesn't need to render.
@@ -109,7 +110,7 @@ function SearchPanel({ intent, service }: { intent: Intent; service: string }) {
 
   const filtered = results.filter((kid) =>
     intent === "checkin"
-      ? !kid.openCheckIn && !kid.checkedInServicesToday.includes(service)
+      ? !kid.openCheckIn?.isToday && !kid.checkedInServicesToday.includes(service)
       : kid.openCheckIn?.serviceAttending === service
   );
 
@@ -140,6 +141,12 @@ function SearchPanel({ intent, service }: { intent: Intent; service: string }) {
                 <div className="text-xs text-gray-400">
                   Age {kid.age} · {kid.defaultService}
                 </div>
+                {intent === "checkin" && kid.openCheckIn && !kid.openCheckIn.isToday && (
+                  <div className="text-xs font-medium text-kids-magenta mt-0.5">
+                    ⚠ Not yet checked out from {kid.openCheckIn.serviceAttending} on{" "}
+                    {dateFormatter.format(kid.openCheckIn.checkedInAt)}
+                  </div>
+                )}
               </div>
               {intent === "checkin" ? (
                 <QuickCheckInButton kidId={kid.id} service={service} />
@@ -205,6 +212,12 @@ function CheckInForm({
           <p className="text-sm text-gray-700">
             Checking in to <span className="font-semibold">{service}</span>.
           </p>
+          {kid.openCheckIn && !kid.openCheckIn.isToday && (
+            <p className="text-xs text-kids-magenta">
+              ⚠ Still shows as checked in to {kid.openCheckIn.serviceAttending} on{" "}
+              {dateFormatter.format(kid.openCheckIn.checkedInAt)} — checking in now will close that out.
+            </p>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
             <textarea name="remarks" rows={2} maxLength={500} className={inputCls} />
@@ -394,7 +407,7 @@ export function CheckInWorkspace({
       return;
     }
     const kid = result.kid;
-    if (forIntent === "checkin" && kid.openCheckIn) {
+    if (forIntent === "checkin" && kid.openCheckIn?.isToday) {
       setScanError(
         <>
           <Highlight>{capitalizeName(kid.firstName)}</Highlight> is already checked in to{" "}
@@ -462,7 +475,7 @@ export function CheckInWorkspace({
       }
       const kid = result.kid;
       setMode("scan");
-      if (kid.openCheckIn) {
+      if (kid.openCheckIn?.isToday) {
         setIntent("checkout");
         setServiceState(kid.openCheckIn.serviceAttending);
         updateUrlParams(kid.openCheckIn.serviceAttending, "checkout", "scan");

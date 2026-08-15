@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { IdCardFront, IdCardBack, ServiceTeamIdCardFront } from "./IdCard";
 import { exportIdCardsToPdf, exportIdCardsToPngZip, sanitizeFileName } from "@/lib/idCardExport";
+import { idCardNameFontSize } from "@/lib/format";
 
 export function IdCardViewer({
   displayName,
@@ -23,6 +24,8 @@ export function IdCardViewer({
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"pdf" | "png" | null>(null);
+  const [nameScale, setNameScale] = useState(1);
+  const nameFontSize = Math.round(idCardNameFontSize(displayName) * nameScale);
 
   async function handleExportPdf() {
     if (!frontRef.current || !backRef.current || exporting) return;
@@ -54,15 +57,31 @@ export function IdCardViewer({
 
   return (
     <>
-      <Front displayName={displayName} fullName={fullName} />
+      <Front displayName={displayName} fullName={fullName} nameFontSize={nameFontSize} />
       <IdCardBack qrDataUrl={qrDataUrl} fullName={fullName} subtitle={backSubtitle} />
 
       {/* Hidden flat (square, shadowless) copies dedicated to PDF/PNG capture — html2canvas
           doesn't reliably respect the preview's shadow/rounded corners, so export uses its
           own always-flat instance instead of fighting that in the capture step. */}
       <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:hidden">
-        <Front ref={frontRef} displayName={displayName} fullName={fullName} flat />
+        <Front ref={frontRef} displayName={displayName} fullName={fullName} nameFontSize={nameFontSize} flat />
         <IdCardBack ref={backRef} qrDataUrl={qrDataUrl} fullName={fullName} subtitle={backSubtitle} flat />
+      </div>
+
+      <div className="print:hidden flex flex-col items-center gap-1.5 w-full max-w-xs">
+        <label htmlFor="name-scale" className="text-sm font-semibold text-gray-600">
+          Name size: {Math.round(nameScale * 100)}%
+        </label>
+        <input
+          id="name-scale"
+          type="range"
+          min={0.5}
+          max={1.5}
+          step={0.05}
+          value={nameScale}
+          onChange={(e) => setNameScale(Number(e.target.value))}
+          className="w-full accent-kids-navy"
+        />
       </div>
 
       <div className="print:hidden flex items-center gap-3 flex-wrap justify-center">

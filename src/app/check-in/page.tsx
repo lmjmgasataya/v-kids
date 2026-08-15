@@ -7,6 +7,7 @@ import { getManilaDayBounds } from "@/lib/checkIn";
 import { SERVICE_CARDS_FLAG_KEY, SERVICE_OPTIONS } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CheckInWorkspace } from "./CheckInWorkspace";
+import { CheckOutAllButton } from "./CheckOutAllButton";
 import { RosterTable } from "./RosterTable";
 
 export default async function CheckInPage({
@@ -54,6 +55,8 @@ export default async function CheckInPage({
     )
     .orderBy(desc(checkIns.checkedInAt));
 
+  const stillOpenCount = roster.filter((row) => !row.checkedOutAt).length;
+
   return (
     <div className="flex flex-col gap-6">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Check-In" }]} />
@@ -67,7 +70,10 @@ export default async function CheckInPage({
       />
 
       <div>
-        <h3 className="text-lg font-bold text-kids-navy mb-3">Today&apos;s roster — {service}</h3>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h3 className="text-lg font-bold text-kids-navy">Today&apos;s roster — {service}</h3>
+          <CheckOutAllButton service={service} count={stillOpenCount} />
+        </div>
         <RosterTable rows={roster} />
       </div>
     </div>

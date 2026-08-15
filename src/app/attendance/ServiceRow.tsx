@@ -3,10 +3,11 @@
 import { useState } from "react";
 import type { ServiceAttendance } from "@/lib/checkIn";
 import { capitalizeName } from "@/lib/format";
+import { CheckOutAllButton } from "./CheckOutAllButton";
 
 const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short", timeZone: "Asia/Manila" });
 
-export function ServiceRow({ row }: { row: ServiceAttendance }) {
+export function ServiceRow({ row, date }: { row: ServiceAttendance; date: string }) {
   const [open, setOpen] = useState(false);
   const hasKids = row.checkedIn > 0;
 
@@ -31,14 +32,17 @@ export function ServiceRow({ row }: { row: ServiceAttendance }) {
         </td>
         <td className="px-4 py-3 text-right text-gray-900">{row.checkedIn}</td>
         <td className="px-4 py-3 text-right text-gray-500">{row.checkedOut}</td>
-        <td className="px-4 py-3 text-right">
-          {row.stillPresent > 0 ? (
-            <span className="text-xs font-semibold text-kids-green bg-kids-green/10 rounded-full px-2 py-1">
-              {row.stillPresent}
-            </span>
-          ) : (
-            <span className="text-gray-300">0</span>
-          )}
+        <td className="px-4 py-3">
+          <div className="flex items-center justify-end gap-2">
+            {row.stillPresent > 0 ? (
+              <span className="text-xs font-semibold text-kids-green bg-kids-green/10 rounded-full px-2 py-1">
+                {row.stillPresent}
+              </span>
+            ) : (
+              <span className="text-gray-300">0</span>
+            )}
+            <CheckOutAllButton service={row.service} date={date} count={row.stillPresent} />
+          </div>
         </td>
       </tr>
       {open && hasKids && (

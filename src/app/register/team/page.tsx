@@ -1,8 +1,13 @@
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { isB2Configured } from "@/lib/storage";
 import TeamRegisterForm from "./TeamRegisterForm";
 
-export default function RegisterTeamPage() {
+export default async function RegisterTeamPage() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
   return (
     <div>
       <Breadcrumbs
