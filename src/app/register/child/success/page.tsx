@@ -4,7 +4,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { db } from "@/db";
 import { kids } from "@/db/schema";
 import { getSession } from "@/lib/auth";
-import { getOpenCheckIn } from "@/lib/checkIn";
+import { getManilaDayBounds, getOpenCheckIn } from "@/lib/checkIn";
 import { capitalizeName } from "@/lib/format";
 import { CheckInNowForm } from "./CheckInNowForm";
 
@@ -26,7 +26,8 @@ export default async function RegisterSuccessPage({
       .where(eq(kids.id, kidId));
     kid = row && { ...row, firstName: capitalizeName(row.firstName) };
     if (kid) {
-      alreadyCheckedIn = !!(await getOpenCheckIn(kid.id));
+      const { start } = getManilaDayBounds();
+      alreadyCheckedIn = !!(await getOpenCheckIn(kid.id, start))?.isToday;
     }
   }
 
