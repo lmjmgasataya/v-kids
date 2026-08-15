@@ -25,7 +25,9 @@ export function IdCardViewer({
   const backRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"pdf" | "png" | null>(null);
   const [nameScale, setNameScale] = useState(1);
-  const nameFontSize = Math.round(idCardNameFontSize(displayName) * nameScale);
+  const [editableDisplayName, setEditableDisplayName] = useState(displayName);
+  const shownDisplayName = editableDisplayName.trim() || displayName;
+  const nameFontSize = Math.round(idCardNameFontSize(shownDisplayName) * nameScale);
 
   async function handleExportPdf() {
     if (!frontRef.current || !backRef.current || exporting) return;
@@ -57,15 +59,39 @@ export function IdCardViewer({
 
   return (
     <>
-      <Front displayName={displayName} fullName={fullName} nameFontSize={nameFontSize} />
+      <Front displayName={shownDisplayName} fullName={fullName} nameFontSize={nameFontSize} />
       <IdCardBack qrDataUrl={qrDataUrl} fullName={fullName} subtitle={backSubtitle} />
 
       {/* Hidden flat (square, shadowless) copies dedicated to PDF/PNG capture — html2canvas
           doesn't reliably respect the preview's shadow/rounded corners, so export uses its
           own always-flat instance instead of fighting that in the capture step. */}
       <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:hidden">
-        <Front ref={frontRef} displayName={displayName} fullName={fullName} nameFontSize={nameFontSize} flat />
+        <Front ref={frontRef} displayName={shownDisplayName} fullName={fullName} nameFontSize={nameFontSize} flat />
         <IdCardBack ref={backRef} qrDataUrl={qrDataUrl} fullName={fullName} subtitle={backSubtitle} flat />
+      </div>
+
+      <div className="print:hidden flex flex-col items-center gap-1.5 w-full max-w-xs">
+        <label htmlFor="display-name" className="text-sm font-semibold text-gray-600">
+          Name on card
+        </label>
+        <div className="flex items-center gap-2 w-full">
+          <input
+            id="display-name"
+            type="text"
+            value={editableDisplayName}
+            onChange={(e) => setEditableDisplayName(e.target.value)}
+            className="flex-1 rounded-xl border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy"
+          />
+          {editableDisplayName !== displayName && (
+            <button
+              type="button"
+              onClick={() => setEditableDisplayName(displayName)}
+              className="text-xs font-semibold text-kids-navy hover:underline whitespace-nowrap"
+            >
+              Reset
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="print:hidden flex flex-col items-center gap-1.5 w-full max-w-xs">

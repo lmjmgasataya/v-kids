@@ -37,7 +37,9 @@ export const IdCardFront = forwardRef<
       <div className="flex-1 flex flex-col items-center justify-center text-center px-[4mm] gap-1 -mt-[5mm]">
         <div
           style={{ fontSize: nameFontSize ?? idCardNameFontSize(displayName) }}
-          className="leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] break-words"
+          className={`leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] max-w-full ${
+            displayName.trim().includes(" ") ? "whitespace-nowrap" : "break-words"
+          }`}
         >
           {displayName}
         </div>
@@ -73,7 +75,9 @@ export const ServiceTeamIdCardFront = forwardRef<
       <div className="flex-1 flex flex-col items-center justify-center text-center px-[4mm] gap-1 -mt-[5mm]">
         <div
           style={{ fontSize: nameFontSize ?? idCardNameFontSize(displayName) }}
-          className="leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] break-words"
+          className={`leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] max-w-full ${
+            displayName.trim().includes(" ") ? "whitespace-nowrap" : "break-words"
+          }`}
         >
           {displayName}
         </div>

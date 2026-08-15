@@ -21,6 +21,11 @@ export function idCardDisplayName(firstName: string, nickname: string | null | u
  * (85.6mm card minus 2x4mm padding, at the browser's fixed 96px/in mm conversion).
  */
 export function idCardNameFontSize(name: string): number {
-  const length = name.trim().length || 1;
-  return Math.max(24, Math.min(80, Math.round(450 / length)));
+  const trimmed = name.trim();
+  const length = trimmed.length || 1;
+  const base = Math.min(80, Math.round(570 / length));
+  // M/W (and their lowercase forms) render noticeably wider than the average glyph the base
+  // formula assumes, so trim the size a bit further whenever one shows up.
+  const hasWideLetter = /[mwcgb]/i.test(trimmed);
+  return Math.max(24, hasWideLetter ? Math.round(base * 0.85) : base);
 }
