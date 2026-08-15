@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { checkInKid, checkOutKid, resolveQrToken, searchKidsForCheckIn } from "./actions";
-import type { CheckInSearchResult, OpenCheckInSummary } from "@/lib/checkIn";
+import { checkInKid, checkOutKid, resolveQrToken } from "./actions";
+import type { CheckInDirectoryEntry, CheckInSearchResult, OpenCheckInSummary } from "@/lib/checkIn";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { inputCls } from "@/components/form";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -91,28 +91,36 @@ function QuickCheckOutButton({ checkInId, service }: { checkInId: number; servic
   );
 }
 
-function SearchPanel({ intent, service }: { intent: Intent; service: string }) {
+function SearchPanel({
+  intent,
+  service,
+  directory,
+}: {
+  intent: Intent;
+  service: string;
+  directory: CheckInDirectoryEntry[];
+}) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CheckInSearchResult[]>([]);
-  const [isPending, startTransition] = useTransition();
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function handleChange(next: string) {
-    setQuery(next);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      startTransition(async () => {
-        const rows = await searchKidsForCheckIn(next);
-        setResults(rows);
-      });
-    }, 300);
-  }
-
-  const filtered = results.filter((kid) =>
-    intent === "checkin"
-      ? !kid.openCheckIn?.isToday && !kid.checkedInServicesToday.includes(service)
-      : kid.openCheckIn?.serviceAttending === service
-  );
+  // Filtered entirely from the preloaded directory — no debounce, no server
+  // round trip, results update on every keystroke.
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return directory
+      .filter(
+        (kid) =>
+          kid.firstName.toLowerCase().includes(q) ||
+          kid.lastName.toLowerCase().includes(q) ||
+          (kid.nickname?.toLowerCase().includes(q) ?? false)
+      )
+      .filter((kid) =>
+        intent === "checkin"
+          ? !kid.openCheckIn?.isToday && !kid.checkedInServicesToday.includes(service)
+          : kid.openCheckIn?.serviceAttending === service
+      )
+      .slice(0, 10);
+  }, [directory, query, intent, service]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -120,11 +128,10 @@ function SearchPanel({ intent, service }: { intent: Intent; service: string }) {
         type="search"
         placeholder={intent === "checkin" ? "Search kids to check in…" : "Search kids to check out…"}
         value={query}
-        onChange={(e) => handleChange(e.target.value)}
+        onChange={(e) => setQuery(e.target.value)}
         className={inputCls}
       />
-      {isPending && <p className="text-xs text-gray-400">Searching…</p>}
-      {!isPending && query.trim() && filtered.length === 0 && (
+      {query.trim() && filtered.length === 0 && (
         <p className="text-xs text-gray-400">
           {intent === "checkin" ? "No matching kids available to check in." : "No matching kids are currently checked in."}
         </p>
@@ -314,12 +321,17 @@ export function CheckInWorkspace({
   initialIntent,
   initialMode,
   serviceCardsEnabled,
+  directory,
 }: {
   initialToken?: string;
   initialService?: string;
   initialIntent?: Intent;
   initialMode?: "search" | "scan";
   serviceCardsEnabled?: boolean;
+  // Preloaded on the server (page.tsx) so scans/searches resolve from memory
+  // instead of a per-interaction DB round trip. Refreshed whenever the server
+  // page re-renders with fresh data, e.g. after router.refresh() on check-in/out.
+  directory: CheckInDirectoryEntry[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -332,6 +344,8 @@ export function CheckInWorkspace({
   const modeButtonsRef = useRef<HTMLDivElement | null>(null);
   const scanResultRef = useRef<HTMLDivElement | null>(null);
   const qrScannerRef = useRef<QrScannerHandle | null>(null);
+
+  const directoryByToken = useMemo(() => new Map(directory.map((kid) => [kid.qrToken, kid])), [directory]);
 
   // The confirm/checkout card is a fixed full-screen popup now, so only the
   // inline scan-error card (not the popup) needs to be scrolled into view.
@@ -401,7 +415,12 @@ export function CheckInWorkspace({
   async function resolveToken(decodedText: string, forIntent: Intent) {
     setScanError(null);
     setSelectedKid(null);
-    const result = await resolveQrToken(parseQrToken(decodedText));
+    const parsedToken = parseQrToken(decodedText);
+    // Resolve from the preloaded directory when possible — falls back to the
+    // server action for tokens not in the snapshot (e.g. a kid registered
+    // after this page loaded) or malformed/non-matching scans.
+    const local = directoryByToken.get(parsedToken);
+    const result = local ? { kid: local } : await resolveQrToken(parsedToken);
     if ("error" in result) {
       setScanError(result.error);
       return;
@@ -467,7 +486,10 @@ export function CheckInWorkspace({
   useEffect(() => {
     if (!initialToken) return;
     let cancelled = false;
-    resolveQrToken(parseQrToken(initialToken)).then((result) => {
+    const parsedToken = parseQrToken(initialToken);
+    const local = directoryByToken.get(parsedToken);
+    const lookup = local ? Promise.resolve({ kid: local }) : resolveQrToken(parsedToken);
+    lookup.then((result) => {
       if (cancelled) return;
       if ("error" in result) {
         setScanError(result.error);
@@ -489,6 +511,9 @@ export function CheckInWorkspace({
     return () => {
       cancelled = true;
     };
+    // Deliberately excludes directoryByToken — this deep-link resolution
+    // should only run once on mount, against whatever directory loaded then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialToken, updateUrlParams]);
 
   return (
@@ -591,7 +616,7 @@ export function CheckInWorkspace({
         </button>
       </div>
 
-      {mode === "search" && <SearchPanel intent={intent} service={service} />}
+      {mode === "search" && <SearchPanel intent={intent} service={service} directory={directory} />}
       {mode === "scan" && (
         <QrScanner
           ref={qrScannerRef}

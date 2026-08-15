@@ -71,6 +71,39 @@ export async function getCheckedInServicesTodayByKidIds(
   return new Map(Array.from(map.entries()).map(([kidId, services]) => [kidId, Array.from(services)]));
 }
 
+export interface CheckInDirectoryEntry extends CheckInSearchResult {
+  qrToken: string;
+}
+
+// Every kid plus their live check-in status, for the check-in page to preload
+// client-side — search and QR-scan resolution then both run against this
+// in-memory snapshot instead of round-tripping to the DB per keystroke/scan.
+export async function getCheckInDirectory(start: Date, end: Date): Promise<CheckInDirectoryEntry[]> {
+  const rows = await db
+    .select({
+      id: kids.id,
+      firstName: kids.firstName,
+      lastName: kids.lastName,
+      nickname: kids.nickname,
+      age: kids.age,
+      defaultService: kids.serviceAttending,
+      qrToken: kids.qrToken,
+    })
+    .from(kids);
+
+  const kidIds = rows.map((row) => row.id);
+  const [openByKid, servicesByKid] = await Promise.all([
+    getOpenCheckInsByKidIds(kidIds, start),
+    getCheckedInServicesTodayByKidIds(kidIds, start, end),
+  ]);
+
+  return rows.map((row) => ({
+    ...row,
+    openCheckIn: openByKid.get(row.id) ?? null,
+    checkedInServicesToday: servicesByKid.get(row.id) ?? [],
+  }));
+}
+
 export async function hasCheckedInServiceToday(
   kidId: number,
   service: string,

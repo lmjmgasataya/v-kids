@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, ilike, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, kcBucksTransactions, kids } from "@/db/schema";
 import { getSession } from "@/lib/auth";
@@ -11,7 +11,6 @@ import {
   getCheckedInServicesTodayByKidIds,
   getManilaDayBounds,
   getOpenCheckIn,
-  getOpenCheckInsByKidIds,
   hasCheckedInServiceToday,
   validateCheckInInput,
   type CheckInSearchResult,
@@ -245,40 +244,6 @@ export async function undoCheckOut(
   revalidatePath("/check-in");
   revalidatePath("/attendance");
   return { success: "Check-out undone." };
-}
-
-export async function searchKidsForCheckIn(query: string): Promise<CheckInSearchResult[]> {
-  const session = await getSession();
-  if (!session) return [];
-
-  const search = query.trim();
-  if (!search) return [];
-
-  const rows = await db
-    .select({
-      id: kids.id,
-      firstName: kids.firstName,
-      lastName: kids.lastName,
-      nickname: kids.nickname,
-      age: kids.age,
-      defaultService: kids.serviceAttending,
-    })
-    .from(kids)
-    .where(or(ilike(kids.firstName, `%${search}%`), ilike(kids.lastName, `%${search}%`), ilike(kids.nickname, `%${search}%`)))
-    .limit(10);
-
-  const kidIds = rows.map((row) => row.id);
-  const { start, end } = getManilaDayBounds();
-  const [openByKid, servicesByKid] = await Promise.all([
-    getOpenCheckInsByKidIds(kidIds, start),
-    getCheckedInServicesTodayByKidIds(kidIds, start, end),
-  ]);
-
-  return rows.map((row) => ({
-    ...row,
-    openCheckIn: openByKid.get(row.id) ?? null,
-    checkedInServicesToday: servicesByKid.get(row.id) ?? [],
-  }));
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

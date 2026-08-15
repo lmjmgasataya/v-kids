@@ -3,7 +3,7 @@ import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { checkIns, featureFlags, kids } from "@/db/schema";
-import { getManilaDayBounds } from "@/lib/checkIn";
+import { getCheckInDirectory, getManilaDayBounds } from "@/lib/checkIn";
 import { SERVICE_CARDS_FLAG_KEY, SERVICE_OPTIONS } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CheckInWorkspace } from "./CheckInWorkspace";
@@ -31,6 +31,8 @@ export default async function CheckInPage({
   const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
 
   const { start, end } = getManilaDayBounds();
+
+  const directory = await getCheckInDirectory(start, end);
 
   const roster = await db
     .select({
@@ -67,6 +69,7 @@ export default async function CheckInPage({
         initialIntent={intent}
         initialMode={mode}
         serviceCardsEnabled={serviceCardsEnabled}
+        directory={directory}
       />
 
       <div>
