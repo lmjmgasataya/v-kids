@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { QrScanner, playSuccessSound } from "@/components/QrScanner";
 import { useHardwareScanListener } from "@/components/useHardwareScanListener";
+import { ScanningPopup } from "@/components/ScanningPopup";
+import { ScanErrorPopup } from "@/components/ScanErrorPopup";
 import { inputCls } from "@/components/form";
 import { searchKidsBasic, resolveKidBasicByQrToken, type KcBucksKid } from "./actions";
 import { capitalizeName } from "@/lib/format";
@@ -157,9 +159,11 @@ export function KidLookupPanel({ onSelect }: { onSelect: (kid: KcBucksKid) => vo
       {mode === "scan" && (
         <div className="flex flex-col gap-2">
           <QrScanner onDecode={handleDecode} onScanAgain={() => setScanError(null)} />
-          {scanError && <p className="text-sm text-red-600">{scanError}</p>}
         </div>
       )}
+
+      {scanError && <ScanErrorPopup message={scanError} onClose={() => setScanError(null)} />}
+      {hwScanBusy && <ScanningPopup />}
     </div>
   );
 }

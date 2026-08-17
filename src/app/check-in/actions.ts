@@ -51,9 +51,18 @@ export async function checkInKid(
 
   const { start, end } = getManilaDayBounds();
 
-  const existingOpen = await getOpenCheckIn(kidId, start);
+  // These three reads are independent of each other, so run them concurrently
+  // instead of round-tripping to the DB one at a time.
+  const [existingOpen, alreadyCheckedInService, creditAmount] = await Promise.all([
+    getOpenCheckIn(kidId, start),
+    hasCheckedInServiceToday(kidId, serviceAttending, start, end),
+    getCheckInCreditAmount(),
+  ]);
   if (existingOpen?.isToday) {
     return { error: "This kid is already checked in.", openCheckIn: existingOpen };
+  }
+  if (alreadyCheckedInService) {
+    return { error: `This kid has already checked in to ${serviceAttending} today.` };
   }
   if (existingOpen) {
     // Stale open check-in carried over from a previous day (the kid was never
@@ -63,11 +72,6 @@ export async function checkInKid(
       .update(checkIns)
       .set({ checkedOutAt: new Date(), checkedOutBy: session.userId })
       .where(eq(checkIns.id, existingOpen.id));
-  }
-
-  const alreadyCheckedInService = await hasCheckedInServiceToday(kidId, serviceAttending, start, end);
-  if (alreadyCheckedInService) {
-    return { error: `This kid has already checked in to ${serviceAttending} today.` };
   }
 
   let insertedCheckIn: { id: number };
@@ -89,7 +93,6 @@ export async function checkInKid(
     throw err;
   }
 
-  const creditAmount = await getCheckInCreditAmount();
   if (creditAmount > 0) {
     await db.insert(kcBucksTransactions).values({
       kidId,
