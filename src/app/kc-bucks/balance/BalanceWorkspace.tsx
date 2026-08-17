@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { QrScanner } from "@/components/QrScanner";
+import { QrScanner, playSuccessSound } from "@/components/QrScanner";
+import { useHardwareScanListener } from "@/components/useHardwareScanListener";
 import { inputCls } from "@/components/form";
 import { resolveKidBasicByQrToken } from "../actions";
 import { searchKidsWithBalance, type KidBalanceSearchResult } from "./actions";
@@ -28,6 +29,7 @@ export function BalanceWorkspace() {
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<KidBalanceSearchResult[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [hwScanBusy, setHwScanBusy] = useState(false);
   const [isSearching, startSearch] = useTransition();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -67,6 +69,22 @@ export function BalanceWorkspace() {
     }
     router.push(`/kc-bucks/balance/${result.kid.id}`);
   }
+
+  // Mode "search" has no camera to drive the scanner off of, but a hardware
+  // (keyboard-wedge) QR scanner still just "types" the decoded text — so
+  // listen for it here too, gated off while a previous scan is still resolving.
+  useHardwareScanListener(
+    async (text) => {
+      setHwScanBusy(true);
+      playSuccessSound();
+      try {
+        await handleDecode(text);
+      } finally {
+        setHwScanBusy(false);
+      }
+    },
+    { enabled: mode === "search" && !scanError && !hwScanBusy }
+  );
 
   // Keep the active tab in the URL so it survives a back-navigation from the kid detail page.
   function switchMode(next: "search" | "scan") {
