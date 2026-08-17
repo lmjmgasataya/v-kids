@@ -6,11 +6,17 @@ import { db } from "@/db";
 import { featureFlags, registrationLinks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { AUTO_CHECK_IN_FLAG_KEY, CURSOR_TRAIL_FLAG_KEY, SERVICE_CARDS_FLAG_KEY } from "@/lib/constants";
+import {
+  AUTO_CHECK_IN_FLAG_KEY,
+  AUTO_CHECK_OUT_FLAG_KEY,
+  CURSOR_TRAIL_FLAG_KEY,
+  SERVICE_CARDS_FLAG_KEY,
+} from "@/lib/constants";
 import {
   toggleCursorTrail,
   toggleServiceCards,
   toggleAutoCheckIn,
+  toggleAutoCheckOut,
   generateRegistrationLink,
   deleteRegistrationLink,
 } from "./actions";
@@ -36,6 +42,12 @@ export default async function SettingsPage() {
     .from(featureFlags)
     .where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY));
   const autoCheckInEnabled = autoCheckInFlag?.enabled ?? false;
+
+  const [autoCheckOutFlag] = await db
+    .select()
+    .from(featureFlags)
+    .where(eq(featureFlags.key, AUTO_CHECK_OUT_FLAG_KEY));
+  const autoCheckOutEnabled = autoCheckOutFlag?.enabled ?? false;
 
   const links = await db.select().from(registrationLinks);
   const childLink = links.find((l) => l.formType === "child");
@@ -88,6 +100,21 @@ export default async function SettingsPage() {
             {autoCheckInEnabled ? "On" : "Off"}
           </span>
           <ToggleSwitch enabled={autoCheckInEnabled} />
+        </form>
+      </div>
+
+      <div className="rounded-2xl border-2 border-kids-navy/20 bg-white p-6 flex items-center justify-between gap-4">
+        <div>
+          <p className="font-semibold text-gray-900">Auto check-out</p>
+          <p className="text-sm text-gray-500">
+            Skip the confirmation card — a scan or a &quot;Check out&quot; tap checks the kid out immediately.
+          </p>
+        </div>
+        <form action={toggleAutoCheckOut} className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-gray-500 w-8 text-right">
+            {autoCheckOutEnabled ? "On" : "Off"}
+          </span>
+          <ToggleSwitch enabled={autoCheckOutEnabled} />
         </form>
       </div>
 
