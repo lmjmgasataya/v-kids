@@ -130,6 +130,38 @@ button {
   animation: card-pop-in 0.25s ease-out;
 }
 
+@keyframes checkmark-circle {
+  from {
+    stroke-dashoffset: 151;
+    opacity: 0;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+.animate-checkmark-circle {
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: checkmark-circle 0.5s ease-out forwards;
+}
+
+@keyframes checkmark-check {
+  from {
+    stroke-dashoffset: 36;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-checkmark-check {
+  stroke-dasharray: 36;
+  stroke-dashoffset: 36;
+  animation: checkmark-check 0.35s ease-out 0.4s forwards;
+}
+
 @keyframes shimmer {
   0% {
     background-position: -400px 0;

@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { checkIns, featureFlags, kids } from "@/db/schema";
 import { getCheckInDirectory, getManilaDayBounds } from "@/lib/checkIn";
-import { SERVICE_CARDS_FLAG_KEY, SERVICE_OPTIONS } from "@/lib/constants";
+import { AUTO_CHECK_IN_FLAG_KEY, SERVICE_CARDS_FLAG_KEY, SERVICE_OPTIONS } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CheckInWorkspace } from "./CheckInWorkspace";
 import { CheckOutAllButton } from "./CheckOutAllButton";
@@ -29,6 +29,12 @@ export default async function CheckInPage({
     .from(featureFlags)
     .where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY));
   const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
+
+  const [autoCheckInFlag] = await db
+    .select()
+    .from(featureFlags)
+    .where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY));
+  const autoCheckInEnabled = autoCheckInFlag?.enabled ?? false;
 
   const { start, end } = getManilaDayBounds();
 
@@ -69,6 +75,7 @@ export default async function CheckInPage({
         initialIntent={intent}
         initialMode={mode}
         serviceCardsEnabled={serviceCardsEnabled}
+        autoCheckInEnabled={autoCheckInEnabled}
         directory={directory}
       />
 

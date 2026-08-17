@@ -73,6 +73,31 @@ function QuickCheckInButton({ kidId, service }: { kidId: number; service: string
   );
 }
 
+function AutoCheckInButton({
+  kid,
+  onCheckIn,
+}: {
+  kid: CheckInSearchResult;
+  onCheckIn: (kid: CheckInSearchResult) => Promise<void>;
+}) {
+  const [pending, setPending] = useState(false);
+
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={async () => {
+        setPending(true);
+        await onCheckIn(kid);
+        setPending(false);
+      }}
+      className="shrink-0 bg-kids-green hover:bg-kids-green/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-[transform,background-color,opacity] duration-150"
+    >
+      {pending ? "…" : "✅ Check in"}
+    </button>
+  );
+}
+
 function QuickCheckOutButton({ checkInId, service }: { checkInId: number; service: string }) {
   const checkOutWithId = checkOutKid.bind(null, checkInId);
   const [state, action] = useActionState(checkOutWithId, undefined);
@@ -95,10 +120,14 @@ function SearchPanel({
   intent,
   service,
   directory,
+  autoCheckInEnabled,
+  onAutoCheckIn,
 }: {
   intent: Intent;
   service: string;
   directory: CheckInDirectoryEntry[];
+  autoCheckInEnabled: boolean;
+  onAutoCheckIn: (kid: CheckInSearchResult) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
 
@@ -156,7 +185,11 @@ function SearchPanel({
                 )}
               </div>
               {intent === "checkin" ? (
-                <QuickCheckInButton kidId={kid.id} service={service} />
+                autoCheckInEnabled ? (
+                  <AutoCheckInButton kid={kid} onCheckIn={onAutoCheckIn} />
+                ) : (
+                  <QuickCheckInButton kidId={kid.id} service={service} />
+                )
               ) : (
                 kid.openCheckIn && (
                   <QuickCheckOutButton checkInId={kid.openCheckIn.id} service={kid.openCheckIn.serviceAttending} />
@@ -315,12 +348,52 @@ function CheckOutForm({
   );
 }
 
+function CheckInSuccessPopup({ name, onClose }: { name: string; onClose: () => void }) {
+  useEffect(() => {
+    const timeout = setTimeout(onClose, 3000);
+    return () => clearTimeout(timeout);
+    // Auto-close is time-based, not tied to onClose identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="animate-card-pop-in w-full max-w-sm rounded-2xl border-4 border-t-kids-magenta border-r-kids-navy border-b-kids-green border-l-kids-yellow bg-white p-8 shadow-xl ring-1 ring-black/5 flex flex-col items-center gap-4 text-center">
+        <svg viewBox="0 0 52 52" className="w-20 h-20" aria-hidden="true">
+          <circle
+            cx="26"
+            cy="26"
+            r="24"
+            fill="none"
+            strokeWidth="3"
+            style={{ stroke: "var(--color-kids-green)" }}
+            className="animate-checkmark-circle"
+          />
+          <path
+            d="M14 27l7 7 16-16"
+            fill="none"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ stroke: "var(--color-kids-green)" }}
+            className="animate-checkmark-check"
+          />
+        </svg>
+        <p className="text-xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
+          Hello {name}! You&apos;re checked in
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function CheckInWorkspace({
   initialToken,
   initialService,
   initialIntent,
   initialMode,
   serviceCardsEnabled,
+  autoCheckInEnabled,
   directory,
 }: {
   initialToken?: string;
@@ -328,6 +401,9 @@ export function CheckInWorkspace({
   initialIntent?: Intent;
   initialMode?: "search" | "scan";
   serviceCardsEnabled?: boolean;
+  // When on, a scan or a search "Check in" tap commits the check-in right
+  // away instead of opening the confirm card — see performAutoCheckIn.
+  autoCheckInEnabled?: boolean;
   // Preloaded on the server (page.tsx) so scans/searches resolve from memory
   // instead of a per-interaction DB round trip. Refreshed whenever the server
   // page re-renders with fresh data, e.g. after router.refresh() on check-in/out.
@@ -339,6 +415,7 @@ export function CheckInWorkspace({
   const [mode, setMode] = useState<"search" | "scan">(initialMode ?? "search");
   const [service, setServiceState] = useState<string>(initialService ?? SERVICE_OPTIONS[0]);
   const [selectedKid, setSelectedKid] = useState<CheckInSearchResult | null>(null);
+  const [autoSuccessKid, setAutoSuccessKid] = useState<CheckInSearchResult | null>(null);
   const [scanError, setScanError] = useState<ReactNode | null>(null);
   const [hwScanBusy, setHwScanBusy] = useState(false);
   const modeButtonsRef = useRef<HTMLDivElement | null>(null);
@@ -359,6 +436,31 @@ export function CheckInWorkspace({
     setSelectedKid(null);
     if (mode === "scan") qrScannerRef.current?.resume();
   }, [mode]);
+
+  const closeAutoSuccess = useCallback(() => {
+    setAutoSuccessKid(null);
+    if (mode === "scan") qrScannerRef.current?.resume();
+  }, [mode]);
+
+  // Always submitted as mode="scan" so checkInKid returns {success} instead
+  // of redirecting — this keeps both scan and search-click auto check-ins
+  // in place, showing the success popup rather than navigating away.
+  const performAutoCheckIn = useCallback(
+    async (kid: CheckInSearchResult) => {
+      setScanError(null);
+      const formData = new FormData();
+      formData.set("serviceAttending", service);
+      formData.set("mode", "scan");
+      const result = await checkInKid(kid.id, undefined, formData);
+      if (result?.error) {
+        setScanError(result.error);
+        return;
+      }
+      router.refresh();
+      setAutoSuccessKid(kid);
+    },
+    [service, router]
+  );
 
   useEffect(() => {
     // Recovers scroll position after checkInKid/checkOutKid redirect back to this
@@ -463,6 +565,10 @@ export function CheckInWorkspace({
       );
       return;
     }
+    if (forIntent === "checkin" && autoCheckInEnabled) {
+      await performAutoCheckIn(kid);
+      return;
+    }
     setSelectedKid(kid);
   }
 
@@ -480,7 +586,7 @@ export function CheckInWorkspace({
         setHwScanBusy(false);
       }
     },
-    { enabled: mode === "search" && !selectedKid && !scanError && !hwScanBusy }
+    { enabled: mode === "search" && !selectedKid && !scanError && !autoSuccessKid && !hwScanBusy }
   );
 
   useEffect(() => {
@@ -616,7 +722,15 @@ export function CheckInWorkspace({
         </button>
       </div>
 
-      {mode === "search" && <SearchPanel intent={intent} service={service} directory={directory} />}
+      {mode === "search" && (
+        <SearchPanel
+          intent={intent}
+          service={service}
+          directory={directory}
+          autoCheckInEnabled={!!autoCheckInEnabled}
+          onAutoCheckIn={performAutoCheckIn}
+        />
+      )}
       {mode === "scan" && (
         <QrScanner
           ref={qrScannerRef}
@@ -644,6 +758,12 @@ export function CheckInWorkspace({
             openCheckIn={selectedKid.openCheckIn}
             mode={mode}
             onDone={closePopup}
+          />
+        )}
+        {autoSuccessKid && (
+          <CheckInSuccessPopup
+            name={capitalizeName(autoSuccessKid.nickname || autoSuccessKid.firstName)}
+            onClose={closeAutoSuccess}
           />
         )}
       </div>

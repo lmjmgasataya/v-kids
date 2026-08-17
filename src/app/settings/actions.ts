@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { CURSOR_TRAIL_FLAG_KEY, SERVICE_CARDS_FLAG_KEY, type RegistrationFormType } from "@/lib/constants";
+import { AUTO_CHECK_IN_FLAG_KEY, CURSOR_TRAIL_FLAG_KEY, SERVICE_CARDS_FLAG_KEY, type RegistrationFormType } from "@/lib/constants";
 import { withToast } from "@/lib/toast";
 
 const REGISTRATION_FORM_LABEL: Record<RegistrationFormType, string> = {
@@ -49,6 +49,25 @@ export async function toggleServiceCards() {
 
   revalidatePath("/check-in");
   redirect(withToast("/settings", "success", `Service cards turned ${nextEnabled ? "on" : "off"}.`));
+}
+
+export async function toggleAutoCheckIn() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/");
+
+  const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY));
+  // Unlike the other flags, a missing row means disabled — this one skips the
+  // check-in confirmation step, so it should require an explicit opt-in.
+  const nextEnabled = !(flag?.enabled ?? false);
+
+  await db
+    .insert(featureFlags)
+    .values({ key: AUTO_CHECK_IN_FLAG_KEY, enabled: nextEnabled })
+    .onConflictDoUpdate({ target: featureFlags.key, set: { enabled: nextEnabled, updatedAt: new Date() } });
+
+  revalidatePath("/check-in");
+  redirect(withToast("/settings", "success", `Auto check-in turned ${nextEnabled ? "on" : "off"}.`));
 }
 
 export async function generateRegistrationLink(formType: RegistrationFormType, formData: FormData) {
