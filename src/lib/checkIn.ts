@@ -178,6 +178,17 @@ export async function checkOutAllOpenInService(
   return closed.length;
 }
 
+// Same as checkOutAllOpenInService, but across every service for the day —
+// the attendance page's "check out ALL" button for a full day's cleanup.
+export async function checkOutAllOpenInDateRange(start: Date, end: Date, checkedOutBy: number): Promise<number> {
+  const closed = await db
+    .update(checkIns)
+    .set({ checkedOutAt: new Date(), checkedOutBy })
+    .where(and(gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end), isNull(checkIns.checkedOutAt)))
+    .returning({ id: checkIns.id });
+  return closed.length;
+}
+
 export function validateCheckInInput(serviceAttending: string, remarks: string): string | null {
   if (!serviceAttending) return "Please select a service.";
   if (!SERVICE_OPTIONS.includes(serviceAttending)) return "Please select a valid service.";

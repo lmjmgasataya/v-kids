@@ -10,6 +10,8 @@ import { CheckInWorkspace } from "./CheckInWorkspace";
 import { CheckOutAllButton } from "./CheckOutAllButton";
 import { RosterTable } from "./RosterTable";
 
+const todayFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "full", timeZone: "Asia/Manila" });
+
 export default async function CheckInPage({
   searchParams,
 }: {
@@ -83,6 +85,7 @@ export default async function CheckInPage({
         serviceCardsEnabled={serviceCardsEnabled}
         autoCheckInEnabled={autoCheckInEnabled}
         autoCheckOutEnabled={autoCheckOutEnabled}
+        today={todayFormatter.format(start)}
         directory={directory}
       />
 

@@ -11,6 +11,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { AttendanceMonthNav } from "./AttendanceMonthNav";
 import { ServiceRow } from "./ServiceRow";
 import { ExportExcelButton } from "./ExportExcelButton";
+import { CheckOutAllServicesButton } from "./CheckOutAllServicesButton";
 
 const dateHeadingFormatter = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "full",
@@ -63,7 +64,10 @@ export default async function AttendancePage({
       <AttendanceMonthNav month={month} currentMonth={manilaMonthString()} dates={monthDates} selectedDate={date}>
         {date && dayStart && (
           <>
-            <p className="text-sm text-gray-500">{dateHeadingFormatter.format(dayStart)}</p>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-sm text-gray-500">{dateHeadingFormatter.format(dayStart)}</p>
+              <CheckOutAllServicesButton date={date} count={totals.stillPresent} />
+            </div>
 
             <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
               <table className="w-full text-sm">

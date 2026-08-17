@@ -434,6 +434,7 @@ export function CheckInWorkspace({
   serviceCardsEnabled,
   autoCheckInEnabled,
   autoCheckOutEnabled,
+  today,
   directory,
 }: {
   initialToken?: string;
@@ -446,6 +447,9 @@ export function CheckInWorkspace({
   autoCheckInEnabled?: boolean;
   // Same, but for check-out — see performAutoCheckOut.
   autoCheckOutEnabled?: boolean;
+  // Today's date (Asia/Manila), pre-formatted server-side to match the
+  // check-in day boundary used everywhere else on this page.
+  today?: string;
   // Preloaded on the server (page.tsx) so scans/searches resolve from memory
   // instead of a per-interaction DB round trip. Refreshed whenever the server
   // page re-renders with fresh data, e.g. after router.refresh() on check-in/out.
@@ -685,6 +689,7 @@ export function CheckInWorkspace({
       <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
         {intent === "checkin" ? "Check-In" : "Check-Out"}
       </h2>
+      {today && <p className="text-sm text-gray-500 -mt-3">{today}</p>}
 
       <div className="grid grid-cols-2 gap-3">
         <button

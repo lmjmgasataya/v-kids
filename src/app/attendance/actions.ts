@@ -4,7 +4,12 @@ import * as XLSX from "xlsx";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
-import { checkOutAllOpenInService, getAttendanceByService, getManilaDayBoundsForDateString } from "@/lib/checkIn";
+import {
+  checkOutAllOpenInDateRange,
+  checkOutAllOpenInService,
+  getAttendanceByService,
+  getManilaDayBoundsForDateString,
+} from "@/lib/checkIn";
 
 export async function exportAttendanceExcel(date: string) {
   const session = await getSession();
@@ -61,6 +66,25 @@ export async function checkOutAllInServiceForDate(
 
   const { start, end } = getManilaDayBoundsForDateString(date);
   const closedCount = await checkOutAllOpenInService(service, start, end, session.userId);
+
+  revalidatePath("/attendance");
+  revalidatePath("/check-in");
+
+  if (closedCount === 0) return { success: "No kids to check out." };
+  return { success: `Checked out ${closedCount} kid${closedCount === 1 ? "" : "s"}. 👋` };
+}
+
+export async function checkOutAllInAllServicesForDate(
+  date: string,
+  _prev: CheckOutAllActionState | undefined,
+  _formData: FormData
+): Promise<CheckOutAllActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Invalid date." };
+
+  const { start, end } = getManilaDayBoundsForDateString(date);
+  const closedCount = await checkOutAllOpenInDateRange(start, end, session.userId);
 
   revalidatePath("/attendance");
   revalidatePath("/check-in");
