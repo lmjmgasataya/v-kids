@@ -46,6 +46,13 @@ const TILES = [
     description: "Browse every kid's KC Bucks balance",
     adminOnly: false,
   },
+  {
+    href: "/kc-bucks/summary",
+    icon: "📈",
+    label: "Summary",
+    description: "Totals and breakdowns across every kid",
+    adminOnly: true,
+  },
 ] as const;
 
 // Cycled per tile position to match the logo's magenta/navy/green/yellow quadrants.

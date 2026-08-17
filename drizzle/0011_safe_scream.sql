@@ -1,0 +1,2 @@
+CREATE INDEX "check_ins_service_checked_in_idx" ON "check_ins" USING btree ("service_attending","checked_in_at");--> statement-breakpoint
+CREATE INDEX "check_ins_checked_in_idx" ON "check_ins" USING btree ("checked_in_at");

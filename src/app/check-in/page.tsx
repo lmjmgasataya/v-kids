@@ -1,16 +1,22 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { checkIns, featureFlags, kids } from "@/db/schema";
-import { getCheckInDirectory, getManilaDayBounds } from "@/lib/checkIn";
+import {
+  getCheckInDirectory,
+  getManilaDayBounds,
+  getManilaDayBoundsForDateString,
+  getStaleOpenCheckIns,
+} from "@/lib/checkIn";
 import { AUTO_CHECK_IN_FLAG_KEY, AUTO_CHECK_OUT_FLAG_KEY, SERVICE_CARDS_FLAG_KEY, SERVICE_OPTIONS } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CheckInWorkspace } from "./CheckInWorkspace";
 import { CheckOutAllButton } from "./CheckOutAllButton";
 import { RosterTable } from "./RosterTable";
 
-const todayFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "full", timeZone: "Asia/Manila" });
+const fullDateFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "full", timeZone: "Asia/Manila" });
 
 export default async function CheckInPage({
   searchParams,
@@ -26,56 +32,71 @@ export default async function CheckInPage({
   const intent = sp.intent === "checkout" ? "checkout" : "checkin";
   const mode = sp.mode === "scan" ? "scan" : "search";
 
-  const [serviceCardsFlag] = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY));
-  const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
-
-  const [autoCheckInFlag] = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY));
-  const autoCheckInEnabled = autoCheckInFlag?.enabled ?? false;
-
-  const [autoCheckOutFlag] = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.key, AUTO_CHECK_OUT_FLAG_KEY));
-  const autoCheckOutEnabled = autoCheckOutFlag?.enabled ?? false;
-
   const { start, end } = getManilaDayBounds();
 
-  const directory = await getCheckInDirectory(start, end);
-
-  const roster = await db
-    .select({
-      id: checkIns.id,
-      kidFirstName: kids.firstName,
-      kidLastName: kids.lastName,
-      kidNickname: kids.nickname,
-      kidAge: kids.age,
-      serviceAttending: checkIns.serviceAttending,
-      checkedInAt: checkIns.checkedInAt,
-      checkedOutAt: checkIns.checkedOutAt,
-      remarks: checkIns.remarks,
-    })
-    .from(checkIns)
-    .innerJoin(kids, eq(checkIns.kidId, kids.id))
-    .where(
-      and(
-        gte(checkIns.checkedInAt, start),
-        lt(checkIns.checkedInAt, end),
-        eq(checkIns.serviceAttending, service)
+  // All of these reads are independent of each other — run them concurrently
+  // instead of round-tripping to the DB one at a time.
+  const [[serviceCardsFlag], [autoCheckInFlag], [autoCheckOutFlag], directory, staleOpenCheckIns, roster] = await Promise.all([
+    db.select().from(featureFlags).where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY)),
+    db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY)),
+    db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_OUT_FLAG_KEY)),
+    getCheckInDirectory(start, end),
+    getStaleOpenCheckIns(start),
+    db
+      .select({
+        id: checkIns.id,
+        kidFirstName: kids.firstName,
+        kidLastName: kids.lastName,
+        kidNickname: kids.nickname,
+        kidAge: kids.age,
+        serviceAttending: checkIns.serviceAttending,
+        checkedInAt: checkIns.checkedInAt,
+        checkedOutAt: checkIns.checkedOutAt,
+        remarks: checkIns.remarks,
+      })
+      .from(checkIns)
+      .innerJoin(kids, eq(checkIns.kidId, kids.id))
+      .where(
+        and(
+          gte(checkIns.checkedInAt, start),
+          lt(checkIns.checkedInAt, end),
+          eq(checkIns.serviceAttending, service)
+        )
       )
-    )
-    .orderBy(desc(checkIns.checkedInAt));
+      .orderBy(desc(checkIns.checkedInAt)),
+  ]);
+  const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
+  const autoCheckInEnabled = autoCheckInFlag?.enabled ?? false;
+  const autoCheckOutEnabled = autoCheckOutFlag?.enabled ?? false;
 
   const stillOpenCount = roster.filter((row) => !row.checkedOutAt).length;
+  const staleOpenCount = staleOpenCheckIns.reduce((sum, day) => sum + day.count, 0);
 
   return (
     <div className="flex flex-col gap-6">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Check-In" }]} />
+
+      {staleOpenCount > 0 && (
+        <div className="rounded-2xl border-2 border-kids-magenta/30 bg-kids-magenta/5 p-4 flex flex-col gap-2">
+          <p className="text-sm font-semibold text-kids-magenta">
+            ⚠ {staleOpenCount} kid{staleOpenCount === 1 ? "" : "s"} still not checked out from a previous day.
+          </p>
+          <div className="flex flex-col gap-1">
+            {staleOpenCheckIns.map((day) => {
+              const dayStart = getManilaDayBoundsForDateString(day.date).start;
+              return (
+                <Link
+                  key={day.date}
+                  href={`/attendance?month=${day.date.slice(0, 7)}&date=${day.date}`}
+                  className="text-sm text-kids-navy font-medium hover:underline"
+                >
+                  {day.count} kid{day.count === 1 ? "" : "s"} from {fullDateFormatter.format(dayStart)} →
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <CheckInWorkspace
         initialToken={token}
@@ -85,7 +106,7 @@ export default async function CheckInPage({
         serviceCardsEnabled={serviceCardsEnabled}
         autoCheckInEnabled={autoCheckInEnabled}
         autoCheckOutEnabled={autoCheckOutEnabled}
-        today={todayFormatter.format(start)}
+        today={fullDateFormatter.format(start)}
         directory={directory}
       />
 

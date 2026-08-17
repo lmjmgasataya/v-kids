@@ -62,7 +62,14 @@ export const checkIns = pgTable(
     checkedInBy: integer("checked_in_by").references(() => users.id),
     checkedOutBy: integer("checked_out_by").references(() => users.id),
   },
-  (t) => [uniqueIndex("check_ins_open_kid_idx").on(t.kidId).where(sql`${t.checkedOutAt} is null`)]
+  (t) => [
+    uniqueIndex("check_ins_open_kid_idx").on(t.kidId).where(sql`${t.checkedOutAt} is null`),
+    // Covers the check-in page roster query and checkOutAllOpenInService (service + today's date range).
+    index("check_ins_service_checked_in_idx").on(t.serviceAttending, t.checkedInAt),
+    // Covers date-range-only scans with no service filter: getAttendanceByService,
+    // getAttendanceDatesInMonth, checkOutAllOpenInDateRange.
+    index("check_ins_checked_in_idx").on(t.checkedInAt),
+  ]
 );
 
 export const serviceTeamMembers = pgTable("service_team_members", {

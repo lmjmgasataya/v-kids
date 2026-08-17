@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { checkIns, kcBucksTransactions, kids } from "@/db/schema";
 import { getSession } from "@/lib/auth";
@@ -135,22 +135,26 @@ export async function checkOutKid(
   const mode = formData.get("mode") === "scan" ? "scan" : "search";
   if (remarks.length > 500) return { error: "Remarks must be 500 characters or fewer." };
 
-  const [existing] = await db
-    .select({ id: checkIns.id, checkedOutAt: checkIns.checkedOutAt })
-    .from(checkIns)
-    .where(eq(checkIns.id, checkInId));
-
-  if (!existing) return { error: "This check-in no longer exists." };
-  if (existing.checkedOutAt) return { error: "This kid has already been checked out." };
-
-  await db
+  // Single round trip: update only if still open, then inspect what happened
+  // rather than SELECTing first to check — the common case is one query, not two.
+  const [updated] = await db
     .update(checkIns)
     .set({
       checkedOutAt: new Date(),
       checkedOutBy: session.userId,
       ...(remarks ? { remarks } : {}),
     })
-    .where(eq(checkIns.id, checkInId));
+    .where(and(eq(checkIns.id, checkInId), isNull(checkIns.checkedOutAt)))
+    .returning({ id: checkIns.id });
+
+  if (!updated) {
+    const [existing] = await db
+      .select({ id: checkIns.id, checkedOutAt: checkIns.checkedOutAt })
+      .from(checkIns)
+      .where(eq(checkIns.id, checkInId));
+    if (!existing) return { error: "This check-in no longer exists." };
+    return { error: "This kid has already been checked out." };
+  }
 
   revalidatePath("/check-in");
 

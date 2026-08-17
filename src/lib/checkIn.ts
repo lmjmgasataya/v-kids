@@ -52,6 +52,33 @@ export async function getOpenCheckInsByKidIds(
   return new Map(rows.map((row) => [row.kidId, { ...row, isToday: row.checkedInAt >= todayStart }]));
 }
 
+export interface StaleOpenCheckInSummary {
+  date: string; // YYYY-MM-DD, Manila calendar date
+  count: number;
+}
+
+// Kids still checked in from a day before today — forgotten checkouts that
+// carry over, since only one open check-in per kid is allowed at a time (a
+// stale one blocks that kid from checking in again until it's closed out).
+// Surfaced as a banner on the check-in page linking back to that day's
+// attendance so staff can clean it up.
+export async function getStaleOpenCheckIns(todayStart: Date): Promise<StaleOpenCheckInSummary[]> {
+  const rows = await db
+    .select({ checkedInAt: checkIns.checkedInAt })
+    .from(checkIns)
+    .where(and(isNull(checkIns.checkedOutAt), lt(checkIns.checkedInAt, todayStart)));
+
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const dateStr = manilaDateString(row.checkedInAt);
+    counts.set(dateStr, (counts.get(dateStr) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([date, count]) => ({ date, count }));
+}
+
 export async function getCheckedInServicesTodayByKidIds(
   kidIds: number[],
   start: Date,
