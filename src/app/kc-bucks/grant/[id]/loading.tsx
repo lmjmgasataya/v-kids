@@ -1,5 +1,5 @@
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { SkeletonBar, SkeletonDetailCard, SkeletonField } from "@/components/skeletons";
+import { SkeletonBar, SkeletonDetailCard } from "@/components/skeletons";
 
 export default function Loading() {
   return (
@@ -13,15 +13,6 @@ export default function Loading() {
       />
       <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Grant Credits</h2>
       <SkeletonDetailCard accent="green">
-        <div>
-          <SkeletonBar className="h-3 w-32 mb-2" />
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <SkeletonBar key={i} className="h-16 rounded-xl" />
-            ))}
-          </div>
-        </div>
-        <SkeletonField />
         <SkeletonBar className="h-11 w-full rounded-xl" />
       </SkeletonDetailCard>
     </div>

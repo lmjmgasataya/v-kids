@@ -9,6 +9,7 @@ import { ScanErrorPopup } from "@/components/ScanErrorPopup";
 import { inputCls } from "@/components/form";
 import { searchKidsBasic, resolveKidBasicByQrToken, type KcBucksKid } from "./actions";
 import { capitalizeName } from "@/lib/format";
+import { SERVICE_OPTIONS } from "@/lib/constants";
 
 function parseQrToken(decodedText: string): string {
   try {
@@ -25,26 +26,28 @@ export function KidLookupPanel({ onSelect }: { onSelect: (kid: KcBucksKid) => vo
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
   const initialMode = searchParams.get("mode") === "scan" ? "scan" : "search";
+  const initialService = searchParams.get("service") ?? "";
 
   const [mode, setMode] = useState<"search" | "scan">(initialMode);
   const [query, setQuery] = useState(initialQuery);
+  const [service, setService] = useState(initialService);
   const [results, setResults] = useState<KcBucksKid[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
   const [hwScanBusy, setHwScanBusy] = useState(false);
   const [isPending, startTransition] = useTransition();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function runSearch(value: string) {
+  function runSearch(value: string, serviceValue: string) {
     startTransition(async () => {
-      const rows = await searchKidsBasic(value);
+      const rows = await searchKidsBasic(value, serviceValue);
       setResults(rows);
     });
   }
 
   useEffect(() => {
-    if (initialQuery) runSearch(initialQuery);
-    // Only re-run the search the page loaded with (e.g. returning via back button) — later
-    // keystrokes are handled by handleChange's own debounce, not this mount effect.
+    // Preload the alphabetical kid list (or the query/filter the page loaded with,
+    // e.g. returning via back button) — later changes are handled by their own handlers.
+    runSearch(initialQuery, initialService);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -57,8 +60,17 @@ export function KidLookupPanel({ onSelect }: { onSelect: (kid: KcBucksKid) => vo
       if (next) params.set("q", next);
       else params.delete("q");
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-      runSearch(next);
+      runSearch(next, service);
     }, 300);
+  }
+
+  function handleServiceChange(next: string) {
+    setService(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next) params.set("service", next);
+    else params.delete("service");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    runSearch(query, next);
   }
 
   async function handleDecode(decodedText: string) {
@@ -121,19 +133,33 @@ export function KidLookupPanel({ onSelect }: { onSelect: (kid: KcBucksKid) => vo
 
       {mode === "search" && (
         <div className="flex flex-col gap-3">
-          <input
-            type="search"
-            placeholder="Search kids by name…"
-            value={query}
-            onChange={(e) => handleChange(e.target.value)}
-            className={inputCls}
-          />
+          <div className="flex gap-2">
+            <input
+              type="search"
+              placeholder="Search kids by name…"
+              value={query}
+              onChange={(e) => handleChange(e.target.value)}
+              className={inputCls}
+            />
+            <select
+              value={service}
+              onChange={(e) => handleServiceChange(e.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
+            >
+              <option value="">All services</option>
+              {SERVICE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
           {isPending && <p className="text-xs text-gray-400">Searching…</p>}
-          {!isPending && query.trim() && results.length === 0 && (
+          {!isPending && results.length === 0 && (
             <p className="text-xs text-gray-400">No matching kids found.</p>
           )}
           {results.length > 0 && (
-            <ul className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
+            <ul className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-y-auto max-h-96">
               {results.map((kid) => (
                 <li key={kid.id}>
                   <button

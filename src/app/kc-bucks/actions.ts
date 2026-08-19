@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, ilike, or } from "drizzle-orm";
+import { and, asc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
 import { kids } from "@/db/schema";
 import { getSession } from "@/lib/auth";
@@ -11,6 +11,7 @@ export interface KcBucksKid {
   lastName: string;
   nickname: string | null;
   age: number;
+  serviceAttending: string;
 }
 
 const kidColumns = {
@@ -19,22 +20,28 @@ const kidColumns = {
   lastName: kids.lastName,
   nickname: kids.nickname,
   age: kids.age,
+  serviceAttending: kids.serviceAttending,
 };
 
-export async function searchKidsBasic(query: string): Promise<KcBucksKid[]> {
+export async function searchKidsBasic(query: string, service = ""): Promise<KcBucksKid[]> {
   const session = await getSession();
   if (!session) return [];
 
   const search = query.trim();
-  if (!search) return [];
+  const conditions = [];
+  if (search) {
+    conditions.push(
+      or(ilike(kids.firstName, `%${search}%`), ilike(kids.lastName, `%${search}%`), ilike(kids.nickname, `%${search}%`))
+    );
+  }
+  if (service) conditions.push(eq(kids.serviceAttending, service));
 
   return db
     .select(kidColumns)
     .from(kids)
-    .where(
-      or(ilike(kids.firstName, `%${search}%`), ilike(kids.lastName, `%${search}%`), ilike(kids.nickname, `%${search}%`))
-    )
-    .limit(10);
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(asc(kids.firstName), asc(kids.lastName))
+    .limit(search ? 10 : 100);
 }
 
 export async function resolveKidBasicByQrToken(token: string): Promise<{ kid: KcBucksKid } | { error: string }> {

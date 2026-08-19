@@ -10,29 +10,19 @@ export interface GrantCreditsState {
   success?: string;
 }
 
+const GRANT_AMOUNT = 10;
+const GRANT_REASON = "Manual granted";
+
 export async function grantCredits(
   kidId: number,
   _prev: GrantCreditsState | undefined,
-  formData: FormData
+  _formData: FormData
 ): Promise<GrantCreditsState> {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const amount = Number(formData.get("amount"));
-  const reasonOption = (formData.get("reason") as string)?.trim() ?? "";
-  const customReason = (formData.get("customReason") as string)?.trim() ?? "";
-
-  if (!Number.isInteger(amount) || amount <= 0) {
-    return { error: "Please enter a whole number of credits greater than 0." };
-  }
-  if (!reasonOption) {
-    return { error: "Please select a reason." };
-  }
-
-  const reason = reasonOption === "Other" ? customReason : reasonOption;
-  if (!reason) {
-    return { error: "Please describe the reason." };
-  }
+  const amount = GRANT_AMOUNT;
+  const reason = GRANT_REASON;
 
   await db.insert(kcBucksTransactions).values({
     kidId,
