@@ -16,13 +16,14 @@ import {
   type CheckInSearchResult,
   type OpenCheckInSummary,
 } from "@/lib/checkIn";
-import { getCheckInCreditAmount } from "@/lib/kcBucks";
+import { getCheckInCreditAmount, getKidBalance } from "@/lib/kcBucks";
 import { withToast } from "@/lib/toast";
 
 export interface CheckInActionState {
   error?: string;
   success?: string;
   openCheckIn?: OpenCheckInSummary;
+  balance?: number;
 }
 
 export interface CheckOutActionState {
@@ -51,12 +52,18 @@ export async function checkInKid(
 
   const { start, end } = getManilaDayBounds();
 
-  // These three reads are independent of each other, so run them concurrently
-  // instead of round-tripping to the DB one at a time.
-  const [existingOpen, alreadyCheckedInService, creditAmount] = await Promise.all([
+  // These reads are independent of each other, so run them concurrently instead
+  // of round-tripping to the DB one at a time. The balance is only needed for
+  // the scan flow's success popup, and is read here — before this check-in's
+  // credit is inserted below — so the eventual total can be had by simply
+  // adding creditAmount, instead of re-querying the ledger after the insert
+  // (an unreferenced data-modifying CTE isn't guaranteed to be visible to a
+  // SELECT in the same statement, so that doesn't reliably work anyway).
+  const [existingOpen, alreadyCheckedInService, creditAmount, priorBalance] = await Promise.all([
     getOpenCheckIn(kidId, start),
     hasCheckedInServiceToday(kidId, serviceAttending, start, end),
     getCheckInCreditAmount(),
+    mode === "scan" ? getKidBalance(kidId) : Promise.resolve(0),
   ]);
   if (existingOpen?.isToday) {
     return { error: "This kid is already checked in.", openCheckIn: existingOpen };
@@ -110,7 +117,7 @@ export async function checkInKid(
   // instead of redirecting, so a fresh page load doesn't reset the scroll position
   // away from the QR scanner.
   if (mode === "scan") {
-    return { success: "Checked in! 🎉" };
+    return { success: "Checked in! 🎉", balance: priorBalance + creditAmount };
   }
 
   redirect(

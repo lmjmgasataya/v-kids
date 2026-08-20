@@ -11,7 +11,6 @@ import { QrScanner, playSuccessSound, type QrScannerHandle } from "@/components/
 import { ScanningPopup } from "@/components/ScanningPopup";
 import { ScanErrorPopup } from "@/components/ScanErrorPopup";
 import { useCloseOnKey } from "@/components/useCloseOnKey";
-import { useCountdown } from "@/components/useCountdown";
 import { useHardwareScanListener } from "@/components/useHardwareScanListener";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 import { capitalizeName } from "@/lib/format";
@@ -384,8 +383,17 @@ function CheckOutForm({
   );
 }
 
-function AutoActionSuccessPopup({ name, action, onClose }: { name: string; action: Intent; onClose: () => void }) {
-  const secondsLeft = useCountdown(3, onClose);
+function AutoActionSuccessPopup({
+  name,
+  action,
+  balance,
+  onClose,
+}: {
+  name: string;
+  action: Intent;
+  balance?: number;
+  onClose: () => void;
+}) {
   useCloseOnKey(onClose);
 
   return (
@@ -414,12 +422,17 @@ function AutoActionSuccessPopup({ name, action, onClose }: { name: string; actio
         <p className="text-xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
           {action === "checkin" ? <>Hello {name}! You&apos;re checked in</> : <>Bye {name}! You&apos;re checked out</>}
         </p>
+        {action === "checkin" && balance != null && (
+          <p className="text-sm font-semibold text-kids-navy">
+            💰 Total KC Bucks: <span className="text-kids-green">{balance}</span>
+          </p>
+        )}
         <button
           type="button"
           onClick={onClose}
           className="rounded-full bg-kids-navy px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
         >
-          Close ({secondsLeft})
+          Close
         </button>
       </div>
     </div>
@@ -461,7 +474,9 @@ export function CheckInWorkspace({
   const [mode, setMode] = useState<"search" | "scan">(initialMode ?? "search");
   const [service, setServiceState] = useState<string>(initialService ?? SERVICE_OPTIONS[0]);
   const [selectedKid, setSelectedKid] = useState<CheckInSearchResult | null>(null);
-  const [autoSuccess, setAutoSuccess] = useState<{ kid: CheckInSearchResult; action: Intent } | null>(null);
+  const [autoSuccess, setAutoSuccess] = useState<{ kid: CheckInSearchResult; action: Intent; balance?: number } | null>(
+    null
+  );
   const [scanError, setScanError] = useState<ReactNode | null>(null);
   const [hwScanBusy, setHwScanBusy] = useState(false);
   const modeButtonsRef = useRef<HTMLDivElement | null>(null);
@@ -494,7 +509,11 @@ export function CheckInWorkspace({
         return;
       }
       router.refresh();
-      setAutoSuccess({ kid, action: "checkin" });
+      setAutoSuccess({ kid, action: "checkin", balance: result?.balance });
+      // Resume the camera right away instead of waiting for the popup to be
+      // dismissed, so the next kid can be scanned while this one's success
+      // popup is still on screen.
+      qrScannerRef.current?.resume();
     },
     [service, router]
   );
@@ -516,6 +535,7 @@ export function CheckInWorkspace({
       }
       router.refresh();
       setAutoSuccess({ kid, action: "checkout" });
+      qrScannerRef.current?.resume();
     },
     [router]
   );
@@ -636,8 +656,10 @@ export function CheckInWorkspace({
 
   // Mode "search" has no camera to drive the scanner off of, but a hardware
   // (keyboard-wedge) QR scanner still just "types" the decoded text — so
-  // listen for it here too, gated off while a popup/error is already showing
-  // or a previous scan is still resolving.
+  // listen for it here too, gated off while a manual confirm card or error is
+  // already showing or a previous scan is still resolving. A success popup
+  // does NOT block this — the next kid can be scanned while it's still on
+  // screen.
   useHardwareScanListener(
     async (text) => {
       setHwScanBusy(true);
@@ -648,7 +670,7 @@ export function CheckInWorkspace({
         setHwScanBusy(false);
       }
     },
-    { enabled: mode === "search" && !selectedKid && !scanError && !autoSuccess && !hwScanBusy }
+    { enabled: mode === "search" && !selectedKid && !scanError && !hwScanBusy }
   );
 
   useEffect(() => {
@@ -824,6 +846,7 @@ export function CheckInWorkspace({
           <AutoActionSuccessPopup
             name={capitalizeName(autoSuccess.kid.nickname || autoSuccess.kid.firstName)}
             action={autoSuccess.action}
+            balance={autoSuccess.balance}
             onClose={closeAutoSuccess}
           />
         )}
