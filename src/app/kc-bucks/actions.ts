@@ -1,8 +1,8 @@
 "use server";
 
-import { and, asc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { kids } from "@/db/schema";
+import { kcBucksTransactions, kids } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 
 export interface KcBucksKid {
@@ -14,6 +14,10 @@ export interface KcBucksKid {
   serviceAttending: string;
 }
 
+export interface KcBucksKidBalance extends KcBucksKid {
+  balance: number;
+}
+
 const kidColumns = {
   id: kids.id,
   firstName: kids.firstName,
@@ -23,7 +27,7 @@ const kidColumns = {
   serviceAttending: kids.serviceAttending,
 };
 
-export async function searchKidsBasic(query: string, service = ""): Promise<KcBucksKid[]> {
+export async function searchKidsBasic(query: string, service = ""): Promise<KcBucksKidBalance[]> {
   const session = await getSession();
   if (!session) return [];
 
@@ -37,9 +41,14 @@ export async function searchKidsBasic(query: string, service = ""): Promise<KcBu
   if (service) conditions.push(eq(kids.serviceAttending, service));
 
   return db
-    .select(kidColumns)
+    .select({
+      ...kidColumns,
+      balance: sql<number>`coalesce(sum(${kcBucksTransactions.amount}), 0)::int`,
+    })
     .from(kids)
+    .leftJoin(kcBucksTransactions, eq(kcBucksTransactions.kidId, kids.id))
     .where(conditions.length ? and(...conditions) : undefined)
+    .groupBy(kids.id)
     .orderBy(asc(kids.firstName), asc(kids.lastName))
     .limit(search ? 10 : 100);
 }

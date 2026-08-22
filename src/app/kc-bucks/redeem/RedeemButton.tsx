@@ -13,9 +13,9 @@ export function RedeemButton({ kidId }: { kidId: number }) {
   return (
     <form action={action}>
       <SubmitButton
-        label="-10"
+        label="-10 KC Bucks"
         pendingLabel="…"
-        className="text-xs font-bold text-white bg-kids-magenta hover:bg-kids-magenta/90 disabled:opacity-50 px-3 py-1.5 rounded-lg transition"
+        className="whitespace-nowrap text-xs font-bold text-white bg-kids-magenta hover:bg-kids-magenta/90 disabled:opacity-50 px-3 py-1.5 rounded-lg transition"
       />
     </form>
   );

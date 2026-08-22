@@ -75,7 +75,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <div className="rounded-2xl border-2 border-kids-navy/20 bg-white p-6 flex items-center justify-between gap-4">
+      {/* <div className="rounded-2xl border-2 border-kids-navy/20 bg-white p-6 flex items-center justify-between gap-4">
         <div>
           <p className="font-semibold text-gray-900">Service cards on Check-In</p>
           <p className="text-sm text-gray-500">Show the service picker as a row of cards instead of a dropdown.</p>
@@ -86,7 +86,7 @@ export default async function SettingsPage() {
           </span>
           <ToggleSwitch enabled={serviceCardsEnabled} />
         </form>
-      </div>
+      </div> */}
 
       <div className="rounded-2xl border-2 border-kids-navy/20 bg-white p-6 flex items-center justify-between gap-4">
         <div>

@@ -7,7 +7,7 @@ import { useHardwareScanListener } from "@/components/useHardwareScanListener";
 import { ScanningPopup } from "@/components/ScanningPopup";
 import { ScanErrorPopup } from "@/components/ScanErrorPopup";
 import { inputCls } from "@/components/form";
-import { searchKidsBasic, resolveKidBasicByQrToken, type KcBucksKid } from "./actions";
+import { searchKidsBasic, resolveKidBasicByQrToken, type KcBucksKid, type KcBucksKidBalance } from "./actions";
 import { capitalizeName } from "@/lib/format";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 
@@ -37,7 +37,7 @@ export function KidLookupPanel({
   const [mode, setMode] = useState<"search" | "scan">(initialMode);
   const [query, setQuery] = useState(initialQuery);
   const [service, setService] = useState(initialService);
-  const [results, setResults] = useState<KcBucksKid[]>([]);
+  const [results, setResults] = useState<KcBucksKidBalance[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
   const [hwScanBusy, setHwScanBusy] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -165,38 +165,44 @@ export function KidLookupPanel({
             <p className="text-xs text-gray-400">No matching kids found.</p>
           )}
           {results.length > 0 && (
-            <ul className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-y-auto max-h-96">
-              {results.map((kid) => {
-                const info = (
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
-                      {kid.nickname && <span className="text-xs text-gray-400"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
-                    </div>
-                    <div className="text-xs text-gray-400">Age {kid.age}</div>
-                  </div>
-                );
-
-                return (
-                  <li key={kid.id}>
-                    {renderAction ? (
-                      <div className="w-full flex items-center justify-between gap-3 px-4 py-3">
-                        {info}
-                        {renderAction(kid)}
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onSelect(kid)}
-                        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-kids-yellow/5"
-                      >
-                        {info}
-                      </button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm max-h-96 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Name</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Age</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-600">Balance</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((kid) => (
+                    <tr
+                      key={kid.id}
+                      onClick={renderAction ? undefined : () => onSelect(kid)}
+                      className={`border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5 ${
+                        renderAction ? "" : "cursor-pointer"
+                      }`}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">
+                          {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
+                        </div>
+                        {kid.nickname && (
+                          <div className="text-xs text-gray-400">&quot;{capitalizeName(kid.nickname)}&quot;</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">{kid.age}</td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-bold text-kids-green">{kid.balance}</span>
+                        <span className="text-xs text-gray-400"> KC Bucks</span>
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">{renderAction?.(kid)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
