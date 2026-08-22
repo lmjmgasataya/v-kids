@@ -45,6 +45,7 @@ export const kids = pgTable("kids", {
     .references(() => guardians.id)
     .notNull(),
   qrToken: uuid("qr_token").defaultRandom().notNull().unique(),
+  idCardNameScale: integer("id_card_name_scale").notNull().default(100),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

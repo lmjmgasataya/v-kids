@@ -3,8 +3,8 @@ import { headers } from "next/headers";
 import QRCode from "qrcode";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
-import { guardians, kids } from "@/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { kids } from "@/db/schema";
+import { asc } from "drizzle-orm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { PrintIdsWorkspace } from "./PrintIdsWorkspace";
 
@@ -23,11 +23,9 @@ export default async function PrintIdsPage() {
       gender: kids.gender,
       serviceAttending: kids.serviceAttending,
       qrToken: kids.qrToken,
-      guardianFirstName: guardians.firstName,
-      guardianLastName: guardians.lastName,
+      idCardNameScale: kids.idCardNameScale,
     })
     .from(kids)
-    .innerJoin(guardians, eq(kids.guardianId, guardians.id))
     .orderBy(asc(kids.lastName), asc(kids.firstName));
 
   const h = await headers();

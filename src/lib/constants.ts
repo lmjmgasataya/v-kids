@@ -24,3 +24,6 @@ export type RegistrationFormType = (typeof REGISTRATION_FORM_TYPES)[number];
 
 export const ROLE_OPTIONS = ["admin", "volunteer"] as const;
 
+export const ID_CARD_NAME_SCALE_MIN = 50;
+export const ID_CARD_NAME_SCALE_MAX = 150;
+

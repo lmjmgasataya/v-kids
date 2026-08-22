@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { IdCardFront, IdCardBack } from "@/components/IdCard";
+import { useMemo, useRef, useState } from "react";
+import { IdCardFront, IdCardBack, ID_CARD_WIDTH_MM, ID_CARD_HEIGHT_MM } from "@/components/IdCard";
 import { inputCls } from "@/components/form";
 import { useIdCardExport } from "@/lib/useIdCardExport";
-import { capitalizeName, idCardDisplayName } from "@/lib/format";
+import { capitalizeName, idCardDisplayName, idCardNameFontSize } from "@/lib/format";
+import { ID_CARD_NAME_SCALE_MIN, ID_CARD_NAME_SCALE_MAX, SERVICE_OPTIONS } from "@/lib/constants";
+import { updateIdCardNameScale } from "../actions";
 
 interface KidRow {
   id: number;
@@ -15,8 +17,7 @@ interface KidRow {
   gender: string;
   serviceAttending: string;
   qrToken: string;
-  guardianFirstName: string;
-  guardianLastName: string;
+  idCardNameScale: number;
   qrDataUrl: string;
 }
 
@@ -24,11 +25,10 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "lastName", label: "Name" },
   { key: "age", label: "Age" },
   { key: "gender", label: "Gender" },
-  { key: "guardian", label: "Guardian" },
   { key: "serviceAttending", label: "Service" },
 ];
 
-type SortKey = "lastName" | "age" | "gender" | "guardian" | "serviceAttending";
+type SortKey = "lastName" | "age" | "gender" | "serviceAttending";
 
 function compareRows(a: KidRow, b: KidRow, sort: SortKey): number {
   switch (sort) {
@@ -38,18 +38,43 @@ function compareRows(a: KidRow, b: KidRow, sort: SortKey): number {
       return a.age - b.age;
     case "gender":
       return a.gender.localeCompare(b.gender);
-    case "guardian":
-      return `${a.guardianLastName} ${a.guardianFirstName}`.localeCompare(`${b.guardianLastName} ${b.guardianFirstName}`);
     case "serviceAttending":
       return a.serviceAttending.localeCompare(b.serviceAttending);
   }
 }
 
+// Cards are laid out in real mm units; shrink them down to a small inline thumbnail via
+// CSS transform instead of rendering a second, differently-sized card component.
+const MM_TO_PX = 96 / 25.4;
+const CARD_WIDTH_PX = ID_CARD_WIDTH_MM * MM_TO_PX;
+const CARD_HEIGHT_PX = ID_CARD_HEIGHT_MM * MM_TO_PX;
+const PREVIEW_WIDTH_PX = 110;
+const PREVIEW_SCALE = PREVIEW_WIDTH_PX / CARD_WIDTH_PX;
+const PREVIEW_HEIGHT_PX = CARD_HEIGHT_PX * PREVIEW_SCALE;
+
+const SAVE_DEBOUNCE_MS = 400;
+
 export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
   const [query, setQuery] = useState("");
+  const [service, setService] = useState("");
   const [sort, setSort] = useState<SortKey>("lastName");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [scales, setScales] = useState<Record<number, number>>(() =>
+    Object.fromEntries(kids.map((kid) => [kid.id, kid.idCardNameScale]))
+  );
+  const saveTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
+  function handleScaleChange(kidId: number, value: number) {
+    setScales((prev) => ({ ...prev, [kidId]: value }));
+
+    const timers = saveTimers.current;
+    if (timers[kidId]) clearTimeout(timers[kidId]);
+    timers[kidId] = setTimeout(() => {
+      delete timers[kidId];
+      void updateIdCardNameScale(kidId, value);
+    }, SAVE_DEBOUNCE_MS);
+  }
 
   const sortedAll = useMemo(() => {
     const sorted = [...kids].sort((a, b) => compareRows(a, b, sort));
@@ -59,9 +84,12 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
 
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase();
-    if (!search) return sortedAll;
-    return sortedAll.filter((kid) => `${kid.firstName} ${kid.lastName} ${kid.nickname ?? ""}`.toLowerCase().includes(search));
-  }, [sortedAll, query]);
+    return sortedAll.filter((kid) => {
+      if (service && kid.serviceAttending !== service) return false;
+      if (!search) return true;
+      return `${kid.firstName} ${kid.lastName} ${kid.nickname ?? ""}`.toLowerCase().includes(search);
+    });
+  }, [sortedAll, query, service]);
 
   const allVisibleSelected = filtered.length > 0 && filtered.every((kid) => selected.has(kid.id));
 
@@ -110,13 +138,27 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
           <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Print IDs</h2>
           <p className="text-sm text-gray-500 mt-1">Select the kids you want to print ID cards for.</p>
         </div>
-        <input
-          type="search"
-          placeholder="Search by name…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className={`${inputCls} w-64`}
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="search"
+            placeholder="Search by name…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className={`${inputCls} w-64`}
+          />
+          <select
+            value={service}
+            onChange={(e) => setService(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-kids-navy/40 focus:border-transparent"
+          >
+            <option value="">All services</option>
+            {SERVICE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="print:hidden flex items-center justify-between gap-4">
@@ -176,45 +218,81 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
                   </button>
                 </th>
               ))}
+              <th className="px-4 py-3 text-left font-semibold text-gray-600">ID Preview</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-600">Name Size</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length + 1} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={COLUMNS.length + 3} className="px-4 py-8 text-center text-gray-400">
                   No kids match your search.
                 </td>
               </tr>
             )}
-            {filtered.map((kid) => (
-              <tr
-                key={kid.id}
-                onClick={() => toggleOne(kid.id)}
-                className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5"
-              >
-                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selected.has(kid.id)}
-                    onChange={() => toggleOne(kid.id)}
-                    aria-label={`Select ${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}`}
-                    className="h-4 w-4 accent-kids-navy"
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900">
-                    {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
-                  </div>
-                  {kid.nickname && <div className="text-xs text-gray-400">&quot;{capitalizeName(kid.nickname)}&quot;</div>}
-                </td>
-                <td className="px-4 py-3">{kid.age}</td>
-                <td className="px-4 py-3">{kid.gender}</td>
-                <td className="px-4 py-3">
-                  {capitalizeName(kid.guardianFirstName)} {capitalizeName(kid.guardianLastName)}
-                </td>
-                <td className="px-4 py-3">{kid.serviceAttending}</td>
-              </tr>
-            ))}
+            {filtered.map((kid) => {
+              const fullName = `${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}`;
+              const displayName = idCardDisplayName(kid.firstName, kid.nickname);
+              const scale = scales[kid.id] ?? kid.idCardNameScale;
+              const nameFontSize = Math.round(idCardNameFontSize(displayName) * (scale / 100));
+
+              return (
+                <tr
+                  key={kid.id}
+                  onClick={() => toggleOne(kid.id)}
+                  className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5"
+                >
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(kid.id)}
+                      onChange={() => toggleOne(kid.id)}
+                      aria-label={`Select ${fullName}`}
+                      className="h-4 w-4 accent-kids-navy"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-gray-900">{fullName}</div>
+                    {kid.nickname && <div className="text-xs text-gray-400">&quot;{capitalizeName(kid.nickname)}&quot;</div>}
+                  </td>
+                  <td className="px-4 py-3">{kid.age}</td>
+                  <td className="px-4 py-3">{kid.gender}</td>
+                  <td className="px-4 py-3">{kid.serviceAttending}</td>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="rounded-md border border-gray-200 shrink-0 overflow-hidden"
+                      style={{ width: PREVIEW_WIDTH_PX, height: PREVIEW_HEIGHT_PX }}
+                    >
+                      <div
+                        style={{
+                          width: CARD_WIDTH_PX,
+                          height: CARD_HEIGHT_PX,
+                          transform: `scale(${PREVIEW_SCALE})`,
+                          transformOrigin: "top left",
+                        }}
+                      >
+                        <IdCardFront flat displayName={displayName} fullName={fullName} nameFontSize={nameFontSize} />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={ID_CARD_NAME_SCALE_MIN}
+                        max={ID_CARD_NAME_SCALE_MAX}
+                        step={5}
+                        value={scale}
+                        onChange={(e) => handleScaleChange(kid.id, Number(e.target.value))}
+                        aria-label={`Name size for ${fullName}`}
+                        className="w-24 accent-kids-navy"
+                      />
+                      <span className="text-xs text-gray-500 w-9 text-right">{scale}%</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -224,9 +302,17 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
         {printable.map((kid) => {
           const fullName = `${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}`;
           const displayName = idCardDisplayName(kid.firstName, kid.nickname);
+          const scale = scales[kid.id] ?? kid.idCardNameScale;
+          const nameFontSize = Math.round(idCardNameFontSize(displayName) * (scale / 100));
           return (
             <div key={kid.id} className="contents">
-              <IdCardFront ref={(el) => setFrontRef(kid.id, el)} displayName={displayName} fullName={fullName} flat />
+              <IdCardFront
+                ref={(el) => setFrontRef(kid.id, el)}
+                displayName={displayName}
+                fullName={fullName}
+                nameFontSize={nameFontSize}
+                flat
+              />
               <IdCardBack ref={(el) => setBackRef(kid.id, el)} qrDataUrl={kid.qrDataUrl} fullName={fullName} flat />
             </div>
           );

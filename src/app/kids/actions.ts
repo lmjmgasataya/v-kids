@@ -18,6 +18,22 @@ import {
   type GuardianInput,
 } from "@/lib/kidRegistration";
 import { fetchKidsRows, resolveDir, resolveSort } from "./queries";
+import { ID_CARD_NAME_SCALE_MIN, ID_CARD_NAME_SCALE_MAX } from "@/lib/constants";
+
+export async function updateIdCardNameScale(kidId: number, scale: number): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session) return { error: "Please sign in again." };
+  if (session.role !== "admin") return { error: "You don't have permission to do this." };
+
+  if (!Number.isFinite(scale)) return { error: "Invalid name size." };
+  const clamped = Math.min(ID_CARD_NAME_SCALE_MAX, Math.max(ID_CARD_NAME_SCALE_MIN, Math.round(scale)));
+
+  await db.update(kids).set({ idCardNameScale: clamped }).where(eq(kids.id, kidId));
+
+  revalidatePath("/kids/print-ids");
+  revalidatePath(`/kids/${kidId}/id-card`);
+  return {};
+}
 
 export async function deleteKid(kidId: number) {
   const session = await getSession();

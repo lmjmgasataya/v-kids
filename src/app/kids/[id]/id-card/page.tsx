@@ -19,7 +19,13 @@ export default async function KidIdCardPage({ params }: { params: Promise<{ id: 
   if (!Number.isInteger(kidId)) notFound();
 
   const [row] = await db
-    .select({ firstName: kids.firstName, lastName: kids.lastName, nickname: kids.nickname, qrToken: kids.qrToken })
+    .select({
+      firstName: kids.firstName,
+      lastName: kids.lastName,
+      nickname: kids.nickname,
+      qrToken: kids.qrToken,
+      idCardNameScale: kids.idCardNameScale,
+    })
     .from(kids)
     .where(eq(kids.id, kidId));
 
@@ -58,6 +64,8 @@ export default async function KidIdCardPage({ params }: { params: Promise<{ id: 
           fullName={fullName}
           qrDataUrl={qrDataUrl}
           fileBaseName={fullName}
+          kidId={kidId}
+          initialNameScale={row.idCardNameScale}
         />
       </div>
     </div>

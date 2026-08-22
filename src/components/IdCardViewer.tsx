@@ -4,6 +4,9 @@ import { useRef, useState } from "react";
 import { IdCardFront, IdCardBack, ServiceTeamIdCardFront } from "./IdCard";
 import { exportIdCardsToPdf, exportIdCardsToPngZip, sanitizeFileName } from "@/lib/idCardExport";
 import { idCardNameFontSize } from "@/lib/format";
+import { updateIdCardNameScale } from "@/app/kids/actions";
+
+const SAVE_DEBOUNCE_MS = 400;
 
 export function IdCardViewer({
   displayName,
@@ -12,6 +15,8 @@ export function IdCardViewer({
   fileBaseName,
   backSubtitle,
   variant = "kid",
+  kidId,
+  initialNameScale = 100,
 }: {
   displayName: string;
   fullName: string;
@@ -19,15 +24,28 @@ export function IdCardViewer({
   fileBaseName: string;
   backSubtitle?: string;
   variant?: "kid" | "team";
+  kidId?: number;
+  initialNameScale?: number;
 }) {
   const Front = variant === "team" ? ServiceTeamIdCardFront : IdCardFront;
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"pdf" | "png" | null>(null);
-  const [nameScale, setNameScale] = useState(1);
+  const [nameScale, setNameScale] = useState(initialNameScale / 100);
   const [editableDisplayName, setEditableDisplayName] = useState(displayName);
   const shownDisplayName = editableDisplayName.trim() || displayName;
   const nameFontSize = Math.round(idCardNameFontSize(shownDisplayName) * nameScale);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleNameScaleChange(next: number) {
+    setNameScale(next);
+    if (kidId == null) return;
+
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      void updateIdCardNameScale(kidId, Math.round(next * 100));
+    }, SAVE_DEBOUNCE_MS);
+  }
 
   async function handleExportPdf() {
     if (!frontRef.current || !backRef.current || exporting) return;
@@ -105,7 +123,7 @@ export function IdCardViewer({
           max={1.5}
           step={0.05}
           value={nameScale}
-          onChange={(e) => setNameScale(Number(e.target.value))}
+          onChange={(e) => handleNameScaleChange(Number(e.target.value))}
           className="w-full accent-kids-navy"
         />
       </div>
