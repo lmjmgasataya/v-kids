@@ -8,7 +8,7 @@ export default async function GrantCreditsPage() {
   if (!session) redirect("/login");
 
   return (
-    <div className="flex flex-col gap-6 max-w-xl mx-auto">
+    <div className="flex flex-col gap-6">
       <Breadcrumbs
         items={[{ label: "Home", href: "/" }, { label: "KC Bucks", href: "/kc-bucks" }, { label: "Grant Credits" }]}
       />
