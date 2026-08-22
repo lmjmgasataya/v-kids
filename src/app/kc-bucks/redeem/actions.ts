@@ -4,7 +4,11 @@ import { db } from "@/db";
 import { kcBucksTransactions } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { getKidBalance } from "@/lib/kcBucks";
+
+const REDEEM_AMOUNT = 10;
+const REDEEM_REASON = "Manual redemption";
 
 export async function getKidBalanceForRedeem(kidId: number): Promise<number | { error: string }> {
   const session = await getSession();
@@ -21,20 +25,13 @@ export interface RedeemCreditsState {
 export async function redeemCredits(
   kidId: number,
   _prev: RedeemCreditsState | undefined,
-  formData: FormData
+  _formData: FormData
 ): Promise<RedeemCreditsState> {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const amount = Number(formData.get("amount"));
-  const reason = (formData.get("reason") as string)?.trim() ?? "";
-
-  if (!Number.isInteger(amount) || amount <= 0) {
-    return { error: "Please enter a whole number of credits greater than 0." };
-  }
-  if (!reason) {
-    return { error: "Please describe what's being redeemed." };
-  }
+  const amount = REDEEM_AMOUNT;
+  const reason = REDEEM_REASON;
 
   const balance = await getKidBalance(kidId);
   if (amount > balance) {
@@ -48,6 +45,9 @@ export async function redeemCredits(
     reason,
     createdBy: session.userId,
   });
+
+  revalidatePath("/kc-bucks/balances");
+  revalidatePath(`/kc-bucks/balance/${kidId}`);
 
   return { success: `Redeemed ${amount} KC Bucks for "${reason}".`, balance: balance - amount };
 }

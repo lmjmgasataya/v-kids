@@ -8,10 +8,10 @@ export default function Loading() {
         items={[
           { label: "Home", href: "/" },
           { label: "KC Bucks", href: "/kc-bucks" },
-          { label: "Check Balance", href: "/kc-bucks/balance" },
+          { label: "All Balances", href: "/kc-bucks/balances" },
         ]}
       />
-      <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Check Balance</h2>
+      <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Balance</h2>
       <SkeletonDetailCard accent="yellow">
         <div className="flex items-baseline gap-2">
           <SkeletonBar className="h-9 w-16" />

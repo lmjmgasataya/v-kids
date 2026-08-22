@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { KidLookupPanel } from "../KidLookupPanel";
+import { RedeemButton } from "./RedeemButton";
 import type { KcBucksKid } from "../actions";
 
 export function RedeemWorkspace() {
@@ -11,5 +12,5 @@ export function RedeemWorkspace() {
     router.push(`/kc-bucks/redeem/${kid.id}`);
   }
 
-  return <KidLookupPanel onSelect={goToKid} />;
+  return <KidLookupPanel onSelect={goToKid} renderAction={(kid) => <RedeemButton kidId={kid.id} />} />;
 }

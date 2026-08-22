@@ -1,10 +1,11 @@
 "use server";
 
-import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { kcBucksTransactions, kids } from "@/db/schema";
+import { kcBucksTransactions } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { getKidBalance, getKidTransactions, type KcBucksLedgerEntry } from "@/lib/kcBucks";
+import { revalidatePath } from "next/cache";
 
 export interface KidBalanceSummary {
   balance: number;
@@ -19,43 +20,39 @@ export async function getKidBalanceSummary(kidId: number): Promise<KidBalanceSum
   return { balance, transactions };
 }
 
-export interface KidBalanceSearchResult {
+export interface GrantEntry {
   id: number;
-  firstName: string;
-  lastName: string;
-  nickname: string | null;
-  age: number;
-  serviceAttending: string;
-  balance: number;
+  amount: number;
+  reason: string;
+  createdAt: Date;
 }
 
-export async function searchKidsWithBalance(query: string, service = ""): Promise<KidBalanceSearchResult[]> {
+export async function getKidGrants(kidId: number): Promise<GrantEntry[]> {
   const session = await getSession();
   if (!session) return [];
 
-  const search = query.trim();
-  const conditions = [];
-  if (search) {
-    conditions.push(
-      or(ilike(kids.firstName, `%${search}%`), ilike(kids.lastName, `%${search}%`), ilike(kids.nickname, `%${search}%`))
-    );
-  }
-  if (service) conditions.push(eq(kids.serviceAttending, service));
-
   return db
     .select({
-      id: kids.id,
-      firstName: kids.firstName,
-      lastName: kids.lastName,
-      nickname: kids.nickname,
-      age: kids.age,
-      serviceAttending: kids.serviceAttending,
-      balance: sql<number>`coalesce(sum(${kcBucksTransactions.amount}), 0)::int`,
+      id: kcBucksTransactions.id,
+      amount: kcBucksTransactions.amount,
+      reason: kcBucksTransactions.reason,
+      createdAt: kcBucksTransactions.createdAt,
     })
-    .from(kids)
-    .leftJoin(kcBucksTransactions, eq(kcBucksTransactions.kidId, kids.id))
-    .where(conditions.length ? and(...conditions) : undefined)
-    .groupBy(kids.id)
-    .orderBy(asc(kids.firstName), asc(kids.lastName))
-    .limit(search ? 10 : 100);
+    .from(kcBucksTransactions)
+    .where(and(eq(kcBucksTransactions.kidId, kidId), eq(kcBucksTransactions.type, "grant")))
+    .orderBy(desc(kcBucksTransactions.createdAt))
+    .limit(20);
+}
+
+export async function deleteGrant(transactionId: number): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session) return { error: "Please sign in again." };
+  if (session.role !== "admin") return { error: "You don't have permission to delete grants." };
+
+  await db
+    .delete(kcBucksTransactions)
+    .where(and(eq(kcBucksTransactions.id, transactionId), eq(kcBucksTransactions.type, "grant")));
+
+  revalidatePath("/kc-bucks/balances");
+  return {};
 }

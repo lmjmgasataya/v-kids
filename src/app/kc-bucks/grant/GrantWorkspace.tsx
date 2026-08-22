@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { KidLookupPanel } from "../KidLookupPanel";
+import { GrantButton } from "./GrantButton";
 import type { KcBucksKid } from "../actions";
 
 export function GrantWorkspace() {
@@ -13,7 +14,7 @@ export function GrantWorkspace() {
 
   return (
     <div className="flex flex-col gap-4">
-      <KidLookupPanel onSelect={goToKid} />
+      <KidLookupPanel onSelect={goToKid} renderAction={(kid) => <GrantButton kidId={kid.id} />} />
     </div>
   );
 }

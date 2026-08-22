@@ -10,13 +10,7 @@ const TILES = [
     label: "Grant Credits",
     description: "Manually award credits for a reason",
     adminOnly: false,
-  },
-  {
-    href: "/kc-bucks/balance",
-    icon: "💰",
-    label: "Check Balance",
-    description: "Look up a kid's KC Bucks and history",
-    adminOnly: false,
+    hidden: false,
   },
   {
     href: "/kc-bucks/redeem",
@@ -24,20 +18,7 @@ const TILES = [
     label: "Redeem Credits",
     description: "Subtract credits for a prize",
     adminOnly: false,
-  },
-  {
-    href: "/kc-bucks/settings",
-    icon: "⚙️",
-    label: "Credit Settings",
-    description: "Set how many credits check-in earns",
-    adminOnly: true,
-  },
-  {
-    href: "/kc-bucks/edit-grants",
-    icon: "✏️",
-    label: "Edit Grants",
-    description: "Fix or remove a manually granted amount",
-    adminOnly: true,
+    hidden: false,
   },
   {
     href: "/kc-bucks/balances",
@@ -45,6 +26,7 @@ const TILES = [
     label: "All Balances",
     description: "Browse every kid's KC Bucks balance",
     adminOnly: false,
+    hidden: false,
   },
   {
     href: "/kc-bucks/summary",
@@ -52,6 +34,7 @@ const TILES = [
     label: "Summary",
     description: "Totals and breakdowns across every kid",
     adminOnly: true,
+    hidden: true,
   },
 ] as const;
 
@@ -62,7 +45,7 @@ export default async function KcBucksPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const tiles = TILES.filter((tile) => !tile.adminOnly || session.role === "admin");
+  const tiles = TILES.filter((tile) => !tile.hidden && (!tile.adminOnly || session.role === "admin"));
   const isOddLeftover = tiles.length % 2 === 1;
 
   return (

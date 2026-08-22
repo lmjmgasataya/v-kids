@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { QrScanner, playSuccessSound } from "@/components/QrScanner";
 import { useHardwareScanListener } from "@/components/useHardwareScanListener";
@@ -20,7 +20,13 @@ function parseQrToken(decodedText: string): string {
   }
 }
 
-export function KidLookupPanel({ onSelect }: { onSelect: (kid: KcBucksKid) => void }) {
+export function KidLookupPanel({
+  onSelect,
+  renderAction,
+}: {
+  onSelect: (kid: KcBucksKid) => void;
+  renderAction?: (kid: KcBucksKid) => ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -160,23 +166,36 @@ export function KidLookupPanel({ onSelect }: { onSelect: (kid: KcBucksKid) => vo
           )}
           {results.length > 0 && (
             <ul className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-y-auto max-h-96">
-              {results.map((kid) => (
-                <li key={kid.id}>
-                  <button
-                    type="button"
-                    onClick={() => onSelect(kid)}
-                    className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-kids-yellow/5"
-                  >
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
-                        {kid.nickname && <span className="text-xs text-gray-400"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
-                      </div>
-                      <div className="text-xs text-gray-400">Age {kid.age}</div>
+              {results.map((kid) => {
+                const info = (
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
+                      {kid.nickname && <span className="text-xs text-gray-400"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
                     </div>
-                  </button>
-                </li>
-              ))}
+                    <div className="text-xs text-gray-400">Age {kid.age}</div>
+                  </div>
+                );
+
+                return (
+                  <li key={kid.id}>
+                    {renderAction ? (
+                      <div className="w-full flex items-center justify-between gap-3 px-4 py-3">
+                        {info}
+                        {renderAction(kid)}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onSelect(kid)}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-kids-yellow/5"
+                      >
+                        {info}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

@@ -2,7 +2,6 @@
 
 import { useActionState } from "react";
 import { redeemCredits } from "./actions";
-import { Field } from "@/components/form";
 import { SubmitButton } from "@/components/SubmitButton";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 import type { KcBucksKid } from "../actions";
@@ -43,12 +42,10 @@ export function RedeemForm({
       </div>
 
       <form action={action} className="flex flex-col gap-3">
-        <Field label="Credits to redeem" name="amount" type="number" min={1} step={1} max={balance} required />
-        <Field label="Redeemed for" name="reason" required placeholder="e.g. Toy car" />
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
         {state?.success && <p className="text-sm font-semibold text-kids-green">{state.success}</p>}
         <SubmitButton
-          label="Redeem"
+          label="Redeem 10 KC Bucks"
           pendingLabel="Redeeming…"
           className="bg-kids-magenta hover:bg-kids-magenta/90 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition"
         />

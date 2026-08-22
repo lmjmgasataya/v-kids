@@ -24,13 +24,3 @@ export type RegistrationFormType = (typeof REGISTRATION_FORM_TYPES)[number];
 
 export const ROLE_OPTIONS = ["admin", "volunteer"] as const;
 
-export const CHECKIN_CREDIT_SETTING_KEY = "checkin_credit_amount";
-
-export const KC_BUCKS_REASON_OPTIONS = [
-  "Led prayer",
-  "Recited memory verse",
-  "Answered Bible question",
-  "Helped a friend",
-  "Good behavior",
-  "Other",
-];

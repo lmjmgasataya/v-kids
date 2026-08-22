@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { kcBucksTransactions } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 export interface GrantCreditsState {
   error?: string;
@@ -31,6 +32,9 @@ export async function grantCredits(
     reason,
     createdBy: session.userId,
   });
+
+  revalidatePath("/kc-bucks/balances");
+  revalidatePath(`/kc-bucks/balance/${kidId}`);
 
   return { success: `Granted ${amount} KC Bucks for "${reason}".` };
 }

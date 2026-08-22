@@ -1,7 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { capitalizeName } from "@/lib/format";
 
 interface Row {
@@ -25,15 +22,15 @@ export function BalancesTable({
   dir,
   q,
   service,
+  canManage,
 }: {
   rows: Row[];
   sort: string;
   dir: "asc" | "desc";
   q: string;
   service: string;
+  canManage: boolean;
 }) {
-  const router = useRouter();
-
   function sortHref(key: string) {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -66,15 +63,12 @@ export function BalancesTable({
                 </Link>
               </th>
             ))}
+            <th className="px-4 py-3" />
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr
-              key={row.id}
-              onClick={() => router.push(`/kc-bucks/balance/${row.id}`)}
-              className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5"
-            >
+            <tr key={row.id} className="border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5">
               <td className="px-4 py-3">
                 <div className="font-medium text-gray-900">
                   {capitalizeName(row.firstName)} {capitalizeName(row.lastName)}
@@ -85,6 +79,16 @@ export function BalancesTable({
               <td className="px-4 py-3 text-right">
                 <span className="font-bold text-kids-green">{row.balance}</span>
                 <span className="text-xs text-gray-400"> KC Bucks</span>
+              </td>
+              <td className="px-4 py-3 text-right whitespace-nowrap">
+                {canManage && (
+                  <Link
+                    href={`/kc-bucks/balance/${row.id}#grants`}
+                    className="text-kids-navy font-semibold hover:underline"
+                  >
+                    Edit
+                  </Link>
+                )}
               </td>
             </tr>
           ))}

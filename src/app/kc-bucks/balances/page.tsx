@@ -83,7 +83,14 @@ export default async function KcBucksBalancesPage({
           <FilterSelect paramName="service" value={service} options={SERVICE_OPTIONS} allLabel="All services" />
         </div>
       </div>
-      <BalancesTable rows={rows} sort={sort} dir={dir} q={search} service={service} />
+      <BalancesTable
+        rows={rows}
+        sort={sort}
+        dir={dir}
+        q={search}
+        service={service}
+        canManage={session.role === "admin"}
+      />
       <Pagination
         basePath="/kc-bucks/balances"
         page={page}

@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getKidBasicById } from "../../actions";
-import { getKidBalanceSummary } from "../actions";
+import { getKidBalanceSummary, getKidGrants } from "../actions";
 import { BalanceDetail } from "../BalanceDetail";
 import { capitalizeName } from "@/lib/format";
 
@@ -17,7 +17,7 @@ export default async function CheckBalanceKidPage({ params }: { params: Promise<
   const kid = await getKidBasicById(kidId);
   if (!kid) notFound();
 
-  const summaryResult = await getKidBalanceSummary(kid.id);
+  const [summaryResult, grants] = await Promise.all([getKidBalanceSummary(kid.id), getKidGrants(kid.id)]);
   if ("error" in summaryResult) notFound();
 
   const fullName = `${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}`;
@@ -28,12 +28,12 @@ export default async function CheckBalanceKidPage({ params }: { params: Promise<
         items={[
           { label: "Home", href: "/" },
           { label: "KC Bucks", href: "/kc-bucks" },
-          { label: "Check Balance", href: "/kc-bucks/balance" },
+          { label: "All Balances", href: "/kc-bucks/balances" },
           { label: fullName },
         ]}
       />
-      <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Check Balance</h2>
-      <BalanceDetail kid={kid} summary={summaryResult} />
+      <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Balance</h2>
+      <BalanceDetail kid={kid} summary={summaryResult} grants={grants} canManageGrants={session.role === "admin"} />
     </div>
   );
 }

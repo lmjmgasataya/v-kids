@@ -1,14 +1,11 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { kcBucksSettings, kcBucksTransactions, users } from "@/db/schema";
-import { CHECKIN_CREDIT_SETTING_KEY } from "@/lib/constants";
+import { kcBucksTransactions, users } from "@/db/schema";
+
+const CHECKIN_CREDIT_AMOUNT = 10;
 
 export async function getCheckInCreditAmount(): Promise<number> {
-  const [row] = await db
-    .select()
-    .from(kcBucksSettings)
-    .where(eq(kcBucksSettings.key, CHECKIN_CREDIT_SETTING_KEY));
-  return row?.value ?? 0;
+  return CHECKIN_CREDIT_AMOUNT;
 }
 
 export async function getKidBalance(kidId: number): Promise<number> {
