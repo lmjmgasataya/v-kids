@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import type { KcBucksKid } from "../actions";
-import { getKidGrants, type GrantEntry, type KidBalanceSummary } from "./actions";
+import { getKidBalanceSummary, getKidGrants, type GrantEntry, type KidBalanceSummary } from "./actions";
+import { AddGrantForm } from "./AddGrantForm";
 import { GrantEditRow } from "./GrantEditRow";
 import { capitalizeName } from "@/lib/format";
 
@@ -21,7 +22,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 export function BalanceDetail({
   kid,
-  summary,
+  summary: initialSummary,
   grants: initialGrants,
   canManageGrants,
 }: {
@@ -31,15 +32,17 @@ export function BalanceDetail({
   canManageGrants: boolean;
 }) {
   const router = useRouter();
+  const [summary, setSummary] = useState(initialSummary);
   const [grants, setGrants] = useState(initialGrants);
   const [, startLoading] = useTransition();
 
-  function refreshGrants() {
+  const refresh = useCallback(() => {
     startLoading(async () => {
-      const rows = await getKidGrants(kid.id);
+      const [summaryResult, rows] = await Promise.all([getKidBalanceSummary(kid.id), getKidGrants(kid.id)]);
+      if (!("error" in summaryResult)) setSummary(summaryResult);
       setGrants(rows);
     });
-  }
+  }, [kid.id]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -96,12 +99,13 @@ export function BalanceDetail({
       {canManageGrants && (
         <div id="grants" className="rounded-2xl border-2 border-kids-green/30 bg-kids-green/5 p-6 flex flex-col gap-3 scroll-mt-4">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Manual grants</p>
+          <AddGrantForm kidId={kid.id} onGranted={refresh} />
           {grants.length === 0 ? (
             <p className="text-sm text-gray-400">No manually granted credits yet.</p>
           ) : (
             <ul className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
               {grants.map((grant) => (
-                <GrantEditRow key={grant.id} grant={grant} onChanged={refreshGrants} />
+                <GrantEditRow key={grant.id} grant={grant} onChanged={refresh} />
               ))}
             </ul>
           )}

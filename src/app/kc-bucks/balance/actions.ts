@@ -44,6 +44,61 @@ export async function getKidGrants(kidId: number): Promise<GrantEntry[]> {
     .limit(20);
 }
 
+export interface AddGrantState {
+  error?: string;
+  success?: string;
+}
+
+const GRANT_REASON = "Manual granted";
+
+export async function addGrant(
+  kidId: number,
+  _prev: AddGrantState | undefined,
+  formData: FormData
+): Promise<AddGrantState> {
+  const session = await getSession();
+  if (!session) return { error: "Please sign in again." };
+  if (session.role !== "admin") return { error: "You don't have permission to add grants." };
+
+  const amount = Number(formData.get("amount"));
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { error: "Enter a whole number amount greater than 0." };
+  }
+
+  const reason = GRANT_REASON;
+
+  await db.insert(kcBucksTransactions).values({
+    kidId,
+    type: "grant",
+    amount,
+    reason,
+    createdBy: session.userId,
+  });
+
+  revalidatePath("/kc-bucks/balances");
+  revalidatePath(`/kc-bucks/balance/${kidId}`);
+
+  return { success: `Added ${amount} KC Bucks for "${reason}".` };
+}
+
+export async function updateGrant(transactionId: number, amount: number): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session) return { error: "Please sign in again." };
+  if (session.role !== "admin") return { error: "You don't have permission to edit grants." };
+
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { error: "Enter a whole number amount greater than 0." };
+  }
+
+  await db
+    .update(kcBucksTransactions)
+    .set({ amount })
+    .where(and(eq(kcBucksTransactions.id, transactionId), eq(kcBucksTransactions.type, "grant")));
+
+  revalidatePath("/kc-bucks/balances");
+  return {};
+}
+
 export async function deleteGrant(transactionId: number): Promise<{ error?: string }> {
   const session = await getSession();
   if (!session) return { error: "Please sign in again." };
