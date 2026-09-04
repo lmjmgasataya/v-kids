@@ -7,7 +7,7 @@ export const ID_CARD_WIDTH_MM = 85.6;
 export const ID_CARD_HEIGHT_MM = 53.98;
 
 const brandStripe = (
-  <div className="h-[3mm] flex shrink-0">
+  <div className="h-[4mm] flex shrink-0">
     <div className="flex-1 bg-kids-magenta" />
     <div className="flex-1 bg-kids-navy" />
     <div className="flex-1 bg-kids-green" />
@@ -104,7 +104,7 @@ export const IdCardBack = forwardRef<
       {brandStripe}
       <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={qrDataUrl} alt="Check-in QR code" className="w-[32mm] h-[32mm]" />
+        <img src={qrDataUrl} alt="Check-in QR code" className="w-[30mm] h-[30mm] mt-[8mm]" />
         <div className="text-[7px] text-gray-500 text-center px-[4mm]">
           {subtitle} · {fullName}
         </div>
