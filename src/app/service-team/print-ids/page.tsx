@@ -22,6 +22,7 @@ export default async function ServiceTeamPrintIdsPage() {
       birthday: serviceTeamMembers.birthday,
       serviceAttending: serviceTeamMembers.serviceAttending,
       qrToken: serviceTeamMembers.qrToken,
+      idCardNameScale: serviceTeamMembers.idCardNameScale,
     })
     .from(serviceTeamMembers)
     .orderBy(asc(serviceTeamMembers.lastName), asc(serviceTeamMembers.firstName));

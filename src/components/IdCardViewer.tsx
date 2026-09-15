@@ -5,6 +5,7 @@ import { IdCardFront, IdCardBack, ServiceTeamIdCardFront } from "./IdCard";
 import { exportIdCardsToPdf, exportIdCardsToPngZip, sanitizeFileName } from "@/lib/idCardExport";
 import { idCardNameFontSize, idCardTeamNameFontSize } from "@/lib/format";
 import { updateIdCardNameScale } from "@/app/kids/actions";
+import { updateServiceTeamIdCardNameScale } from "@/app/service-team/actions";
 
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -45,7 +46,8 @@ export function IdCardViewer({
 
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      void updateIdCardNameScale(kidId, Math.round(next * 100));
+      const scale100 = Math.round(next * 100);
+      void (variant === "team" ? updateServiceTeamIdCardNameScale(kidId, scale100) : updateIdCardNameScale(kidId, scale100));
     }, SAVE_DEBOUNCE_MS);
   }
 

@@ -24,6 +24,7 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
       lastName: serviceTeamMembers.lastName,
       nickname: serviceTeamMembers.nickname,
       qrToken: serviceTeamMembers.qrToken,
+      idCardNameScale: serviceTeamMembers.idCardNameScale,
     })
     .from(serviceTeamMembers)
     .where(eq(serviceTeamMembers.id, memberId));
@@ -65,6 +66,8 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
           fileBaseName={fullName}
           backSubtitle="Service Team Member"
           variant="team"
+          kidId={memberId}
+          initialNameScale={row.idCardNameScale}
         />
       </div>
     </div>

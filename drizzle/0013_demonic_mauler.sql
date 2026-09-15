@@ -1,0 +1,1 @@
+ALTER TABLE "service_team_members" ADD COLUMN "id_card_name_scale" integer DEFAULT 100 NOT NULL;

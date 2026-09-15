@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ServiceTeamIdCardFront, IdCardBack } from "@/components/IdCard";
+import { useMemo, useRef, useState } from "react";
+import { ServiceTeamIdCardFront, IdCardBack, ID_CARD_WIDTH_MM, ID_CARD_HEIGHT_MM } from "@/components/IdCard";
 import { inputCls } from "@/components/form";
 import { useIdCardExport } from "@/lib/useIdCardExport";
-import { capitalizeName, idCardDisplayName } from "@/lib/format";
+import { capitalizeName, idCardDisplayName, idCardTeamNameFontSize } from "@/lib/format";
+import { ID_CARD_NAME_SCALE_MIN, ID_CARD_NAME_SCALE_MAX } from "@/lib/constants";
+import { updateServiceTeamIdCardNameScale } from "../actions";
 
 interface MemberRow {
   id: number;
@@ -14,8 +16,20 @@ interface MemberRow {
   birthday: string;
   serviceAttending: string;
   qrToken: string;
+  idCardNameScale: number;
   qrDataUrl: string;
 }
+
+// Cards are laid out in real mm units; shrink them down to a small inline thumbnail via
+// CSS transform instead of rendering a second, differently-sized card component.
+const MM_TO_PX = 96 / 25.4;
+const CARD_WIDTH_PX = ID_CARD_WIDTH_MM * MM_TO_PX;
+const CARD_HEIGHT_PX = ID_CARD_HEIGHT_MM * MM_TO_PX;
+const PREVIEW_WIDTH_PX = 110;
+const PREVIEW_SCALE = PREVIEW_WIDTH_PX / CARD_WIDTH_PX;
+const PREVIEW_HEIGHT_PX = CARD_HEIGHT_PX * PREVIEW_SCALE;
+
+const SAVE_DEBOUNCE_MS = 400;
 
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "lastName", label: "Name" },
@@ -44,6 +58,21 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
   const [sort, setSort] = useState<SortKey>("lastName");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [scales, setScales] = useState<Record<number, number>>(() =>
+    Object.fromEntries(members.map((member) => [member.id, member.idCardNameScale]))
+  );
+  const saveTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
+  function handleScaleChange(memberId: number, value: number) {
+    setScales((prev) => ({ ...prev, [memberId]: value }));
+
+    const timers = saveTimers.current;
+    if (timers[memberId]) clearTimeout(timers[memberId]);
+    timers[memberId] = setTimeout(() => {
+      delete timers[memberId];
+      void updateServiceTeamIdCardNameScale(memberId, value);
+    }, SAVE_DEBOUNCE_MS);
+  }
 
   const sortedAll = useMemo(() => {
     const sorted = [...members].sort((a, b) => compareRows(a, b, sort));
@@ -170,38 +199,82 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
                   </button>
                 </th>
               ))}
+              <th className="px-4 py-3 text-left font-semibold text-gray-600">ID Preview</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-600">Name Size</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length + 1} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={COLUMNS.length + 3} className="px-4 py-8 text-center text-gray-400">
                   No service team members match your search.
                 </td>
               </tr>
             )}
-            {filtered.map((member) => (
-              <tr
-                key={member.id}
-                onClick={() => toggleOne(member.id)}
-                className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5"
-              >
-                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selected.has(member.id)}
-                    onChange={() => toggleOne(member.id)}
-                    aria-label={`Select ${capitalizeName(member.firstName)} ${capitalizeName(member.lastName)}`}
-                    className="h-4 w-4 accent-kids-navy"
-                  />
-                </td>
-                <td className="px-4 py-3 font-medium text-gray-900">
-                  {capitalizeName(member.firstName)} {capitalizeName(member.lastName)}
-                </td>
-                <td className="px-4 py-3">{birthdayFormatter.format(new Date(member.birthday))}</td>
-                <td className="px-4 py-3">{member.serviceAttending}</td>
-              </tr>
-            ))}
+            {filtered.map((member) => {
+              const fullName = `${capitalizeName(member.firstName)} ${capitalizeName(member.lastName)}`;
+              const displayName = idCardDisplayName(member.firstName, member.nickname);
+              const scale = scales[member.id] ?? member.idCardNameScale;
+              const nameFontSize = Math.round(idCardTeamNameFontSize(displayName) * (scale / 100));
+
+              return (
+                <tr
+                  key={member.id}
+                  onClick={() => toggleOne(member.id)}
+                  className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5"
+                >
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(member.id)}
+                      onChange={() => toggleOne(member.id)}
+                      aria-label={`Select ${fullName}`}
+                      className="h-4 w-4 accent-kids-navy"
+                    />
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-900">{fullName}</td>
+                  <td className="px-4 py-3">{birthdayFormatter.format(new Date(member.birthday))}</td>
+                  <td className="px-4 py-3">{member.serviceAttending}</td>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="rounded-md border border-gray-200 shrink-0 overflow-hidden"
+                      style={{ width: PREVIEW_WIDTH_PX, height: PREVIEW_HEIGHT_PX }}
+                    >
+                      <div
+                        style={{
+                          width: CARD_WIDTH_PX,
+                          height: CARD_HEIGHT_PX,
+                          transform: `scale(${PREVIEW_SCALE})`,
+                          transformOrigin: "top left",
+                        }}
+                      >
+                        <ServiceTeamIdCardFront
+                          flat
+                          displayName={displayName}
+                          fullName={fullName}
+                          nameFontSize={nameFontSize}
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={ID_CARD_NAME_SCALE_MIN}
+                        max={ID_CARD_NAME_SCALE_MAX}
+                        step={5}
+                        value={scale}
+                        onChange={(e) => handleScaleChange(member.id, Number(e.target.value))}
+                        aria-label={`Name size for ${fullName}`}
+                        className="w-24 accent-kids-navy"
+                      />
+                      <span className="text-xs text-gray-500 w-9 text-right">{scale}%</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -211,12 +284,15 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
         {printable.map((member) => {
           const fullName = `${capitalizeName(member.firstName)} ${capitalizeName(member.lastName)}`;
           const displayName = idCardDisplayName(member.firstName, member.nickname);
+          const scale = scales[member.id] ?? member.idCardNameScale;
+          const nameFontSize = Math.round(idCardTeamNameFontSize(displayName) * (scale / 100));
           return (
             <div key={member.id} className="contents">
               <ServiceTeamIdCardFront
                 ref={(el) => setFrontRef(member.id, el)}
                 displayName={displayName}
                 fullName={fullName}
+                nameFontSize={nameFontSize}
                 flat
               />
               <IdCardBack
