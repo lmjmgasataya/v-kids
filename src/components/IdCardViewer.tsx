@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { IdCardFront, IdCardBack, ServiceTeamIdCardFront } from "./IdCard";
 import { exportIdCardsToPdf, exportIdCardsToPngZip, sanitizeFileName } from "@/lib/idCardExport";
-import { idCardNameFontSize } from "@/lib/format";
+import { idCardNameFontSize, idCardTeamNameFontSize } from "@/lib/format";
 import { updateIdCardNameScale } from "@/app/kids/actions";
 
 const SAVE_DEBOUNCE_MS = 400;
@@ -34,7 +34,9 @@ export function IdCardViewer({
   const [nameScale, setNameScale] = useState(initialNameScale / 100);
   const [editableDisplayName, setEditableDisplayName] = useState(displayName);
   const shownDisplayName = editableDisplayName.trim() || displayName;
-  const nameFontSize = Math.round(idCardNameFontSize(shownDisplayName) * nameScale);
+  const baseNameFontSize =
+    variant === "team" ? idCardTeamNameFontSize(shownDisplayName) : idCardNameFontSize(shownDisplayName);
+  const nameFontSize = Math.round(baseNameFontSize * nameScale);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleNameScaleChange(next: number) {

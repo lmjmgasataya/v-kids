@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import { LogoMark } from "./LogoMark";
-import { idCardNameFontSize } from "@/lib/format";
+import { idCardNameFontSize, idCardTeamNameFontSize } from "@/lib/format";
 
 // Standard CR80 card size: 85.60mm x 53.98mm (3.37in x 2.125in)
 export const ID_CARD_WIDTH_MM = 85.6;
@@ -72,10 +72,13 @@ export const ServiceTeamIdCardFront = forwardRef<
           Kids Church
         </span>
       </div>
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-[4mm] gap-1 -mt-[5mm]">
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-[4mm] gap-0.5 -mt-[3mm]">
+        <div className="text-[13px] font-semibold text-black font-[family-name:var(--font-fredoka)]">
+          Hi, I&apos;m Teacher
+        </div>
         <div
-          style={{ fontSize: nameFontSize ?? idCardNameFontSize(displayName) }}
-          className={`leading-tight font-bold text-kids-navy font-[family-name:var(--font-fredoka)] max-w-full ${
+          style={{ fontSize: nameFontSize ?? idCardTeamNameFontSize(displayName) }}
+          className={`leading-tight font-bold text-black font-[family-name:var(--font-fredoka)] max-w-full ${
             displayName.trim().includes(" ") ? "whitespace-nowrap" : "break-words"
           }`}
         >

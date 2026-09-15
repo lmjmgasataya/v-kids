@@ -29,3 +29,16 @@ export function idCardNameFontSize(name: string): number {
   const hasWideLetter = /[mwcgb]/i.test(trimmed);
   return Math.max(24, hasWideLetter ? Math.round(base * 0.85) : base);
 }
+
+/**
+ * Font size (px) for the service team ID card's name — same scaling idea as
+ * `idCardNameFontSize`, but capped smaller since the "Hi, I'm Teacher" line above it
+ * shares the same vertical space on the card.
+ */
+export function idCardTeamNameFontSize(name: string): number {
+  const trimmed = name.trim();
+  const length = trimmed.length || 1;
+  const base = Math.min(56, Math.round(430 / length));
+  const hasWideLetter = /[mwcgb]/i.test(trimmed);
+  return Math.max(20, hasWideLetter ? Math.round(base * 0.85) : base);
+}
