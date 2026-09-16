@@ -94,6 +94,8 @@ export async function fetchKidsRows({
       age: kids.age,
       gender: kids.gender,
       serviceAttending: kids.serviceAttending,
+      idPrinted: kids.idPrinted,
+      idGiven: kids.idGiven,
       createdAt: kids.createdAt,
       guardianFirstName: guardians.firstName,
       guardianLastName: guardians.lastName,

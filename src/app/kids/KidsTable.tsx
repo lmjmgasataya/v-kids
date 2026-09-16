@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { DeleteKidButton } from "./DeleteKidButton";
 import { capitalizeName } from "@/lib/format";
+import { IdStatusCheckbox } from "@/components/IdStatusCheckbox";
+import { setKidIdGiven, setKidIdPrinted } from "./actions";
 
 interface Row {
   id: number;
@@ -10,6 +12,8 @@ interface Row {
   age: number;
   gender: string;
   serviceAttending: string;
+  idPrinted: boolean;
+  idGiven: boolean;
   createdAt: Date;
   guardianFirstName: string;
   guardianLastName: string;
@@ -71,6 +75,8 @@ export function KidsTable({
                 </Link>
               </th>
             ))}
+            <th className="px-4 py-3 text-left font-semibold text-gray-600">ID Printed</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-600">ID Given</th>
             <th className="px-4 py-3" />
           </tr>
         </thead>
@@ -93,6 +99,26 @@ export function KidsTable({
               </td>
               <td className="px-4 py-3">{row.serviceAttending}</td>
               <td className="px-4 py-3 text-gray-500">{dateFormatter.format(row.createdAt)}</td>
+              <td className="px-4 py-3">
+                <IdStatusCheckbox
+                  id={row.id}
+                  checked={row.idPrinted}
+                  action={setKidIdPrinted}
+                  fieldLabel="ID Printed"
+                  personName={`${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`}
+                  disabled={!canManage}
+                />
+              </td>
+              <td className="px-4 py-3">
+                <IdStatusCheckbox
+                  id={row.id}
+                  checked={row.idGiven}
+                  action={setKidIdGiven}
+                  fieldLabel="ID Given"
+                  personName={`${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`}
+                  disabled={!canManage}
+                />
+              </td>
               <td className="px-4 py-3 text-right whitespace-nowrap">
                 <div className="flex items-center justify-end gap-2">
                   {canManage && (

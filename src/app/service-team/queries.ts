@@ -86,6 +86,8 @@ export async function fetchServiceTeamRows({
       serviceAttending: serviceTeamMembers.serviceAttending,
       photoKey: serviceTeamMembers.photoKey,
       qrToken: serviceTeamMembers.qrToken,
+      idPrinted: serviceTeamMembers.idPrinted,
+      idGiven: serviceTeamMembers.idGiven,
       createdAt: serviceTeamMembers.createdAt,
     })
     .from(serviceTeamMembers)

@@ -46,6 +46,8 @@ export const kids = pgTable("kids", {
     .notNull(),
   qrToken: uuid("qr_token").defaultRandom().notNull().unique(),
   idCardNameScale: integer("id_card_name_scale").notNull().default(100),
+  idPrinted: boolean("id_printed").notNull().default(false),
+  idGiven: boolean("id_given").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -84,6 +86,8 @@ export const serviceTeamMembers = pgTable("service_team_members", {
   photoKey: text("photo_key"),
   qrToken: uuid("qr_token").defaultRandom().notNull().unique(),
   idCardNameScale: integer("id_card_name_scale").notNull().default(100),
+  idPrinted: boolean("id_printed").notNull().default(false),
+  idGiven: boolean("id_given").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

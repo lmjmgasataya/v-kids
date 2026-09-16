@@ -2,6 +2,8 @@ import Link from "next/link";
 import { DeleteServiceTeamMemberButton } from "./DeleteServiceTeamMemberButton";
 import { ServiceTeamPhoto } from "./ServiceTeamPhoto";
 import { capitalizeName } from "@/lib/format";
+import { IdStatusCheckbox } from "@/components/IdStatusCheckbox";
+import { setServiceTeamIdGiven, setServiceTeamIdPrinted } from "./actions";
 
 interface Row {
   id: number;
@@ -13,6 +15,8 @@ interface Row {
   serviceAttending: string;
   photoUrl: string | null;
   downloadUrl: string | null;
+  idPrinted: boolean;
+  idGiven: boolean;
   createdAt: Date;
 }
 
@@ -73,6 +77,8 @@ export function ServiceTeamTable({
                 </Link>
               </th>
             ))}
+            <th className="px-4 py-3 text-left font-semibold text-gray-600">ID Printed</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-600">ID Given</th>
             <th className="px-4 py-3" />
           </tr>
         </thead>
@@ -96,6 +102,26 @@ export function ServiceTeamTable({
               <td className="px-4 py-3">{birthdayFormatter.format(new Date(row.birthday))}</td>
               <td className="px-4 py-3">{row.serviceAttending}</td>
               <td className="px-4 py-3 text-gray-500">{registeredFormatter.format(row.createdAt)}</td>
+              <td className="px-4 py-3">
+                <IdStatusCheckbox
+                  id={row.id}
+                  checked={row.idPrinted}
+                  action={setServiceTeamIdPrinted}
+                  fieldLabel="ID Printed"
+                  personName={`${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`}
+                  disabled={!canManage}
+                />
+              </td>
+              <td className="px-4 py-3">
+                <IdStatusCheckbox
+                  id={row.id}
+                  checked={row.idGiven}
+                  action={setServiceTeamIdGiven}
+                  fieldLabel="ID Given"
+                  personName={`${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`}
+                  disabled={!canManage}
+                />
+              </td>
               <td className="px-4 py-3 text-right whitespace-nowrap">
                 <div className="flex items-center justify-end gap-2">
                   {canManage && (

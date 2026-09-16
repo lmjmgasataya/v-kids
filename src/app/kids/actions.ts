@@ -35,6 +35,28 @@ export async function updateIdCardNameScale(kidId: number, scale: number): Promi
   return {};
 }
 
+export async function setKidIdPrinted(kidId: number, value: boolean): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session) return { error: "Please sign in again." };
+  if (session.role !== "admin") return { error: "You don't have permission to do this." };
+
+  await db.update(kids).set({ idPrinted: value }).where(eq(kids.id, kidId));
+
+  revalidatePath("/kids");
+  return {};
+}
+
+export async function setKidIdGiven(kidId: number, value: boolean): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session) return { error: "Please sign in again." };
+  if (session.role !== "admin") return { error: "You don't have permission to do this." };
+
+  await db.update(kids).set({ idGiven: value }).where(eq(kids.id, kidId));
+
+  revalidatePath("/kids");
+  return {};
+}
+
 export async function deleteKid(kidId: number) {
   const session = await getSession();
   if (!session) redirect("/login");
