@@ -26,36 +26,29 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
     if (mode !== "live") return;
     let cancelled = false;
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setError("Camera access isn't available on this device. Please upload a photo instead.");
-      setMode("idle");
-      return;
-    }
-
-    try {
-      navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: { ideal: "environment" } } })
-        .then((stream) => {
-          if (cancelled) {
-            stream.getTracks().forEach((track) => track.stop());
-            return;
-          }
-          streamRef.current = stream;
-          if (videoRef.current) videoRef.current.srcObject = stream;
-          // Mirror the preview unless we know we landed on the rear camera — front-facing
-          // (or unreported, e.g. most laptop webcams) feels backwards to look at unmirrored.
-          const facingMode = stream.getVideoTracks()[0]?.getSettings().facingMode;
-          setMirrored(facingMode !== "environment");
-          setCameraReady(true);
-        })
-        .catch(() => {
-          setError("Couldn't access the camera. Please allow camera permission, or upload a photo instead.");
-          setMode("idle");
-        });
-    } catch {
-      setError("Couldn't access the camera. Please allow camera permission, or upload a photo instead.");
-      setMode("idle");
-    }
+    Promise.resolve()
+      .then(() => {
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera API unavailable");
+        return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+      })
+      .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) videoRef.current.srcObject = stream;
+        // Mirror the preview unless we know we landed on the rear camera — front-facing
+        // (or unreported, e.g. most laptop webcams) feels backwards to look at unmirrored.
+        const facingMode = stream.getVideoTracks()[0]?.getSettings().facingMode;
+        setMirrored(facingMode !== "environment");
+        setCameraReady(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError("Couldn't access the camera. Please allow camera permission, or upload a photo instead.");
+        setMode("idle");
+      });
 
     return () => {
       cancelled = true;
