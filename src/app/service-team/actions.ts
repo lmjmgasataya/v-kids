@@ -30,7 +30,6 @@ export async function updateServiceTeamIdCardNameScale(memberId: number, scale: 
 export async function setServiceTeamIdPrinted(memberId: number, value: boolean): Promise<{ error?: string }> {
   const session = await getSession();
   if (!session) return { error: "Please sign in again." };
-  if (session.role !== "admin") return { error: "You don't have permission to do this." };
 
   await db.update(serviceTeamMembers).set({ idPrinted: value }).where(eq(serviceTeamMembers.id, memberId));
 
@@ -41,7 +40,6 @@ export async function setServiceTeamIdPrinted(memberId: number, value: boolean):
 export async function setServiceTeamIdGiven(memberId: number, value: boolean): Promise<{ error?: string }> {
   const session = await getSession();
   if (!session) return { error: "Please sign in again." };
-  if (session.role !== "admin") return { error: "You don't have permission to do this." };
 
   await db.update(serviceTeamMembers).set({ idGiven: value }).where(eq(serviceTeamMembers.id, memberId));
 

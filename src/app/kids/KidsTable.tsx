@@ -106,7 +106,6 @@ export function KidsTable({
                   action={setKidIdPrinted}
                   fieldLabel="ID Printed"
                   personName={`${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`}
-                  disabled={!canManage}
                 />
               </td>
               <td className="px-4 py-3">
@@ -116,7 +115,6 @@ export function KidsTable({
                   action={setKidIdGiven}
                   fieldLabel="ID Given"
                   personName={`${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`}
-                  disabled={!canManage}
                 />
               </td>
               <td className="px-4 py-3 text-right whitespace-nowrap">
