@@ -26,22 +26,36 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
     if (mode !== "live") return;
     let cancelled = false;
 
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: { ideal: "environment" } } })
-      .then((stream) => {
-        if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
-        // Mirror the preview unless we know we landed on the rear camera — front-facing
-        // (or unreported, e.g. most laptop webcams) feels backwards to look at unmirrored.
-        const facingMode = stream.getVideoTracks()[0]?.getSettings().facingMode;
-        setMirrored(facingMode !== "environment");
-        setCameraReady(true);
-      })
-      .catch(() => setError("Couldn't access the camera. Please allow camera permission, or upload a photo instead."));
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("Camera access isn't available on this device. Please upload a photo instead.");
+      setMode("idle");
+      return;
+    }
+
+    try {
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: { ideal: "environment" } } })
+        .then((stream) => {
+          if (cancelled) {
+            stream.getTracks().forEach((track) => track.stop());
+            return;
+          }
+          streamRef.current = stream;
+          if (videoRef.current) videoRef.current.srcObject = stream;
+          // Mirror the preview unless we know we landed on the rear camera — front-facing
+          // (or unreported, e.g. most laptop webcams) feels backwards to look at unmirrored.
+          const facingMode = stream.getVideoTracks()[0]?.getSettings().facingMode;
+          setMirrored(facingMode !== "environment");
+          setCameraReady(true);
+        })
+        .catch(() => {
+          setError("Couldn't access the camera. Please allow camera permission, or upload a photo instead.");
+          setMode("idle");
+        });
+    } catch {
+      setError("Couldn't access the camera. Please allow camera permission, or upload a photo instead.");
+      setMode("idle");
+    }
 
     return () => {
       cancelled = true;
@@ -97,12 +111,25 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
   function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setCapturedPreview(reader.result as string);
-      setMode("captured");
-    };
-    reader.readAsDataURL(file);
+    try {
+      const reader = new FileReader();
+      reader.onerror = () => setError("Couldn't read that photo. Please try uploading a different file.");
+      reader.onload = () => {
+        setCapturedPreview(reader.result as string);
+        setMode("captured");
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setError("Couldn't read that photo. Please try uploading a different file.");
+    }
+  }
+
+  function openFilePicker() {
+    try {
+      fileInputRef.current?.click();
+    } catch {
+      setError("File upload isn't available on this device. Please try again or continue without a photo.");
+    }
   }
 
   return (
@@ -142,7 +169,7 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
               </button>
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={openFilePicker}
                 className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-6 text-gray-500 transition-[transform,background-color,color,box-shadow,border-color] duration-150 active:scale-95 hover:-translate-y-0.5 hover:border-kids-navy/50 hover:text-kids-navy hover:shadow-md"
               >
                 <span className="text-3xl">🖼️</span>
