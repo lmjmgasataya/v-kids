@@ -46,7 +46,7 @@ Core tables:
 - `service_team_members` — `firstName`, `lastName`, `birthday` (date), `serviceAttending` (free text), `photoKey` (nullable, private Backblaze B2 object key — not a URL; resolve to a viewable link via `getSignedPhotoUrl`); created via the public `/register/team` form. No login/check-in for these yet — registration only.
 - `users` — `username`, `passwordHash` (bcryptjs), `name`, `role` (`admin` | `user`) — staff accounts
 - `login_logs` — audit log scaffold (not currently written to; wire up in `login` action if needed)
-- `feature_flags` — `key` (primary key), `enabled` (default `true`), `updatedAt`; global on/off switches, editable at `/settings` (admin only). Currently `cursor_trail`, `service_cards` (service picker as cards vs. dropdown on `/check-in`), and `volunteer_manage_service_team` (lets non-admins edit/delete service team members; missing row ⇒ **disabled**). Missing row ⇒ treated as enabled (see fallback pattern below).
+- `feature_flags` — `key` (primary key), `enabled` (default `true`), `updatedAt`; global on/off switches, editable at `/settings` (admin only). Currently `cursor_trail`, `service_cards` (service picker as cards vs. dropdown on `/check-in`), `volunteer_manage_service_team` and `volunteer_manage_kids` (let non-admins edit/delete service team members / kids; missing row ⇒ **disabled**, gated via `canManageServiceTeam` / `canManageKids` in each section's `permissions.ts`). Missing row ⇒ treated as enabled (see fallback pattern below).
 
 ### Route sections
 - `src/app/page.tsx` — the staff dashboard, kid-friendly themed; protected (redirects to `/login` if no session, also guarded by `src/proxy.ts`); menu tiles: **Register**, **Registered Kids**, **Check-In**, **KC Bucks**, **Attendance**, **Service Team**

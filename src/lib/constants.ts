@@ -19,6 +19,7 @@ export const SERVICE_CARDS_FLAG_KEY = "service_cards";
 export const AUTO_CHECK_IN_FLAG_KEY = "auto_check_in";
 export const AUTO_CHECK_OUT_FLAG_KEY = "auto_check_out";
 export const VOLUNTEER_MANAGE_SERVICE_TEAM_FLAG_KEY = "volunteer_manage_service_team";
+export const VOLUNTEER_MANAGE_KIDS_FLAG_KEY = "volunteer_manage_kids";
 
 export const REGISTRATION_FORM_TYPES = ["child", "team"] as const;
 export type RegistrationFormType = (typeof REGISTRATION_FORM_TYPES)[number];

@@ -6,11 +6,12 @@ import { eq } from "drizzle-orm";
 import EditKidForm from "./EditKidForm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { capitalizeName } from "@/lib/format";
+import { canManageKids } from "../../permissions";
 
 export default async function EditKidPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.role !== "admin") redirect("/kids");
+  if (!(await canManageKids(session))) redirect("/kids");
 
   const { id } = await params;
   const kidId = Number(id);

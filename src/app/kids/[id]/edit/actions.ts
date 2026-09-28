@@ -13,11 +13,12 @@ import {
   validateGuardianInput,
 } from "@/lib/kidRegistration";
 import { withToast } from "@/lib/toast";
+import { canManageKids } from "../../permissions";
 
 export async function updateKid(kidId: number, _: unknown, formData: FormData) {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.role !== "admin") redirect("/kids");
+  if (!(await canManageKids(session))) redirect("/kids");
 
   const child = readChildInput(formData);
   const guardian = readGuardianInput(formData);

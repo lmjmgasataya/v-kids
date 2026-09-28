@@ -8,6 +8,7 @@ import { FilterSelect } from "@/components/FilterSelect";
 import { GENDER_OPTIONS, SERVICE_OPTIONS } from "@/lib/constants";
 import { ExportExcelButton } from "./ExportExcelButton";
 import { ImportKidsModal } from "./ImportKidsModal";
+import { canManageKids } from "./permissions";
 import { Pagination } from "@/components/Pagination";
 import { countKidsRows, fetchKidsRows, PAGE_SIZE, resolveDir, resolveGender, resolveService, resolveSort } from "./queries";
 
@@ -75,7 +76,7 @@ export default async function KidsPage({
         q={search}
         gender={gender}
         service={service}
-        canManage={session.role === "admin"}
+        canManage={await canManageKids(session)}
       />
       <Pagination
         basePath="/kids"

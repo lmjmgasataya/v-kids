@@ -12,6 +12,7 @@ import {
   AUTO_CHECK_OUT_FLAG_KEY,
   CURSOR_TRAIL_FLAG_KEY,
   SERVICE_CARDS_FLAG_KEY,
+  VOLUNTEER_MANAGE_KIDS_FLAG_KEY,
   VOLUNTEER_MANAGE_SERVICE_TEAM_FLAG_KEY,
   type RegistrationFormType,
 } from "@/lib/constants";
@@ -118,6 +119,25 @@ export async function toggleVolunteerManageServiceTeam() {
   redirect(
     withToast("/settings", "success", `Volunteer edit/delete of service team turned ${nextEnabled ? "on" : "off"}.`)
   );
+}
+
+export async function toggleVolunteerManageKids() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.role !== "admin") redirect("/");
+
+  const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.key, VOLUNTEER_MANAGE_KIDS_FLAG_KEY));
+  // Missing row means disabled — this widens volunteer permissions, so it
+  // should require an explicit opt-in.
+  const nextEnabled = !(flag?.enabled ?? false);
+
+  await db
+    .insert(featureFlags)
+    .values({ key: VOLUNTEER_MANAGE_KIDS_FLAG_KEY, enabled: nextEnabled })
+    .onConflictDoUpdate({ target: featureFlags.key, set: { enabled: nextEnabled, updatedAt: new Date() } });
+
+  revalidatePath("/kids", "layout");
+  redirect(withToast("/settings", "success", `Volunteer edit/delete of kids turned ${nextEnabled ? "on" : "off"}.`));
 }
 
 export async function generateRegistrationLink(formType: RegistrationFormType, formData: FormData) {

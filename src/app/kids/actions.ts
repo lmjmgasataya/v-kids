@@ -18,6 +18,7 @@ import {
   type GuardianInput,
 } from "@/lib/kidRegistration";
 import { fetchKidsRows, resolveDir, resolveSort } from "./queries";
+import { canManageKids } from "./permissions";
 import { ID_CARD_NAME_SCALE_MIN, ID_CARD_NAME_SCALE_MAX } from "@/lib/constants";
 
 export async function updateIdCardNameScale(kidId: number, scale: number): Promise<{ error?: string }> {
@@ -58,7 +59,7 @@ export async function setKidIdGiven(kidId: number, value: boolean): Promise<{ er
 export async function deleteKid(kidId: number) {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.role !== "admin") redirect("/kids");
+  if (!(await canManageKids(session))) redirect("/kids");
 
   const [existing] = await db.select({ guardianId: kids.guardianId }).from(kids).where(eq(kids.id, kidId));
   if (!existing) redirect("/kids");
