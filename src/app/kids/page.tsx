@@ -67,6 +67,12 @@ export default async function KidsPage({
           <SearchBox defaultValue={search} />
           <FilterSelect paramName="gender" value={gender} options={GENDER_OPTIONS} allLabel="All genders" />
           <FilterSelect paramName="service" value={service} options={SERVICE_OPTIONS} allLabel="All services" />
+          <Link
+            href="/kids/duplicates"
+            className="ml-auto shrink-0 whitespace-nowrap bg-kids-yellow hover:bg-kids-yellow/90 text-kids-navy text-sm font-bold px-4 py-2 rounded-full transition"
+          >
+            Possible Duplicates
+          </Link>
         </div>
       </div>
       <KidsTable

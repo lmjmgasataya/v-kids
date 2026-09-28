@@ -56,13 +56,17 @@ export async function setKidIdGiven(kidId: number, value: boolean): Promise<{ er
   return {};
 }
 
-export async function deleteKid(kidId: number) {
+const DELETE_RETURN_PATHS = ["/kids", "/kids/duplicates"] as const;
+
+export async function deleteKid(kidId: number, returnTo: string) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!(await canManageKids(session))) redirect("/kids");
 
+  const back = (DELETE_RETURN_PATHS as readonly string[]).includes(returnTo) ? returnTo : "/kids";
+
   const [existing] = await db.select({ guardianId: kids.guardianId }).from(kids).where(eq(kids.id, kidId));
-  if (!existing) redirect("/kids");
+  if (!existing) redirect(back);
 
   await db.delete(kcBucksTransactions).where(eq(kcBucksTransactions.kidId, kidId));
   await db.delete(checkIns).where(eq(checkIns.kidId, kidId));
@@ -76,8 +80,8 @@ export async function deleteKid(kidId: number) {
     await db.delete(guardians).where(eq(guardians.id, existing.guardianId));
   }
 
-  revalidatePath("/kids");
-  redirect(withToast("/kids", "success", "Registration deleted."));
+  revalidatePath("/kids", "layout");
+  redirect(withToast(back, "success", "Registration deleted."));
 }
 
 export async function exportKidsExcel(q: string, sortParam: string, dirParam: string) {

@@ -2,8 +2,16 @@
 
 import { deleteKid } from "./actions";
 
-export function DeleteKidButton({ kidId, kidName }: { kidId: number; kidName: string }) {
-  const deleteKidWithId = deleteKid.bind(null, kidId);
+export function DeleteKidButton({
+  kidId,
+  kidName,
+  returnTo = "/kids",
+}: {
+  kidId: number;
+  kidName: string;
+  returnTo?: "/kids" | "/kids/duplicates";
+}) {
+  const deleteKidWithId = deleteKid.bind(null, kidId, returnTo);
 
   return (
     <form
