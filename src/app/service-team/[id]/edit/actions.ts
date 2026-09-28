@@ -10,11 +10,12 @@ import { serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { isB2Configured, uploadPhoto } from "@/lib/storage";
 import { withToast } from "@/lib/toast";
+import { canManageServiceTeam } from "../../permissions";
 
 export async function updateServiceTeamMember(memberId: number, _: unknown, formData: FormData) {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.role !== "admin") redirect("/service-team");
+  if (!(await canManageServiceTeam(session))) redirect("/service-team");
 
   const firstName = (formData.get("firstName") as string)?.trim() ?? "";
   const lastName = (formData.get("lastName") as string)?.trim() ?? "";

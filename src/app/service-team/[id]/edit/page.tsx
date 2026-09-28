@@ -7,11 +7,12 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getSignedPhotoUrl, isB2Configured } from "@/lib/storage";
 import { capitalizeName } from "@/lib/format";
 import EditServiceTeamForm from "./EditServiceTeamForm";
+import { canManageServiceTeam } from "../../permissions";
 
 export default async function EditServiceTeamPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.role !== "admin") redirect("/service-team");
+  if (!(await canManageServiceTeam(session))) redirect("/service-team");
 
   const { id } = await params;
   const memberId = Number(id);

@@ -11,6 +11,7 @@ import { withToast } from "@/lib/toast";
 import { parseCsv } from "@/lib/csv";
 import { ID_CARD_NAME_SCALE_MIN, ID_CARD_NAME_SCALE_MAX, SERVICE_OPTIONS } from "@/lib/constants";
 import { fetchServiceTeamRows, resolveDir, resolveSort } from "./queries";
+import { canManageServiceTeam } from "./permissions";
 
 export async function updateServiceTeamIdCardNameScale(memberId: number, scale: number): Promise<{ error?: string }> {
   const session = await getSession();
@@ -50,7 +51,7 @@ export async function setServiceTeamIdGiven(memberId: number, value: boolean): P
 export async function deleteServiceTeamMember(memberId: number) {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.role !== "admin") redirect("/service-team");
+  if (!(await canManageServiceTeam(session))) redirect("/service-team");
 
   await db.delete(serviceTeamMembers).where(eq(serviceTeamMembers.id, memberId));
 

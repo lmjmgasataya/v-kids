@@ -19,6 +19,7 @@ import {
   resolveService,
   resolveSort,
 } from "./queries";
+import { canManageServiceTeam } from "./permissions";
 
 export default async function ServiceTeamPage({
   searchParams,
@@ -91,7 +92,7 @@ export default async function ServiceTeamPage({
         q={search}
         gender={gender}
         service={service}
-        canManage={session.role === "admin"}
+        canManage={await canManageServiceTeam(session)}
       />
       <Pagination
         basePath="/service-team"

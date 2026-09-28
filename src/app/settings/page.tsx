@@ -11,12 +11,14 @@ import {
   AUTO_CHECK_OUT_FLAG_KEY,
   CURSOR_TRAIL_FLAG_KEY,
   SERVICE_CARDS_FLAG_KEY,
+  VOLUNTEER_MANAGE_SERVICE_TEAM_FLAG_KEY,
 } from "@/lib/constants";
 import {
   toggleCursorTrail,
   toggleServiceCards,
   toggleAutoCheckIn,
   toggleAutoCheckOut,
+  toggleVolunteerManageServiceTeam,
   generateRegistrationLink,
   deleteRegistrationLink,
 } from "./actions";
@@ -48,6 +50,12 @@ export default async function SettingsPage() {
     .from(featureFlags)
     .where(eq(featureFlags.key, AUTO_CHECK_OUT_FLAG_KEY));
   const autoCheckOutEnabled = autoCheckOutFlag?.enabled ?? false;
+
+  const [volunteerManageServiceTeamFlag] = await db
+    .select()
+    .from(featureFlags)
+    .where(eq(featureFlags.key, VOLUNTEER_MANAGE_SERVICE_TEAM_FLAG_KEY));
+  const volunteerManageServiceTeamEnabled = volunteerManageServiceTeamFlag?.enabled ?? false;
 
   const links = await db.select().from(registrationLinks);
   const childLink = links.find((l) => l.formType === "child");
@@ -115,6 +123,21 @@ export default async function SettingsPage() {
             {autoCheckOutEnabled ? "On" : "Off"}
           </span>
           <ToggleSwitch enabled={autoCheckOutEnabled} />
+        </form>
+      </div>
+
+      <div className="rounded-2xl border-2 border-kids-navy/20 bg-white p-6 flex items-center justify-between gap-4">
+        <div>
+          <p className="font-semibold text-gray-900">Volunteers can edit service team</p>
+          <p className="text-sm text-gray-500">
+            Let non-admin users edit and delete service team member records. Admins always can.
+          </p>
+        </div>
+        <form action={toggleVolunteerManageServiceTeam} className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-gray-500 w-8 text-right">
+            {volunteerManageServiceTeamEnabled ? "On" : "Off"}
+          </span>
+          <ToggleSwitch enabled={volunteerManageServiceTeamEnabled} />
         </form>
       </div>
 
