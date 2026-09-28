@@ -51,6 +51,31 @@ function bracketIndexFor(age: number, brackets: AgeBracket[]): number {
   return brackets.findIndex((b) => age >= b.min && age <= b.max);
 }
 
+// age → number of kids with that age
+type AgeCounts = Map<number, number>;
+
+function OtherAgesCell({ ages, total }: { ages: AgeCounts; total: number }) {
+  if (total === 0) return <span className="text-gray-300">0</span>;
+
+  const breakdown = [...ages.entries()].sort(([a], [b]) => a - b);
+  return (
+    <span tabIndex={0} className="group relative inline-block cursor-help underline decoration-dotted underline-offset-4 outline-none">
+      {total}
+      <span className="pointer-events-none invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100 transition-opacity absolute right-0 bottom-full mb-2 z-10 whitespace-nowrap rounded-lg bg-kids-navy px-3 py-2 text-left text-xs font-medium text-white shadow-lg">
+        {breakdown.map(([age, count]) => (
+          <span key={age} className="block">
+            {count} - {age}yrs
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
+function addAge(ages: AgeCounts, age: number, by = 1) {
+  ages.set(age, (ages.get(age) ?? 0) + by);
+}
+
 export function AgeGroupSummary({ services }: { services: ServiceAges[] }) {
   const [brackets, setBrackets] = useState<AgeBracket[]>(DEFAULT_BRACKETS);
   const [editing, setEditing] = useState(false);
@@ -75,21 +100,28 @@ export function AgeGroupSummary({ services }: { services: ServiceAges[] }) {
   const rows = services.map((s) => {
     const counts = brackets.map(() => 0);
     let other = 0;
+    const otherAges: AgeCounts = new Map();
     for (const age of s.ages) {
       const i = bracketIndexFor(age, brackets);
-      if (i === -1) other++;
-      else counts[i]++;
+      if (i === -1) {
+        other++;
+        addAge(otherAges, age);
+      } else counts[i]++;
     }
-    return { service: s.service, counts, other, total: s.ages.length };
+    return { service: s.service, counts, other, otherAges, total: s.ages.length };
   });
 
   const totals = rows.reduce(
-    (acc, r) => ({
-      counts: acc.counts.map((c, i) => c + r.counts[i]),
-      other: acc.other + r.other,
-      total: acc.total + r.total,
-    }),
-    { counts: brackets.map(() => 0), other: 0, total: 0 }
+    (acc, r) => {
+      r.otherAges.forEach((count, age) => addAge(acc.otherAges, age, count));
+      return {
+        counts: acc.counts.map((c, i) => c + r.counts[i]),
+        other: acc.other + r.other,
+        otherAges: acc.otherAges,
+        total: acc.total + r.total,
+      };
+    },
+    { counts: brackets.map(() => 0), other: 0, otherAges: new Map() as AgeCounts, total: 0 }
   );
   const showOther = totals.other > 0;
 
@@ -176,8 +208,8 @@ export function AgeGroupSummary({ services }: { services: ServiceAges[] }) {
                   </td>
                 ))}
                 {showOther && (
-                  <td className={`px-4 py-3 text-right ${r.other > 0 ? "text-gray-500" : "text-gray-300"}`}>
-                    {r.other}
+                  <td className="px-4 py-3 text-right text-gray-500">
+                    <OtherAgesCell ages={r.otherAges} total={r.other} />
                   </td>
                 )}
                 <td className="px-4 py-3 text-right text-gray-900">{r.total}</td>
@@ -192,7 +224,11 @@ export function AgeGroupSummary({ services }: { services: ServiceAges[] }) {
                   {c}
                 </td>
               ))}
-              {showOther && <td className="px-4 py-3 text-right">{totals.other}</td>}
+              {showOther && (
+                <td className="px-4 py-3 text-right">
+                  <OtherAgesCell ages={totals.otherAges} total={totals.other} />
+                </td>
+              )}
               <td className="px-4 py-3 text-right">{totals.total}</td>
             </tr>
           </tfoot>
