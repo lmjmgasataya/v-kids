@@ -12,6 +12,7 @@ import { AttendanceMonthNav } from "./AttendanceMonthNav";
 import { ServiceRow } from "./ServiceRow";
 import { ExportExcelButton } from "./ExportExcelButton";
 import { CheckOutAllServicesButton } from "./CheckOutAllServicesButton";
+import { AgeGroupSummary } from "./AgeGroupSummary";
 
 const dateHeadingFormatter = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "full",
@@ -94,6 +95,10 @@ export default async function AttendancePage({
                 </tfoot>
               </table>
             </div>
+
+            <AgeGroupSummary
+              services={rows.map((row) => ({ service: row.service, ages: row.kids.map((kid) => kid.age) }))}
+            />
           </>
         )}
       </AttendanceMonthNav>
