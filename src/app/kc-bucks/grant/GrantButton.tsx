@@ -1,17 +1,33 @@
 "use client";
 
 import { useActionState } from "react";
-import { grantCredits } from "./actions";
+import { grantCredits, type GrantCreditsState } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 
-export function GrantButton({ kidId }: { kidId: number }) {
-  const grantWithId = grantCredits.bind(null, kidId);
-  const [state, action] = useActionState(grantWithId, undefined);
+export function GrantButton({
+  kidId,
+  kidName,
+  onSuccess,
+}: {
+  kidId: number;
+  kidName: string;
+  onSuccess?: () => void;
+}) {
+  const [state, action] = useActionState(async (prev: GrantCreditsState | undefined, formData: FormData) => {
+    const result = await grantCredits(kidId, prev, formData);
+    if (result.success) onSuccess?.();
+    return result;
+  }, undefined);
   useToastOnResult(state);
 
   return (
-    <form action={action}>
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (!confirm(`Grant 10 KC Bucks to ${kidName}?`)) e.preventDefault();
+      }}
+    >
       <SubmitButton
         label="+10 KC Bucks"
         pendingLabel="…"

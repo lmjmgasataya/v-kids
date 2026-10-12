@@ -25,7 +25,8 @@ export function KidLookupPanel({
   renderAction,
 }: {
   onSelect: (kid: KcBucksKid) => void;
-  renderAction?: (kid: KcBucksKid) => ReactNode;
+  /** `refresh` re-runs the current search, e.g. so balances update after a grant/redeem. */
+  renderAction?: (kid: KcBucksKid, refresh: () => void) => ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -56,6 +57,11 @@ export function KidLookupPanel({
     runSearch(initialQuery, initialService);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Silent re-fetch of the current search (no "Searching…" flicker).
+  async function refreshResults() {
+    setResults(await searchKidsBasic(query, service));
+  }
 
   function handleChange(next: string) {
     setQuery(next);
@@ -197,7 +203,7 @@ export function KidLookupPanel({
                         <span className="font-bold text-kids-green">{kid.balance}</span>
                         <span className="text-xs text-gray-400"> KC Bucks</span>
                       </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">{renderAction?.(kid)}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">{renderAction?.(kid, refreshResults)}</td>
                     </tr>
                   ))}
                 </tbody>

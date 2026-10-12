@@ -25,15 +25,20 @@ export interface RedeemCreditsState {
 export async function redeemCredits(
   kidId: number,
   _prev: RedeemCreditsState | undefined,
-  _formData: FormData
+  formData: FormData
 ): Promise<RedeemCreditsState> {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const amount = REDEEM_AMOUNT;
-  const reason = REDEEM_REASON;
-
+  // The quick "-10" button posts no amount; the custom-amount popup posts one.
+  const rawAmount = formData.get("amount");
+  const amount = rawAmount === null ? REDEEM_AMOUNT : Number(rawAmount);
   const balance = await getKidBalance(kidId);
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { error: "Enter a whole number amount greater than 0.", balance };
+  }
+
+  const reason = REDEEM_REASON;
   if (amount > balance) {
     return { error: `Not enough credits — current balance is ${balance}.`, balance };
   }

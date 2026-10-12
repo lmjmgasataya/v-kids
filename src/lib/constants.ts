@@ -29,3 +29,6 @@ export const ROLE_OPTIONS = ["admin", "volunteer"] as const;
 export const ID_CARD_NAME_SCALE_MIN = 50;
 export const ID_CARD_NAME_SCALE_MAX = 150;
 
+
+/** Upper bound for a custom KC Bucks grant from /kc-bucks/grant — guards against typos. */
+export const KC_BUCKS_MAX_CUSTOM_GRANT = 1000;

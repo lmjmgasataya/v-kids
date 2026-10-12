@@ -1,17 +1,33 @@
 "use client";
 
 import { useActionState } from "react";
-import { redeemCredits } from "./actions";
+import { redeemCredits, type RedeemCreditsState } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 
-export function RedeemButton({ kidId }: { kidId: number }) {
-  const redeemWithId = redeemCredits.bind(null, kidId);
-  const [state, action] = useActionState(redeemWithId, undefined);
+export function RedeemButton({
+  kidId,
+  kidName,
+  onSuccess,
+}: {
+  kidId: number;
+  kidName: string;
+  onSuccess?: () => void;
+}) {
+  const [state, action] = useActionState(async (prev: RedeemCreditsState | undefined, formData: FormData) => {
+    const result = await redeemCredits(kidId, prev, formData);
+    if (result.success) onSuccess?.();
+    return result;
+  }, undefined);
   useToastOnResult(state);
 
   return (
-    <form action={action}>
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (!confirm(`Redeem 10 KC Bucks from ${kidName}?`)) e.preventDefault();
+      }}
+    >
       <SubmitButton
         label="-10 KC Bucks"
         pendingLabel="…"

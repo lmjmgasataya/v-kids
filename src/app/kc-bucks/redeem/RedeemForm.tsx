@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
-import { redeemCredits } from "./actions";
+import { useActionState, useState } from "react";
+import { redeemCredits, type RedeemCreditsState } from "./actions";
+import { CustomAmountButton } from "../CustomAmountButton";
 import { SubmitButton } from "@/components/SubmitButton";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 import type { KcBucksKid } from "../actions";
@@ -17,8 +18,16 @@ export function RedeemForm({
   onDone: () => void;
 }) {
   const redeemWithId = redeemCredits.bind(null, kid.id);
-  const [state, action] = useActionState(redeemWithId, undefined);
-  const balance = state?.balance ?? initialBalance;
+  const [balance, setBalance] = useState(initialBalance);
+  // Both the quick redeem and the custom-amount popup report the new balance back here.
+  function applyResult(result: RedeemCreditsState) {
+    if (result.balance !== undefined) setBalance(result.balance);
+  }
+  const [state, action] = useActionState(async (prev: RedeemCreditsState | undefined, formData: FormData) => {
+    const result = await redeemWithId(prev, formData);
+    applyResult(result);
+    return result;
+  }, undefined);
   useToastOnResult(state);
 
   return (
@@ -41,7 +50,15 @@ export function RedeemForm({
         <span className="text-sm text-gray-500">KC Bucks available</span>
       </div>
 
-      <form action={action} className="flex flex-col gap-3">
+      <form
+        action={action}
+        onSubmit={(e) => {
+          if (!confirm(`Redeem 10 KC Bucks from ${capitalizeName(kid.firstName)} ${capitalizeName(kid.lastName)}?`)) {
+            e.preventDefault();
+          }
+        }}
+        className="flex flex-col gap-3"
+      >
         {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
         {state?.success && <p className="text-sm font-semibold text-kids-green">{state.success}</p>}
         <SubmitButton
@@ -50,6 +67,19 @@ export function RedeemForm({
           className="bg-kids-magenta hover:bg-kids-magenta/90 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition"
         />
       </form>
+
+      <CustomAmountButton
+        kid={kid}
+        action={redeemWithId}
+        title="Redeem Custom Amount"
+        confirmMessage={(amount, name) => `Redeem ${amount} KC Bucks from ${name}?`}
+        submitLabel="Redeem"
+        pendingLabel="Redeeming…"
+        tone="magenta"
+        label="Redeem custom amount"
+        onSuccess={applyResult}
+        className="border-2 border-kids-magenta text-kids-magenta hover:bg-kids-magenta/10 font-bold py-2.5 rounded-xl transition"
+      />
     </div>
   );
 }
