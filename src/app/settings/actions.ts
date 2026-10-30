@@ -2,7 +2,7 @@
 
 import { randomUUID } from "crypto";
 import { db } from "@/db";
-import { featureFlags, registrationLinks } from "@/db/schema";
+import { registrationLinks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -17,28 +17,21 @@ import {
   type RegistrationFormType,
 } from "@/lib/constants";
 import { withToast } from "@/lib/toast";
+import { toggleFeatureFlag } from "@/lib/featureFlags";
 
 const REGISTRATION_FORM_LABEL: Record<RegistrationFormType, string> = {
   child: "Child registration",
   team: "Service team registration",
 };
 
+// Each flag's missing-row default and the path to revalidate live in FLAG_GROUPS
+// (src/lib/featureFlags.ts), shared with the toggles on /devops-admin.
 export async function toggleCursorTrail() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "admin") redirect("/");
 
-  const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.key, CURSOR_TRAIL_FLAG_KEY));
-  const nextEnabled = !(flag?.enabled ?? true);
-
-  await db
-    .insert(featureFlags)
-    .values({ key: CURSOR_TRAIL_FLAG_KEY, enabled: nextEnabled })
-    .onConflictDoUpdate({ target: featureFlags.key, set: { enabled: nextEnabled, updatedAt: new Date() } });
-
-  // The root layout reads this flag on every request; without this, its
-  // cached render can keep showing the old value until a manual reload.
-  revalidatePath("/", "layout");
+  const nextEnabled = await toggleFeatureFlag(CURSOR_TRAIL_FLAG_KEY);
   redirect(withToast("/settings", "success", `Cursor trail turned ${nextEnabled ? "on" : "off"}.`));
 }
 
@@ -47,15 +40,7 @@ export async function toggleServiceCards() {
   if (!session) redirect("/login");
   if (session.role !== "admin") redirect("/");
 
-  const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY));
-  const nextEnabled = !(flag?.enabled ?? true);
-
-  await db
-    .insert(featureFlags)
-    .values({ key: SERVICE_CARDS_FLAG_KEY, enabled: nextEnabled })
-    .onConflictDoUpdate({ target: featureFlags.key, set: { enabled: nextEnabled, updatedAt: new Date() } });
-
-  revalidatePath("/check-in");
+  const nextEnabled = await toggleFeatureFlag(SERVICE_CARDS_FLAG_KEY);
   redirect(withToast("/settings", "success", `Service cards turned ${nextEnabled ? "on" : "off"}.`));
 }
 
@@ -64,17 +49,7 @@ export async function toggleAutoCheckIn() {
   if (!session) redirect("/login");
   if (session.role !== "admin") redirect("/");
 
-  const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY));
-  // Unlike the other flags, a missing row means disabled — this one skips the
-  // check-in confirmation step, so it should require an explicit opt-in.
-  const nextEnabled = !(flag?.enabled ?? false);
-
-  await db
-    .insert(featureFlags)
-    .values({ key: AUTO_CHECK_IN_FLAG_KEY, enabled: nextEnabled })
-    .onConflictDoUpdate({ target: featureFlags.key, set: { enabled: nextEnabled, updatedAt: new Date() } });
-
-  revalidatePath("/check-in");
+  const nextEnabled = await toggleFeatureFlag(AUTO_CHECK_IN_FLAG_KEY);
   redirect(withToast("/settings", "success", `Auto check-in turned ${nextEnabled ? "on" : "off"}.`));
 }
 
@@ -83,17 +58,7 @@ export async function toggleAutoCheckOut() {
   if (!session) redirect("/login");
   if (session.role !== "admin") redirect("/");
 
-  const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_OUT_FLAG_KEY));
-  // Unlike the other flags, a missing row means disabled — this one skips the
-  // check-out confirmation step, so it should require an explicit opt-in.
-  const nextEnabled = !(flag?.enabled ?? false);
-
-  await db
-    .insert(featureFlags)
-    .values({ key: AUTO_CHECK_OUT_FLAG_KEY, enabled: nextEnabled })
-    .onConflictDoUpdate({ target: featureFlags.key, set: { enabled: nextEnabled, updatedAt: new Date() } });
-
-  revalidatePath("/check-in");
+  const nextEnabled = await toggleFeatureFlag(AUTO_CHECK_OUT_FLAG_KEY);
   redirect(withToast("/settings", "success", `Auto check-out turned ${nextEnabled ? "on" : "off"}.`));
 }
 
@@ -102,20 +67,7 @@ export async function toggleVolunteerManageServiceTeam() {
   if (!session) redirect("/login");
   if (session.role !== "admin") redirect("/");
 
-  const [flag] = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.key, VOLUNTEER_MANAGE_SERVICE_TEAM_FLAG_KEY));
-  // Missing row means disabled — this widens volunteer permissions, so it
-  // should require an explicit opt-in.
-  const nextEnabled = !(flag?.enabled ?? false);
-
-  await db
-    .insert(featureFlags)
-    .values({ key: VOLUNTEER_MANAGE_SERVICE_TEAM_FLAG_KEY, enabled: nextEnabled })
-    .onConflictDoUpdate({ target: featureFlags.key, set: { enabled: nextEnabled, updatedAt: new Date() } });
-
-  revalidatePath("/service-team", "layout");
+  const nextEnabled = await toggleFeatureFlag(VOLUNTEER_MANAGE_SERVICE_TEAM_FLAG_KEY);
   redirect(
     withToast("/settings", "success", `Volunteer edit/delete of service team turned ${nextEnabled ? "on" : "off"}.`)
   );
@@ -126,17 +78,7 @@ export async function toggleVolunteerManageKids() {
   if (!session) redirect("/login");
   if (session.role !== "admin") redirect("/");
 
-  const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.key, VOLUNTEER_MANAGE_KIDS_FLAG_KEY));
-  // Missing row means disabled — this widens volunteer permissions, so it
-  // should require an explicit opt-in.
-  const nextEnabled = !(flag?.enabled ?? false);
-
-  await db
-    .insert(featureFlags)
-    .values({ key: VOLUNTEER_MANAGE_KIDS_FLAG_KEY, enabled: nextEnabled })
-    .onConflictDoUpdate({ target: featureFlags.key, set: { enabled: nextEnabled, updatedAt: new Date() } });
-
-  revalidatePath("/kids", "layout");
+  const nextEnabled = await toggleFeatureFlag(VOLUNTEER_MANAGE_KIDS_FLAG_KEY);
   redirect(withToast("/settings", "success", `Volunteer edit/delete of kids turned ${nextEnabled ? "on" : "off"}.`));
 }
 

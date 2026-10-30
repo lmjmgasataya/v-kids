@@ -202,6 +202,17 @@ export default async function SettingsPage() {
         </div>
         <span className="text-kids-navy font-semibold">→</span>
       </Link>
+
+      <Link
+        href="/devops-admin"
+        className="rounded-2xl border-2 border-kids-navy/20 bg-white p-6 flex items-center justify-between gap-4 hover:border-kids-navy/40 transition"
+      >
+        <div>
+          <p className="font-semibold text-gray-900">Devops admin</p>
+          <p className="text-sm text-gray-500">All feature flags, database sizes, CSV exports and login logs.</p>
+        </div>
+        <span className="text-kids-navy font-semibold">→</span>
+      </Link>
     </div>
   );
 }

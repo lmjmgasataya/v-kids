@@ -56,6 +56,7 @@ Core tables:
 - `src/app/service-team/` — protected list of registered service team members (`page.tsx`), same `?q=`/`?sort=&dir=` convention as `/kids` via `queries.ts` + `ServiceTeamTable.tsx`; resolves each row's private `photoKey` to a viewable link with `getSignedPhotoUrl` before rendering. Edit/Delete are admin-only unless the `volunteer_manage_service_team` flag is on — gate with `canManageServiceTeam(session)` from `permissions.ts` (page, edit page, and both actions): `[id]/edit/` has `EditServiceTeamForm.tsx` + the `updateServiceTeamMember` Server Action (photo is optional on edit — keeps the existing `photoKey` unless a new one is captured), `actions.ts` has `deleteServiceTeamMember`.
 - `src/app/login/` — staff login page; `actions.ts` has the `login`/`logout` Server Actions; redirects to `/` if already signed in, and to `/` on successful login
 - `src/app/settings/` — admin-only global settings (redirects non-admins to `/`); toggles the `cursor_trail` and `service_cards` feature flags via the `toggleCursorTrail`/`toggleServiceCards` Server Actions in `actions.ts`
+- `src/app/devops-admin/` — admin-only (layout + every page/action redirects non-admins to `/`; linked from the header and `/settings`). Overview toggles every feature flag (grouped by area; DB flags the code doesn't read show under "Other" with a delete) and lists DB/table sizes; `data/` shows row counts + per-table CSV download via `/api/devops-admin/export` (admin-checked in the handler, 401/403); `login-logs/` shows the latest 200 `login_logs`. **New tables go in `src/lib/devopsTables.ts`** (grouped by area, with `omit` for secret columns); **new flags go in `FLAG_GROUPS` in `src/lib/featureFlags.ts`** with their missing-row default.
 
 ### Patterns
 **Auth gating pattern** — any page that requires login:
@@ -65,7 +66,7 @@ if (!session) redirect("/login");
 ```
 Role checks: `session.role === "admin"`. Admin-only pages (e.g. `/settings`) redirect non-admins to `/` rather than `/login` — they're authenticated, just not authorized.
 
-**Feature flags** — read with `db.select().from(featureFlags).where(eq(featureFlags.key, KEY))`, then fall back with `flag?.enabled ?? true` (a missing row means the feature is on). `src/app/layout.tsx` reads `CURSOR_TRAIL_FLAG_KEY` on every request to decide whether to mount `<CursorTrail />`; `src/app/check-in/page.tsx` reads `SERVICE_CARDS_FLAG_KEY` and passes it to `CheckInWorkspace` as `serviceCardsEnabled`, which switches the service picker between a row of cards and a plain `<select>`. Toggling is an upsert (`onConflictDoUpdate`) in `src/app/settings/actions.ts`, since the row may not exist yet on first toggle.
+**Feature flags** — read with `db.select().from(featureFlags).where(eq(featureFlags.key, KEY))`, then fall back with `flag?.enabled ?? true` (a missing row means the feature is on). `src/app/layout.tsx` reads `CURSOR_TRAIL_FLAG_KEY` on every request to decide whether to mount `<CursorTrail />`; `src/app/check-in/page.tsx` reads `SERVICE_CARDS_FLAG_KEY` and passes it to `CheckInWorkspace` as `serviceCardsEnabled`, which switches the service picker between a row of cards and a plain `<select>`. Toggling is an upsert (`onConflictDoUpdate`) in `toggleFeatureFlag` (`src/lib/featureFlags.ts`), since the row may not exist yet on first toggle; it applies each flag's `defaultEnabled` from `FLAG_GROUPS` (keep it in sync with the reader's `??` fallback) and revalidates the flag's path. Used by both `/settings` and `/devops-admin`.
 
 **Route protection** — `src/proxy.ts` is Next 16's middleware equivalent; its `matcher` lists every protected top-level route (`/`, `/kids`, `/settings`, `/check-in`, `/attendance`, `/kc-bucks`, `/service-team`, each with `/:path*`). Add new patterns there as protected routes are added, mirroring the `DEVELOPER_ONLY`-style regex array approach if role-specific gating is needed. `/register` is intentionally excluded — it must stay public.
 
@@ -89,6 +90,7 @@ Role checks: `session.role === "admin"`. Admin-only pages (e.g. `/settings`) red
 **API routes** (`src/app/api/`) exist only for:
 - `health` — health check
 - `keep-alive` — pings the DB to prevent idle connection drops on serverless/hosted Postgres; gated by `CRON_SECRET` bearer token
+- `devops-admin/export` — `?table=<key>` CSV download for `/devops-admin/data`; admin session required
 
 **Path alias:** `@/*` maps to `src/*`.
 

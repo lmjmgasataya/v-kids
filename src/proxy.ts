@@ -29,6 +29,7 @@ export const config = {
     "/",
     "/kids/:path*",
     "/settings/:path*",
+    "/devops-admin/:path*",
     "/check-in/:path*",
     "/attendance/:path*",
     "/kc-bucks/:path*",

@@ -25,7 +25,7 @@ const TEMPLATE_EXAMPLE_ROW = [
 ];
 
 function escapeCsvField(value: string): string {
-  if (/[",\n]/.test(value)) {
+  if (/[",\r\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
@@ -99,4 +99,17 @@ export function parseCsv(text: string): string[][] {
   }
 
   return rows.filter((r) => !(r.length === 1 && r[0].trim() === ""));
+}
+
+/** Serializes rows to CSV with the given header row. Dates become ISO strings, null/undefined become empty. */
+export function toCsv(headers: readonly string[], rows: Record<string, unknown>[]): string {
+  const cell = (value: unknown): string => {
+    if (value === null || value === undefined) return "";
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  };
+  return [headers, ...rows.map((row) => headers.map((h) => cell(row[h])))]
+    .map((row) => row.map(escapeCsvField).join(","))
+    .join("\r\n");
 }
