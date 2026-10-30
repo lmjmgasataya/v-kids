@@ -51,27 +51,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <div className="flex items-center gap-4">
                   {session.role === "admin" && (
                     <Link
-                      href="/devops-admin"
-                      aria-label="Devops admin"
-                      title="Devops admin"
-                      className="text-gray-400 hover:text-kids-navy transition"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={1.8}
-                      >
-                        <ellipse cx="12" cy="5.5" rx="7" ry="2.5" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 5.5v6c0 1.38 3.13 2.5 7 2.5s7-1.12 7-2.5v-6" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 11.5v6c0 1.38 3.13 2.5 7 2.5s7-1.12 7-2.5v-6" />
-                      </svg>
-                    </Link>
-                  )}
-                  {session.role === "admin" && (
-                    <Link
                       href="/settings"
                       aria-label="Settings"
                       className="text-gray-400 hover:text-kids-navy transition"
