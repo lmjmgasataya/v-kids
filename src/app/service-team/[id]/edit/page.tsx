@@ -4,7 +4,8 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { getSignedPhotoUrl, isB2Configured } from "@/lib/storage";
+import { isB2Configured } from "@/lib/storage";
+import { serviceTeamPhotoUrl } from "@/lib/photoUrl";
 import { capitalizeName } from "@/lib/format";
 import EditServiceTeamForm from "./EditServiceTeamForm";
 import { canManageServiceTeam } from "../../permissions";
@@ -34,7 +35,7 @@ export default async function EditServiceTeamPage({ params }: { params: Promise<
 
   if (!row) notFound();
 
-  const photoUrl = row.photoKey ? await getSignedPhotoUrl(row.photoKey) : null;
+  const photoUrl = row.photoKey ? serviceTeamPhotoUrl(row.id, row.photoKey, "full") : null;
 
   return (
     <div>

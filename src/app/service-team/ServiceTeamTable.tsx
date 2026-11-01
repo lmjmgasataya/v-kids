@@ -14,6 +14,7 @@ interface Row {
   birthday: string;
   serviceAttending: string;
   photoUrl: string | null;
+  fullPhotoUrl: string | null;
   downloadUrl: string | null;
   idPrinted: boolean;
   idGiven: boolean;
@@ -88,6 +89,7 @@ export function ServiceTeamTable({
               <td className="px-4 py-3">
                 <ServiceTeamPhoto
                   photoUrl={row.photoUrl}
+                  fullPhotoUrl={row.fullPhotoUrl}
                   downloadUrl={row.downloadUrl}
                   initials={`${row.firstName[0].toUpperCase()}${row.lastName[0].toUpperCase()}`}
                 />

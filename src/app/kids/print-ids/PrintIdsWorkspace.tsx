@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { IdCardFront, IdCardBack, ID_CARD_WIDTH_MM, ID_CARD_HEIGHT_MM } from "@/components/IdCard";
+import { IdCardFront, IdCardBack } from "@/components/IdCard";
+import { IdCardPreview } from "@/components/IdCardPreview";
 import { inputCls } from "@/components/form";
 import { useIdCardExport } from "@/lib/useIdCardExport";
 import { capitalizeName, idCardDisplayName, idCardNameFontSize } from "@/lib/format";
@@ -42,15 +43,6 @@ function compareRows(a: KidRow, b: KidRow, sort: SortKey): number {
       return a.serviceAttending.localeCompare(b.serviceAttending);
   }
 }
-
-// Cards are laid out in real mm units; shrink them down to a small inline thumbnail via
-// CSS transform instead of rendering a second, differently-sized card component.
-const MM_TO_PX = 96 / 25.4;
-const CARD_WIDTH_PX = ID_CARD_WIDTH_MM * MM_TO_PX;
-const CARD_HEIGHT_PX = ID_CARD_HEIGHT_MM * MM_TO_PX;
-const PREVIEW_WIDTH_PX = 110;
-const PREVIEW_SCALE = PREVIEW_WIDTH_PX / CARD_WIDTH_PX;
-const PREVIEW_HEIGHT_PX = CARD_HEIGHT_PX * PREVIEW_SCALE;
 
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -259,21 +251,19 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
                   <td className="px-4 py-3">{kid.gender}</td>
                   <td className="px-4 py-3">{kid.serviceAttending}</td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div
-                      className="rounded-md border border-gray-200 shrink-0 overflow-hidden"
-                      style={{ width: PREVIEW_WIDTH_PX, height: PREVIEW_HEIGHT_PX }}
-                    >
-                      <div
-                        style={{
-                          width: CARD_WIDTH_PX,
-                          height: CARD_HEIGHT_PX,
-                          transform: `scale(${PREVIEW_SCALE})`,
-                          transformOrigin: "top left",
-                        }}
-                      >
-                        <IdCardFront flat displayName={displayName} fullName={fullName} nameFontSize={nameFontSize} />
-                      </div>
-                    </div>
+                    <IdCardPreview
+                      title={fullName}
+                      sides={[
+                        <IdCardFront
+                          key="front"
+                          flat
+                          displayName={displayName}
+                          fullName={fullName}
+                          nameFontSize={nameFontSize}
+                        />,
+                        <IdCardBack key="back" flat qrDataUrl={kid.qrDataUrl} fullName={fullName} />,
+                      ]}
+                    />
                   </td>
                   <td className="px-4 py-3 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">

@@ -17,7 +17,7 @@ export default async function DevopsAdminLayout({ children }: { children: React.
           items={[{ label: "Home", href: "/" }, { label: "Settings", href: "/settings" }, { label: "Devops Admin" }]}
         />
         <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Devops Admin</h2>
-        <p className="text-sm text-gray-500 mb-4">Feature flags, database sizes, data exports and login logs.</p>
+        <p className="text-sm text-gray-500 mb-4">Feature flags, database sizes, data exports, login logs and QR checks.</p>
         <DevopsNav />
       </div>
       {children}

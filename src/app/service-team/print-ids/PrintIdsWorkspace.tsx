@@ -1,12 +1,21 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { ServiceTeamIdCardFront, IdCardBack, ID_CARD_WIDTH_MM, ID_CARD_HEIGHT_MM } from "@/components/IdCard";
+import { ServiceTeamIdCardFront, IdCardBack } from "@/components/IdCard";
+import { IdCardPreview } from "@/components/IdCardPreview";
 import { inputCls } from "@/components/form";
 import { useIdCardExport } from "@/lib/useIdCardExport";
 import { capitalizeName, idCardDisplayName, idCardTeamNameFontSize } from "@/lib/format";
-import { ID_CARD_NAME_SCALE_MIN, ID_CARD_NAME_SCALE_MAX } from "@/lib/constants";
-import { updateServiceTeamIdCardNameScale } from "../actions";
+import {
+  ID_CARD_NAME_SCALE_MIN,
+  ID_CARD_NAME_SCALE_MAX,
+} from "@/lib/constants";
+import {
+  updateServiceTeamIdCardNameScale,
+  updateServiceTeamIdCardPhotoCrop,
+} from "../actions";
+import { PhotoCropEditor } from "@/components/PhotoCropEditor";
+import type { PhotoCrop } from "@/lib/photoBadge";
 
 interface MemberRow {
   id: number;
@@ -17,17 +26,12 @@ interface MemberRow {
   serviceAttending: string;
   qrToken: string;
   idCardNameScale: number;
+  idCardPhotoZoom: number;
+  idCardPhotoX: number;
+  idCardPhotoY: number;
   qrDataUrl: string;
+  photoDataUrl: string | null;
 }
-
-// Cards are laid out in real mm units; shrink them down to a small inline thumbnail via
-// CSS transform instead of rendering a second, differently-sized card component.
-const MM_TO_PX = 96 / 25.4;
-const CARD_WIDTH_PX = ID_CARD_WIDTH_MM * MM_TO_PX;
-const CARD_HEIGHT_PX = ID_CARD_HEIGHT_MM * MM_TO_PX;
-const PREVIEW_WIDTH_PX = 110;
-const PREVIEW_SCALE = PREVIEW_WIDTH_PX / CARD_WIDTH_PX;
-const PREVIEW_HEIGHT_PX = CARD_HEIGHT_PX * PREVIEW_SCALE;
 
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -71,6 +75,29 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
     timers[memberId] = setTimeout(() => {
       delete timers[memberId];
       void updateServiceTeamIdCardNameScale(memberId, value);
+    }, SAVE_DEBOUNCE_MS);
+  }
+
+  const [photoCrops, setPhotoCrops] = useState<Record<number, PhotoCrop>>(() =>
+    Object.fromEntries(
+      members.map((member) => [
+        member.id,
+        { zoom: member.idCardPhotoZoom, x: member.idCardPhotoX, y: member.idCardPhotoY },
+      ])
+    )
+  );
+  const cropSaveTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const [croppingId, setCroppingId] = useState<number | null>(null);
+  const croppingMember = members.find((member) => member.id === croppingId);
+
+  function handlePhotoCropChange(memberId: number, crop: PhotoCrop) {
+    setPhotoCrops((prev) => ({ ...prev, [memberId]: crop }));
+
+    const timers = cropSaveTimers.current;
+    if (timers[memberId]) clearTimeout(timers[memberId]);
+    timers[memberId] = setTimeout(() => {
+      delete timers[memberId];
+      void updateServiceTeamIdCardPhotoCrop(memberId, crop);
     }, SAVE_DEBOUNCE_MS);
   }
 
@@ -201,12 +228,13 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
               ))}
               <th className="px-4 py-3 text-left font-semibold text-gray-600">ID Preview</th>
               <th className="px-4 py-3 text-left font-semibold text-gray-600">Name Size</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-600">QR Photo</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length + 3} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={COLUMNS.length + 4} className="px-4 py-8 text-center text-gray-400">
                   No service team members match your search.
                 </td>
               </tr>
@@ -236,26 +264,27 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
                   <td className="px-4 py-3">{birthdayFormatter.format(new Date(member.birthday))}</td>
                   <td className="px-4 py-3">{member.serviceAttending}</td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div
-                      className="rounded-md border border-gray-200 shrink-0 overflow-hidden"
-                      style={{ width: PREVIEW_WIDTH_PX, height: PREVIEW_HEIGHT_PX }}
-                    >
-                      <div
-                        style={{
-                          width: CARD_WIDTH_PX,
-                          height: CARD_HEIGHT_PX,
-                          transform: `scale(${PREVIEW_SCALE})`,
-                          transformOrigin: "top left",
-                        }}
-                      >
+                    <IdCardPreview
+                      title={fullName}
+                      sides={[
                         <ServiceTeamIdCardFront
+                          key="front"
                           flat
                           displayName={displayName}
                           fullName={fullName}
                           nameFontSize={nameFontSize}
-                        />
-                      </div>
-                    </div>
+                        />,
+                        <IdCardBack
+                          key="back"
+                          flat
+                          qrDataUrl={member.qrDataUrl}
+                          fullName={fullName}
+                          subtitle="Service Team Member"
+                          photoSrc={member.photoDataUrl}
+                          photoCrop={photoCrops[member.id]}
+                        />,
+                      ]}
+                    />
                   </td>
                   <td className="px-4 py-3 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
@@ -272,12 +301,53 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
                       <span className="text-xs text-gray-500 w-9 text-right">{scale}%</span>
                     </div>
                   </td>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    {member.photoDataUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => setCroppingId(member.id)}
+                        className="text-xs font-semibold text-kids-navy hover:underline whitespace-nowrap"
+                      >
+                        Reposition
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400">No photo</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {croppingMember?.photoDataUrl && (
+        <div
+          className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setCroppingId(null)}
+        >
+          <div
+            className="flex flex-col items-center gap-3 rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
+              QR photo · {capitalizeName(croppingMember.firstName)} {capitalizeName(croppingMember.lastName)}
+            </h3>
+            <PhotoCropEditor
+              src={croppingMember.photoDataUrl}
+              crop={photoCrops[croppingMember.id]}
+              onChange={(crop) => handlePhotoCropChange(croppingMember.id, crop)}
+            />
+            <button
+              type="button"
+              onClick={() => setCroppingId(null)}
+              className="bg-kids-navy hover:bg-kids-navy/90 text-white font-bold px-6 py-2 rounded-xl transition"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Always rendered (off-screen) so html2canvas can capture cards for PDF/PNG export; repositioned into the normal flow for native printing. */}
       <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:static print:-mx-4 print:-my-8 print:gap-0">
@@ -300,6 +370,8 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
                 qrDataUrl={member.qrDataUrl}
                 fullName={fullName}
                 subtitle="Service Team Member"
+                photoSrc={member.photoDataUrl}
+                photoCrop={photoCrops[member.id]}
                 flat
               />
             </div>

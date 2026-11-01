@@ -1,5 +1,8 @@
 import { forwardRef } from "react";
 import { LogoMark } from "./LogoMark";
+import { QrPhotoBadge } from "./QrPhotoBadge";
+import { DEFAULT_PHOTO_CROP, type PhotoCrop } from "@/lib/photoBadge";
+import { ID_CARD_PHOTO_SCALE } from "@/lib/constants";
 import { idCardNameFontSize, idCardTeamNameFontSize } from "@/lib/format";
 
 // Standard CR80 card size: 85.60mm x 53.98mm (3.37in x 2.125in)
@@ -91,10 +94,32 @@ export const ServiceTeamIdCardFront = forwardRef<
   );
 });
 
+const QR_SIZE_MM = 30;
+const PHOTO_SIZE_MM = (QR_SIZE_MM * ID_CARD_PHOTO_SCALE) / 100;
+
+// photoSrc/photoCrop: optional round photo badge over the middle of the QR (service
+// team cards). Only pass a photo with a QR generated at errorCorrectionLevel "H", or it won't scan.
 export const IdCardBack = forwardRef<
   HTMLDivElement,
-  { qrDataUrl: string; fullName: string; flat?: boolean; subtitle?: string }
->(function IdCardBack({ qrDataUrl, fullName, flat, subtitle = "Scan to check in / out" }, ref) {
+  {
+    qrDataUrl: string;
+    fullName: string;
+    flat?: boolean;
+    subtitle?: string;
+    photoSrc?: string | null;
+    photoCrop?: PhotoCrop;
+  }
+>(function IdCardBack(
+  {
+    qrDataUrl,
+    fullName,
+    flat,
+    subtitle = "Scan to check in / out",
+    photoSrc,
+    photoCrop = DEFAULT_PHOTO_CROP,
+  },
+  ref
+) {
   return (
     <div
       ref={ref}
@@ -106,8 +131,22 @@ export const IdCardBack = forwardRef<
     >
       {brandStripe}
       <div className="flex-1 flex flex-col items-center justify-center gap-1.5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={qrDataUrl} alt="Check-in QR code" className="w-[30mm] h-[30mm] mt-[8mm]" />
+        <div className="relative w-[30mm] h-[30mm] mt-[8mm]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qrDataUrl} alt="Check-in QR code" className="w-full h-full" />
+          {photoSrc && (
+            <QrPhotoBadge
+              src={photoSrc}
+              crop={photoCrop}
+              style={{
+                width: `${PHOTO_SIZE_MM}mm`,
+                height: `${PHOTO_SIZE_MM}mm`,
+                left: `${(QR_SIZE_MM - PHOTO_SIZE_MM) / 2}mm`,
+                top: `${(QR_SIZE_MM - PHOTO_SIZE_MM) / 2}mm`,
+              }}
+            />
+          )}
+        </div>
         <div className="text-[7px] text-gray-500 text-center px-[4mm]">
           {subtitle} · {fullName}
         </div>

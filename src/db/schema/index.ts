@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, serial, text, boolean, timestamp, integer, uuid, uniqueIndex, index, date } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, serial, text, boolean, timestamp, integer, real, uuid, uniqueIndex, index, date } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const roleEnum = pgEnum("user_role", ["admin", "volunteer"]);
@@ -86,6 +86,11 @@ export const serviceTeamMembers = pgTable("service_team_members", {
   photoKey: text("photo_key"),
   qrToken: uuid("qr_token").defaultRandom().notNull().unique(),
   idCardNameScale: integer("id_card_name_scale").notNull().default(100),
+  // How the photo is cropped into the round badge in the middle of the ID card QR: zoom % (100 = photo's short side fills the circle)
+  // and the focus point (% across/down the photo) that sits at the circle's center.
+  idCardPhotoZoom: integer("id_card_photo_zoom").notNull().default(100),
+  idCardPhotoX: real("id_card_photo_x").notNull().default(50),
+  idCardPhotoY: real("id_card_photo_y").notNull().default(50),
   idPrinted: boolean("id_printed").notNull().default(false),
   idGiven: boolean("id_given").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),

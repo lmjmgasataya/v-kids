@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { asc } from "drizzle-orm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { idCardPhotoDataUrl } from "@/lib/idCardPhoto";
 import { PrintIdsWorkspace } from "./PrintIdsWorkspace";
 
 export default async function ServiceTeamPrintIdsPage() {
@@ -23,6 +24,10 @@ export default async function ServiceTeamPrintIdsPage() {
       serviceAttending: serviceTeamMembers.serviceAttending,
       qrToken: serviceTeamMembers.qrToken,
       idCardNameScale: serviceTeamMembers.idCardNameScale,
+      idCardPhotoZoom: serviceTeamMembers.idCardPhotoZoom,
+      idCardPhotoX: serviceTeamMembers.idCardPhotoX,
+      idCardPhotoY: serviceTeamMembers.idCardPhotoY,
+      photoKey: serviceTeamMembers.photoKey,
     })
     .from(serviceTeamMembers)
     .orderBy(asc(serviceTeamMembers.lastName), asc(serviceTeamMembers.firstName));
@@ -32,10 +37,12 @@ export default async function ServiceTeamPrintIdsPage() {
   const proto = h.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
 
   const membersWithQr = await Promise.all(
-    rows.map(async (row) => {
+    rows.map(async ({ photoKey, ...row }) => {
       const payload = `${proto}://${host}/check-in?token=${row.qrToken}`;
-      const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0 });
-      return { ...row, qrDataUrl };
+      // Level H (~30% recoverable) so the photo badge over the middle doesn't stop it scanning.
+      const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0, errorCorrectionLevel: "H" });
+      const photoDataUrl = await idCardPhotoDataUrl(photoKey);
+      return { ...row, qrDataUrl, photoDataUrl };
     })
   );
 

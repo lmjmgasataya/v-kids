@@ -5,7 +5,12 @@ import { IdCardFront, IdCardBack, ServiceTeamIdCardFront } from "./IdCard";
 import { exportIdCardsToPdf, exportIdCardsToPngZip, sanitizeFileName } from "@/lib/idCardExport";
 import { idCardNameFontSize, idCardTeamNameFontSize } from "@/lib/format";
 import { updateIdCardNameScale } from "@/app/kids/actions";
-import { updateServiceTeamIdCardNameScale } from "@/app/service-team/actions";
+import {
+  updateServiceTeamIdCardNameScale,
+  updateServiceTeamIdCardPhotoCrop,
+} from "@/app/service-team/actions";
+import { DEFAULT_PHOTO_CROP, type PhotoCrop } from "@/lib/photoBadge";
+import { PhotoCropEditor } from "./PhotoCropEditor";
 
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -18,6 +23,8 @@ export function IdCardViewer({
   variant = "kid",
   kidId,
   initialNameScale = 100,
+  photoSrc,
+  initialPhotoCrop = DEFAULT_PHOTO_CROP,
 }: {
   displayName: string;
   fullName: string;
@@ -27,6 +34,8 @@ export function IdCardViewer({
   variant?: "kid" | "team";
   kidId?: number;
   initialNameScale?: number;
+  photoSrc?: string | null;
+  initialPhotoCrop?: PhotoCrop;
 }) {
   const Front = variant === "team" ? ServiceTeamIdCardFront : IdCardFront;
   const frontRef = useRef<HTMLDivElement>(null);
@@ -39,6 +48,18 @@ export function IdCardViewer({
     variant === "team" ? idCardTeamNameFontSize(shownDisplayName) : idCardNameFontSize(shownDisplayName);
   const nameFontSize = Math.round(baseNameFontSize * nameScale);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [photoCrop, setPhotoCrop] = useState(initialPhotoCrop);
+  const cropSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handlePhotoCropChange(next: PhotoCrop) {
+    setPhotoCrop(next);
+    if (kidId == null || variant !== "team") return;
+
+    if (cropSaveTimer.current) clearTimeout(cropSaveTimer.current);
+    cropSaveTimer.current = setTimeout(() => {
+      void updateServiceTeamIdCardPhotoCrop(kidId, next);
+    }, SAVE_DEBOUNCE_MS);
+  }
 
   function handleNameScaleChange(next: number) {
     setNameScale(next);
@@ -82,14 +103,28 @@ export function IdCardViewer({
   return (
     <>
       <Front displayName={shownDisplayName} fullName={fullName} nameFontSize={nameFontSize} />
-      <IdCardBack qrDataUrl={qrDataUrl} fullName={fullName} subtitle={backSubtitle} />
+      <IdCardBack
+        qrDataUrl={qrDataUrl}
+        fullName={fullName}
+        subtitle={backSubtitle}
+        photoSrc={photoSrc}
+        photoCrop={photoCrop}
+      />
 
       {/* Hidden flat (square, shadowless) copies dedicated to PDF/PNG capture — html2canvas
           doesn't reliably respect the preview's shadow/rounded corners, so export uses its
           own always-flat instance instead of fighting that in the capture step. */}
       <div className="fixed -left-[9999px] top-0 flex flex-col items-center print:hidden">
         <Front ref={frontRef} displayName={shownDisplayName} fullName={fullName} nameFontSize={nameFontSize} flat />
-        <IdCardBack ref={backRef} qrDataUrl={qrDataUrl} fullName={fullName} subtitle={backSubtitle} flat />
+        <IdCardBack
+          ref={backRef}
+          qrDataUrl={qrDataUrl}
+          fullName={fullName}
+          subtitle={backSubtitle}
+          photoSrc={photoSrc}
+          photoCrop={photoCrop}
+          flat
+        />
       </div>
 
       <div className="print:hidden flex flex-col items-center gap-1.5 w-full max-w-xs">
@@ -131,6 +166,13 @@ export function IdCardViewer({
           className="w-full accent-kids-navy"
         />
       </div>
+
+      {photoSrc && (
+        <div className="print:hidden flex flex-col items-center gap-1.5 w-full max-w-xs">
+          <span className="text-sm font-semibold text-gray-600">QR photo position</span>
+          <PhotoCropEditor src={photoSrc} crop={photoCrop} onChange={handlePhotoCropChange} />
+        </div>
+      )}
 
       <div className="print:hidden flex items-center gap-3 flex-wrap justify-center">
         <button

@@ -1,5 +1,4 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 let client: S3Client | undefined;
 
@@ -28,7 +27,8 @@ function getClient(): S3Client {
   return client;
 }
 
-// Bucket is private — uploads store only the object key; reads go through getSignedPhotoUrl below.
+// Bucket is private — uploads store only the object key; reads go through getPhotoVariant
+// (src/lib/photoCache.ts), which caches so each photo is only downloaded from B2 once.
 // Callers must check isB2Configured() before calling — this throws if storage isn't set up.
 export async function uploadPhoto(buffer: Buffer, key: string, contentType: string): Promise<string> {
   await getClient().send(
@@ -42,33 +42,17 @@ export async function uploadPhoto(buffer: Buffer, key: string, contentType: stri
   return key;
 }
 
-// Generates a time-limited signed URL for viewing a private photo (default 15 minutes).
-// Never throws — returns null if storage isn't configured or the request fails, so photo
-// display degrades to a placeholder instead of breaking the page.
-// Passing downloadFileName sets Content-Disposition: attachment on the response, so the
-// browser saves the file instead of navigating to it — needed since the `download` attribute
-// on an <a> tag is ignored for cross-origin URLs like this signed one.
-export async function getSignedPhotoUrl(
-  key: string,
-  expiresInSeconds = 900,
-  downloadFileName?: string
-): Promise<string | null> {
+// Downloads a private photo's bytes server-side — each call is a billed B2 Class B transaction,
+// so use getPhotoVariant (cached) instead of calling this directly. Never throws — returns null
+// if storage isn't configured or the request fails.
+export async function getPhotoBuffer(key: string): Promise<Buffer | null> {
   if (!isB2Configured()) return null;
   try {
-    const command = new GetObjectCommand({
-      Bucket: process.env.B2_BUCKET!,
-      Key: key,
-      ...(downloadFileName
-        ? { ResponseContentDisposition: `attachment; filename="${sanitizeFileName(downloadFileName)}"` }
-        : {}),
-    });
-    return await getSignedUrl(getClient(), command, { expiresIn: expiresInSeconds });
+    const res = await getClient().send(new GetObjectCommand({ Bucket: process.env.B2_BUCKET!, Key: key }));
+    if (!res.Body) return null;
+    return Buffer.from(await res.Body.transformToByteArray());
   } catch (err) {
-    console.error("Failed to generate signed photo URL", err);
+    console.error("Failed to download photo", err);
     return null;
   }
-}
-
-function sanitizeFileName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9. _-]/g, "_");
 }

@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { IdCardViewer } from "@/components/IdCardViewer";
 import { capitalizeName, idCardDisplayName } from "@/lib/format";
+import { idCardPhotoDataUrl } from "@/lib/idCardPhoto";
 
 export default async function ServiceTeamIdCardPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -25,6 +26,10 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
       nickname: serviceTeamMembers.nickname,
       qrToken: serviceTeamMembers.qrToken,
       idCardNameScale: serviceTeamMembers.idCardNameScale,
+      idCardPhotoZoom: serviceTeamMembers.idCardPhotoZoom,
+      idCardPhotoX: serviceTeamMembers.idCardPhotoX,
+      idCardPhotoY: serviceTeamMembers.idCardPhotoY,
+      photoKey: serviceTeamMembers.photoKey,
     })
     .from(serviceTeamMembers)
     .where(eq(serviceTeamMembers.id, memberId));
@@ -35,7 +40,9 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
   const host = h.get("host");
   const proto = h.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
   const payload = `${proto}://${host}/check-in?token=${row.qrToken}`;
-  const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0 });
+  // Level H (~30% recoverable) so the photo badge over the middle doesn't stop it scanning.
+  const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0, errorCorrectionLevel: "H" });
+  const photoDataUrl = await idCardPhotoDataUrl(row.photoKey);
 
   const fullName = `${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`;
   const displayName = idCardDisplayName(row.firstName, row.nickname);
@@ -68,6 +75,8 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
           variant="team"
           kidId={memberId}
           initialNameScale={row.idCardNameScale}
+          photoSrc={photoDataUrl}
+          initialPhotoCrop={{ zoom: row.idCardPhotoZoom, x: row.idCardPhotoX, y: row.idCardPhotoY }}
         />
       </div>
     </div>

@@ -1,0 +1,1 @@
+ALTER TABLE "service_team_members" DROP COLUMN "id_card_photo_scale";

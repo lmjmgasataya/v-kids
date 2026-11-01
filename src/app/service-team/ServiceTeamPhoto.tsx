@@ -23,10 +23,12 @@ function DownloadIcon({ className }: { className?: string }) {
 
 export function ServiceTeamPhoto({
   photoUrl,
+  fullPhotoUrl,
   downloadUrl,
   initials,
 }: {
   photoUrl: string | null;
+  fullPhotoUrl: string | null;
   downloadUrl: string | null;
   initials: string;
 }) {
@@ -44,7 +46,7 @@ export function ServiceTeamPhoto({
     <>
       <div className="flex items-center gap-2.5">
         <button type="button" onClick={() => setOpen(true)} className="block rounded-full">
-          {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, not a static asset */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- private photo route, not a static asset */}
           <img src={photoUrl} alt="" className="h-10 w-10 rounded-full object-cover transition hover:opacity-80" />
         </button>
         <a
@@ -62,9 +64,9 @@ export function ServiceTeamPhoto({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
           onClick={() => setOpen(false)}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, not a static asset */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- private photo route, not a static asset */}
           <img
-            src={photoUrl}
+            src={fullPhotoUrl ?? photoUrl}
             alt=""
             className="max-h-[80vh] max-w-full rounded-2xl shadow-xl"
             onClick={(e) => e.stopPropagation()}

@@ -5,7 +5,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SearchBox } from "@/components/SearchBox";
 import { FilterSelect } from "@/components/FilterSelect";
 import { GENDER_OPTIONS, SERVICE_OPTIONS } from "@/lib/constants";
-import { getSignedPhotoUrl } from "@/lib/storage";
+import { serviceTeamPhotoUrl } from "@/lib/photoUrl";
 import { ServiceTeamTable } from "./ServiceTeamTable";
 import { ExportExcelButton } from "./ExportExcelButton";
 import { ImportServiceTeamModal } from "./ImportServiceTeamModal";
@@ -48,15 +48,14 @@ export default async function ServiceTeamPage({
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
 
   const rows = await fetchServiceTeamRows({ q: search, sort, dir, gender, service, page });
-  const rowsWithPhotos = await Promise.all(
-    rows.map(async (row) => ({
-      ...row,
-      photoUrl: row.photoKey ? await getSignedPhotoUrl(row.photoKey) : null,
-      downloadUrl: row.photoKey
-        ? await getSignedPhotoUrl(row.photoKey, 900, `${row.firstName}-${row.lastName}.jpg`)
-        : null,
-    }))
-  );
+  const rowsWithPhotos = rows.map((row) => ({
+    ...row,
+    photoUrl: row.photoKey ? serviceTeamPhotoUrl(row.id, row.photoKey, "thumb") : null,
+    fullPhotoUrl: row.photoKey ? serviceTeamPhotoUrl(row.id, row.photoKey, "full") : null,
+    downloadUrl: row.photoKey
+      ? serviceTeamPhotoUrl(row.id, row.photoKey, "full", `${row.firstName}-${row.lastName}.jpg`)
+      : null,
+  }));
 
   return (
     <div className="flex flex-col gap-6">

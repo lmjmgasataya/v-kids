@@ -1,0 +1,1 @@
+ALTER TABLE "service_team_members" ADD COLUMN "id_card_photo_scale" integer DEFAULT 22 NOT NULL;

@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/register/team": SHARP_NATIVE_TRACE_INCLUDES,
     "/service-team/\\[id\\]/edit": SHARP_NATIVE_TRACE_INCLUDES,
+    // Photo cache (src/lib/photoCache.ts) resizes with sharp on a cache miss.
+    "/service-team/\\[id\\]/photo": SHARP_NATIVE_TRACE_INCLUDES,
+    "/service-team/\\[id\\]/id-card": SHARP_NATIVE_TRACE_INCLUDES,
+    "/service-team/print-ids": SHARP_NATIVE_TRACE_INCLUDES,
   },
 };
 

@@ -7,6 +7,7 @@ const NAV = [
   { href: "/devops-admin", label: "Overview" },
   { href: "/devops-admin/data", label: "Data" },
   { href: "/devops-admin/login-logs", label: "Login Logs" },
+  { href: "/devops-admin/check-stm", label: "Check STM QR" },
 ];
 
 export function DevopsNav() {

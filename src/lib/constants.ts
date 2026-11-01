@@ -29,6 +29,17 @@ export const ROLE_OPTIONS = ["admin", "volunteer"] as const;
 export const ID_CARD_NAME_SCALE_MIN = 50;
 export const ID_CARD_NAME_SCALE_MAX = 150;
 
+// Service team QR photo badge width (white ring included), as a % of the QR's width — the same
+// for every card. The QR is generated with error correction level H (~30% recoverable); a
+// 47%-wide circle covers ~17% of the code's area — clean digital images decoded up to 50% in
+// tests, but print blur/glare eat into that headroom, so verify printed cards at
+// /devops-admin/check-stm.
+export const ID_CARD_PHOTO_SCALE = 47;
+
+// Zoom into the photo inside that badge (100 = the photo's short side just fills the circle).
+export const ID_CARD_PHOTO_ZOOM_MIN = 100;
+export const ID_CARD_PHOTO_ZOOM_MAX = 400;
+
 
 /** Upper bound for a custom KC Bucks grant from /kc-bucks/grant — guards against typos. */
 export const KC_BUCKS_MAX_CUSTOM_GRANT = 1000;

@@ -9,7 +9,13 @@ import { serviceTeamMembers } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { withToast } from "@/lib/toast";
 import { parseCsv } from "@/lib/csv";
-import { ID_CARD_NAME_SCALE_MIN, ID_CARD_NAME_SCALE_MAX, SERVICE_OPTIONS } from "@/lib/constants";
+import {
+  ID_CARD_NAME_SCALE_MIN,
+  ID_CARD_NAME_SCALE_MAX,
+  ID_CARD_PHOTO_ZOOM_MIN,
+  ID_CARD_PHOTO_ZOOM_MAX,
+  SERVICE_OPTIONS,
+} from "@/lib/constants";
 import { fetchServiceTeamRows, resolveDir, resolveSort } from "./queries";
 import { canManageServiceTeam } from "./permissions";
 
@@ -22,6 +28,31 @@ export async function updateServiceTeamIdCardNameScale(memberId: number, scale: 
   const clamped = Math.min(ID_CARD_NAME_SCALE_MAX, Math.max(ID_CARD_NAME_SCALE_MIN, Math.round(scale)));
 
   await db.update(serviceTeamMembers).set({ idCardNameScale: clamped }).where(eq(serviceTeamMembers.id, memberId));
+
+  revalidatePath("/service-team/print-ids");
+  revalidatePath(`/service-team/${memberId}/id-card`);
+  return {};
+}
+
+export async function updateServiceTeamIdCardPhotoCrop(
+  memberId: number,
+  crop: { zoom: number; x: number; y: number }
+): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session) return { error: "Please sign in again." };
+  if (session.role !== "admin") return { error: "You don't have permission to do this." };
+
+  if (![crop.zoom, crop.x, crop.y].every(Number.isFinite)) return { error: "Invalid photo position." };
+  const clampPct = (value: number) => Math.min(100, Math.max(0, value));
+
+  await db
+    .update(serviceTeamMembers)
+    .set({
+      idCardPhotoZoom: Math.min(ID_CARD_PHOTO_ZOOM_MAX, Math.max(ID_CARD_PHOTO_ZOOM_MIN, Math.round(crop.zoom))),
+      idCardPhotoX: clampPct(crop.x),
+      idCardPhotoY: clampPct(crop.y),
+    })
+    .where(eq(serviceTeamMembers.id, memberId));
 
   revalidatePath("/service-team/print-ids");
   revalidatePath(`/service-team/${memberId}/id-card`);
