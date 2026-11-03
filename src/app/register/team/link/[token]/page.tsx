@@ -1,7 +1,7 @@
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ExpiredLinkNotice } from "@/components/ExpiredLinkNotice";
 import { getValidRegistrationLink } from "@/lib/registrationLinks";
-import { isB2Configured } from "@/lib/storage";
+import { isStorageConfigured } from "@/lib/storage";
 import TeamRegisterForm from "../../TeamRegisterForm";
 
 export default async function RegisterTeamLinkPage({ params }: { params: Promise<{ token: string }> }) {
@@ -19,7 +19,7 @@ export default async function RegisterTeamLinkPage({ params }: { params: Promise
           { label: "Register a Service Team Member" },
         ]}
       />
-      <TeamRegisterForm photoEnabled={isB2Configured()} />
+      <TeamRegisterForm photoEnabled={isStorageConfigured()} />
     </div>
   );
 }

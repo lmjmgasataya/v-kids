@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
-import { isB2Configured, uploadPhoto } from "@/lib/storage";
+import { isStorageConfigured, uploadPhoto } from "@/lib/storage";
 import { withToast } from "@/lib/toast";
 
 interface TeamRegisterValues {
@@ -39,7 +39,7 @@ export async function registerServiceTeamMember(_: unknown, formData: FormData) 
   }
 
   let photoKey: string | null = null;
-  if (isB2Configured()) {
+  if (isStorageConfigured()) {
     const photo = formData.get("photo");
     if (photo instanceof File && photo.size > 0) {
       if (!photo.type.startsWith("image/")) {

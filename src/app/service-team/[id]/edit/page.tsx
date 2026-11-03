@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { isB2Configured } from "@/lib/storage";
+import { isStorageConfigured } from "@/lib/storage";
 import { serviceTeamPhotoUrl } from "@/lib/photoUrl";
 import { capitalizeName } from "@/lib/format";
 import EditServiceTeamForm from "./EditServiceTeamForm";
@@ -46,7 +46,7 @@ export default async function EditServiceTeamPage({ params }: { params: Promise<
           { label: `${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}` },
         ]}
       />
-      <EditServiceTeamForm member={row} photoUrl={photoUrl} photoEnabled={isB2Configured()} />
+      <EditServiceTeamForm member={row} photoUrl={photoUrl} photoEnabled={isStorageConfigured()} />
     </div>
   );
 }

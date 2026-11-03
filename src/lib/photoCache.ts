@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { getPhotoBuffer } from "./storage";
 import type { PhotoVariant } from "./photoUrl";
 
-// Every read from the private B2 bucket is a billed Class B transaction, so photos are only
+// Every read from the private R2 bucket is a billed Class B operation, so photos are only
 // ever downloaded once per (key, variant) and then served from Next's data cache (persisted
 // across requests, instances and deploys on Vercel). Object keys are immutable — a retake is
 // uploaded under a new random key — so entries never need invalidating.

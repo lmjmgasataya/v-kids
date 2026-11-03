@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { isB2Configured } from "@/lib/storage";
+import { isStorageConfigured } from "@/lib/storage";
 import TeamRegisterForm from "./TeamRegisterForm";
 
 export default async function RegisterTeamPage() {
@@ -17,7 +17,7 @@ export default async function RegisterTeamPage() {
           { label: "Register a Service Team Member" },
         ]}
       />
-      <TeamRegisterForm photoEnabled={isB2Configured()} />
+      <TeamRegisterForm photoEnabled={isStorageConfigured()} />
     </div>
   );
 }
