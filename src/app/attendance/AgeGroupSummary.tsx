@@ -1,54 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-interface AgeBracket {
-  label: string;
-  min: number;
-  max: number;
-}
+import { DEFAULT_BRACKETS, bracketIndexFor, loadBrackets, saveBrackets, type AgeBracket } from "@/lib/ageBrackets";
 
 export interface ServiceAges {
   service: string;
   ages: number[];
-}
-
-// Placeholder brackets — editable in the UI until the ministry settles on the
-// real cutoffs. Edits are remembered per browser only.
-const DEFAULT_BRACKETS: AgeBracket[] = [
-  { label: "Small Kids", min: 4, max: 6 },
-  { label: "Big Kids", min: 7, max: 12 },
-  { label: "Preteens", min: 12, max: 13 },
-];
-
-const STORAGE_KEY = "attendance-age-brackets";
-
-function loadBrackets(): AgeBracket[] | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      Array.isArray(parsed) &&
-      parsed.length === DEFAULT_BRACKETS.length &&
-      parsed.every((b) => typeof b?.label === "string" && Number.isFinite(b?.min) && Number.isFinite(b?.max))
-    ) {
-      return parsed;
-    }
-  } catch {}
-  return null;
-}
-
-function saveBrackets(brackets: AgeBracket[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(brackets));
-  } catch {}
-}
-
-// Each kid counts toward the first bracket their age falls in, so overlapping
-// ranges (e.g. 12 in both Big Kids and Preteens) never double-count.
-function bracketIndexFor(age: number, brackets: AgeBracket[]): number {
-  return brackets.findIndex((b) => age >= b.min && age <= b.max);
 }
 
 // age → number of kids with that age

@@ -41,8 +41,9 @@ export interface ColumnDatum {
 
 // Vertical columns for a single series over time. Scrolls sideways inside its card
 // when there are more columns than fit.
-export function ColumnChart({ data, height = 160 }: { data: ColumnDatum[]; height?: number }) {
-  const max = Math.max(1, ...data.map((d) => d.value));
+// Pass `max` to put several charts on the same scale.
+export function ColumnChart({ data, height = 160, max: maxOverride }: { data: ColumnDatum[]; height?: number; max?: number }) {
+  const max = maxOverride ?? Math.max(1, ...data.map((d) => d.value));
   return (
     <div className="overflow-x-auto">
       <div className="flex items-end gap-0.5 border-b border-gray-200" style={{ height: height + 20, minWidth: data.length * 30 }}>

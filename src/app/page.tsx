@@ -51,6 +51,10 @@ const SERVICE_TEAM_TILES = [
   },
 ] as const;
 
+// Hidden for now — /reports still works by URL. Set to true to show the Reports tile (and its
+// separator) on the dashboard again.
+const SHOW_REPORTS_TILE = false;
+
 const REPORT_TILES = [
   {
     href: "/reports",
@@ -104,9 +108,11 @@ export default async function Home() {
         <TileGrid tiles={SERVICE_TEAM_TILES} />
       </div>
 
-      <div className="w-full max-w-2xl border-t border-gray-200 pt-8">
-        <TileGrid tiles={REPORT_TILES} />
-      </div>
+      {SHOW_REPORTS_TILE && (
+        <div className="w-full max-w-2xl border-t border-gray-200 pt-8">
+          <TileGrid tiles={REPORT_TILES} />
+        </div>
+      )}
     </div>
   );
 }

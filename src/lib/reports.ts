@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { checkIns, guardians, kids, serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
-import { manilaDateString } from "@/lib/date";
+import { getManilaMonthBoundsForMonthString, manilaDateString, manilaMonthString, shiftMonthString } from "@/lib/date";
 
 export interface ReportServiceDay {
   date: string; // YYYY-MM-DD, Manila calendar date
@@ -55,6 +55,30 @@ export interface ReportData {
   serviceTeamIdCards: ReportIdCardStatus;
 }
 
+// Time window for check-in based stats, from the ?range= query param. Registration snapshots
+// (ages, families, service team, ID cards) always cover everyone.
+export const REPORT_RANGES = [
+  { key: "all", label: "All time" },
+  { key: "3m", label: "Last 3 months" },
+  { key: "month", label: "This month" },
+] as const;
+export type ReportRange = (typeof REPORT_RANGES)[number]["key"];
+
+export function parseReportRange(value: unknown): ReportRange {
+  return REPORT_RANGES.some((r) => r.key === value) ? (value as ReportRange) : "all";
+}
+
+// Start of the window (Manila month boundary), or undefined for all time.
+export function reportRangeStart(range: ReportRange): Date | undefined {
+  if (range === "all") return undefined;
+  const month = range === "month" ? manilaMonthString() : shiftMonthString(manilaMonthString(), -2);
+  return getManilaMonthBoundsForMonthString(month).start;
+}
+
+function inRange(d: Date, since: Date | undefined): boolean {
+  return !since || d >= since;
+}
+
 // Distinct service days a kid attended → bucket label, in display order.
 const FREQUENCY_BUCKETS = [
   { label: "Never", min: 0, max: 0 },
@@ -79,12 +103,13 @@ function manilaHour(d: Date): number {
   return new Date(d.getTime() + MANILA_OFFSET_MS).getUTCHours();
 }
 
-// All-time aggregates for /reports. The tables are small (hundreds of kids, a few
+// Aggregates for the /reports overview; check-in stats and new registrations are limited to
+// `since` when given. The tables are small (hundreds of kids, a few
 // thousand check-ins), so this loads the needed columns once and buckets by Manila
 // calendar date in JS — same approach as getAttendanceDatesInMonth — rather than
 // pushing timezone-aware grouping into SQL.
-export async function getReportData(): Promise<ReportData> {
-  const [kidRows, checkInRows, teamRows] = await Promise.all([
+export async function getReportData(since?: Date): Promise<ReportData> {
+  const [kidRows, allCheckInRows, teamRows] = await Promise.all([
     db
       .select({
         id: kids.id,
@@ -107,6 +132,7 @@ export async function getReportData(): Promise<ReportData> {
       })
       .from(serviceTeamMembers),
   ]);
+  const checkInRows = allCheckInRows.filter((row) => inRange(row.checkedInAt, since));
 
   // Service days
   const dayBuckets = new Map<string, { checkIns: number; kids: Set<number> }>();
@@ -174,6 +200,7 @@ export async function getReportData(): Promise<ReportData> {
   // New registrations per Manila month
   const monthMap = new Map<string, number>();
   for (const kid of kidRows) {
+    if (!inRange(kid.createdAt, since)) continue;
     const month = manilaDateString(kid.createdAt).slice(0, 7);
     monthMap.set(month, (monthMap.get(month) ?? 0) + 1);
   }
@@ -240,26 +267,41 @@ export interface ReportCrossServiceRow {
   fromOtherServices: number;
 }
 
-export interface ReportFollowUpKid {
+export interface ReportKidRef {
   id: number;
   firstName: string;
   lastName: string;
   nickname: string | null;
-  service: string;
+  service: string; // registered service
+}
+
+export interface ReportFollowUpKid extends ReportKidRef {
   daysAttended: number;
   lastAttended: string; // YYYY-MM-DD
+}
+
+export interface ReportServiceMismatchKid extends ReportKidRef {
+  usualService: string;
+  usualCount: number;
+  totalCheckIns: number;
+}
+
+export interface ReportSundayAges {
+  date: string;
+  ages: number[]; // one entry per unique kid checked in that Sunday
 }
 
 export interface AttendanceReport {
   totals: {
     checkIns: number;
-    neverCheckedOut: number;
     otherServiceCheckIns: number;
     latestSunday: ReportNewVsReturningDay | null;
   };
   newVsReturning: ReportNewVsReturningDay[];
+  sundayAges: ReportSundayAges[];
   sundayHours: ReportHourRow[];
   crossService: ReportCrossServiceRow[];
+  serviceMismatch: ReportServiceMismatchKid[];
   followUp: ReportFollowUpKid[];
   followUpSundays: string[];
 }
@@ -268,8 +310,14 @@ export interface AttendanceReport {
 export const FOLLOW_UP_MIN_DAYS = 2;
 // …and has missed every one of this many most recent Sundays.
 export const FOLLOW_UP_MISSED_SUNDAYS = 4;
+// Kids need at least this many check-ins in the window before we suggest their
+// registered service is wrong.
+export const SERVICE_MISMATCH_MIN_CHECK_INS = 2;
 
-export async function getAttendanceReport(): Promise<AttendanceReport> {
+// Check-in stats are limited to `since` when given. First-time detection and the follow-up
+// list always look at full history — a kid isn't "first time" just because the window
+// starts after their first visit, and "missed the last N Sundays" doesn't depend on it.
+export async function getAttendanceReport(since?: Date): Promise<AttendanceReport> {
   const [kidRows, checkInRows] = await Promise.all([
     db
       .select({
@@ -277,35 +325,51 @@ export async function getAttendanceReport(): Promise<AttendanceReport> {
         firstName: kids.firstName,
         lastName: kids.lastName,
         nickname: kids.nickname,
+        age: kids.age,
         service: kids.serviceAttending,
       })
       .from(kids),
     db
-      .select({
-        kidId: checkIns.kidId,
-        service: checkIns.serviceAttending,
-        checkedInAt: checkIns.checkedInAt,
-        checkedOutAt: checkIns.checkedOutAt,
-      })
+      .select({ kidId: checkIns.kidId, service: checkIns.serviceAttending, checkedInAt: checkIns.checkedInAt })
       .from(checkIns),
   ]);
   const kidById = new Map(kidRows.map((kid) => [kid.id, kid]));
+  const kidRef = (kid: (typeof kidRows)[number]): ReportKidRef => ({
+    id: kid.id,
+    firstName: kid.firstName,
+    lastName: kid.lastName,
+    nickname: kid.nickname,
+    service: kid.service,
+  });
 
-  const daysByKid = new Map<number, Set<string>>();
+  // Full history
+  const allDaysByKid = new Map<number, Set<string>>();
+  for (const row of checkInRows) {
+    const date = manilaDateString(row.checkedInAt);
+    if (!allDaysByKid.has(row.kidId)) allDaysByKid.set(row.kidId, new Set());
+    allDaysByKid.get(row.kidId)!.add(date);
+  }
+  const firstDateByKid = new Map<number, string>();
+  for (const [kidId, days] of allDaysByKid) firstDateByKid.set(kidId, [...days].sort()[0]);
+  const allSundays = [
+    ...new Set(checkInRows.map((row) => manilaDateString(row.checkedInAt)).filter(isSundayDateString)),
+  ].sort();
+
+  // Within the window
   const kidsByDate = new Map<string, Set<number>>();
   const hourCounts = new Map<number, number>();
   const crossByService = new Map<string, { checkIns: number; fromOtherServices: number }>();
-  let neverCheckedOut = 0;
+  const servicesByKid = new Map<number, Map<string, number>>();
+  let windowCheckIns = 0;
   let otherServiceCheckIns = 0;
 
   for (const row of checkInRows) {
+    if (!inRange(row.checkedInAt, since)) continue;
+    windowCheckIns += 1;
     const date = manilaDateString(row.checkedInAt);
-    if (!daysByKid.has(row.kidId)) daysByKid.set(row.kidId, new Set());
-    daysByKid.get(row.kidId)!.add(date);
     if (!kidsByDate.has(date)) kidsByDate.set(date, new Set());
     kidsByDate.get(date)!.add(row.kidId);
 
-    if (!row.checkedOutAt) neverCheckedOut += 1;
     if (isSundayDateString(date)) {
       const hour = manilaHour(row.checkedInAt);
       hourCounts.set(hour, (hourCounts.get(hour) ?? 0) + 1);
@@ -319,17 +383,22 @@ export async function getAttendanceReport(): Promise<AttendanceReport> {
       otherServiceCheckIns += 1;
     }
     crossByService.set(row.service, cross);
+
+    if (!servicesByKid.has(row.kidId)) servicesByKid.set(row.kidId, new Map());
+    const counts = servicesByKid.get(row.kidId)!;
+    counts.set(row.service, (counts.get(row.service) ?? 0) + 1);
   }
 
-  // First-time vs returning: a kid's first-ever check-in date marks them as first-time that day.
-  const firstDateByKid = new Map<number, string>();
-  for (const [kidId, days] of daysByKid) firstDateByKid.set(kidId, [...days].sort()[0]);
   const sundays = [...kidsByDate.keys()].filter(isSundayDateString).sort();
   const newVsReturning = sundays.map((date) => {
     let firstTime = 0;
     for (const kidId of kidsByDate.get(date)!) if (firstDateByKid.get(kidId) === date) firstTime += 1;
     return { date, firstTime, returning: kidsByDate.get(date)!.size - firstTime };
   });
+  const sundayAges = sundays.map((date) => ({
+    date,
+    ages: [...kidsByDate.get(date)!].map((kidId) => kidById.get(kidId)?.age).filter((age) => age !== undefined),
+  }));
 
   const hours = [...hourCounts.keys()];
   const sundayHours = hours.length
@@ -346,31 +415,44 @@ export async function getAttendanceReport(): Promise<AttendanceReport> {
     ...(crossByService.get(service) ?? { checkIns: 0, fromOtherServices: 0 }),
   }));
 
+  // Kids who mostly check in somewhere other than their registered service.
+  const serviceMismatch: ReportServiceMismatchKid[] = [];
+  for (const [kidId, counts] of servicesByKid) {
+    const kid = kidById.get(kidId);
+    const total = [...counts.values()].reduce((sum, n) => sum + n, 0);
+    if (!kid || total < SERVICE_MISMATCH_MIN_CHECK_INS) continue;
+    const [usualService, usualCount] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (usualService === kid.service || (counts.get(kid.service) ?? 0) * 2 >= total) continue;
+    serviceMismatch.push({ ...kidRef(kid), usualService, usualCount, totalCheckIns: total });
+  }
+  serviceMismatch.sort((a, b) => b.usualCount - a.usualCount || a.lastName.localeCompare(b.lastName));
+
   // Regulars who missed the most recent Sundays.
-  const followUpSundays = sundays.slice(-FOLLOW_UP_MISSED_SUNDAYS);
+  const followUpSundays = allSundays.slice(-FOLLOW_UP_MISSED_SUNDAYS);
   const followUp: ReportFollowUpKid[] = [];
   if (followUpSundays.length === FOLLOW_UP_MISSED_SUNDAYS) {
     const cutoff = followUpSundays[0];
-    for (const [kidId, days] of daysByKid) {
+    for (const [kidId, days] of allDaysByKid) {
       const sorted = [...days].sort();
       const lastAttended = sorted.at(-1)!;
       const kid = kidById.get(kidId);
       if (!kid || sorted.length < FOLLOW_UP_MIN_DAYS || lastAttended >= cutoff) continue;
-      followUp.push({ ...kid, daysAttended: sorted.length, lastAttended });
+      followUp.push({ ...kidRef(kid), daysAttended: sorted.length, lastAttended });
     }
     followUp.sort((a, b) => b.daysAttended - a.daysAttended || (a.lastAttended < b.lastAttended ? 1 : -1));
   }
 
   return {
     totals: {
-      checkIns: checkInRows.length,
-      neverCheckedOut,
+      checkIns: windowCheckIns,
       otherServiceCheckIns,
       latestSunday: newVsReturning.at(-1) ?? null,
     },
     newVsReturning,
+    sundayAges,
     sundayHours,
     crossService,
+    serviceMismatch,
     followUp,
     followUpSundays,
   };
@@ -378,6 +460,16 @@ export async function getAttendanceReport(): Promise<AttendanceReport> {
 
 // ---------------------------------------------------------------------------
 // /reports/families
+
+export interface SharedNumberKid extends ReportKidRef {
+  guardianFirstName: string;
+  guardianLastName: string;
+}
+
+export interface SharedNumberGroup {
+  contactNumber: string;
+  kids: SharedNumberKid[];
+}
 
 export interface FamiliesReport {
   totals: {
@@ -390,6 +482,7 @@ export interface FamiliesReport {
   kidsPerFamily: ReportCountRow[];
   guardianGender: { male: number; female: number };
   siblingsSplitAcrossServices: number;
+  sharedNumberGroups: SharedNumberGroup[];
 }
 
 // Guardians aren't deduplicated, so a family is approximated by contact number. A number
@@ -403,39 +496,53 @@ function normalizeContactNumber(n: string): string {
 
 export async function getFamiliesReport(): Promise<FamiliesReport> {
   const rows = await db
-    .select({ contactNumber: guardians.contactNumber, gender: guardians.gender, service: kids.serviceAttending })
+    .select({
+      id: kids.id,
+      firstName: kids.firstName,
+      lastName: kids.lastName,
+      nickname: kids.nickname,
+      service: kids.serviceAttending,
+      guardianFirstName: guardians.firstName,
+      guardianLastName: guardians.lastName,
+      contactNumber: guardians.contactNumber,
+      gender: guardians.gender,
+    })
     .from(kids)
     .innerJoin(guardians, eq(kids.guardianId, guardians.id));
 
-  const servicesByNumber = new Map<string, string[]>();
+  const kidsByNumber = new Map<string, typeof rows>();
   let male = 0;
   let female = 0;
   for (const row of rows) {
     const key = normalizeContactNumber(row.contactNumber);
-    if (!servicesByNumber.has(key)) servicesByNumber.set(key, []);
-    servicesByNumber.get(key)!.push(row.service);
+    if (!kidsByNumber.has(key)) kidsByNumber.set(key, []);
+    kidsByNumber.get(key)!.push(row);
     if (row.gender === "Male") male += 1;
     else female += 1;
   }
 
   const sizeCounts = new Map<number, number>();
-  let sharedNumbers = 0;
-  let kidsOnSharedNumbers = 0;
+  const sharedNumberGroups: SharedNumberGroup[] = [];
   let familiesWithSiblings = 0;
   let siblingsSplitAcrossServices = 0;
-  for (const services of servicesByNumber.values()) {
-    const size = services.length;
+  for (const [contactNumber, members] of kidsByNumber) {
+    const size = members.length;
     if (size >= SHARED_NUMBER_MIN_KIDS) {
-      sharedNumbers += 1;
-      kidsOnSharedNumbers += size;
+      sharedNumberGroups.push({
+        contactNumber,
+        kids: members
+          .map(({ contactNumber: _n, gender: _g, ...kid }) => kid)
+          .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName)),
+      });
       continue;
     }
     sizeCounts.set(size, (sizeCounts.get(size) ?? 0) + 1);
     if (size > 1) {
       familiesWithSiblings += 1;
-      if (new Set(services).size > 1) siblingsSplitAcrossServices += 1;
+      if (new Set(members.map((m) => m.service)).size > 1) siblingsSplitAcrossServices += 1;
     }
   }
+  sharedNumberGroups.sort((a, b) => b.kids.length - a.kids.length);
 
   const kidsPerFamily = Array.from({ length: SHARED_NUMBER_MIN_KIDS - 1 }, (_, i) => {
     const size = i + 1;
@@ -445,14 +552,15 @@ export async function getFamiliesReport(): Promise<FamiliesReport> {
   return {
     totals: {
       guardianRecords: rows.length,
-      families: servicesByNumber.size - sharedNumbers,
+      families: kidsByNumber.size - sharedNumberGroups.length,
       familiesWithSiblings,
-      sharedNumbers,
-      kidsOnSharedNumbers,
+      sharedNumbers: sharedNumberGroups.length,
+      kidsOnSharedNumbers: sharedNumberGroups.reduce((sum, g) => sum + g.kids.length, 0),
     },
     kidsPerFamily,
     guardianGender: { male, female },
     siblingsSplitAcrossServices,
+    sharedNumberGroups,
   };
 }
 

@@ -1,17 +1,27 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
-import { getReportData } from "@/lib/reports";
+import { REPORT_RANGES, getReportData, parseReportRange, reportRangeStart } from "@/lib/reports";
 import { getKcBucksSummaryTotals } from "@/lib/kcBucks";
 import { dateFromString, fullDateFormatter, monthFormatter, shortDateFormatter } from "./format";
+import { RangePicker } from "./RangePicker";
 import { BarList, ChartCard, ColumnChart, ProgressMeter, SplitBarList, StatTile } from "./charts";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   const isAdmin = session.role === "admin";
 
-  const [report, kcBucks] = await Promise.all([getReportData(), isAdmin ? getKcBucksSummaryTotals() : null]);
+  const range = parseReportRange((await searchParams).range);
+  const rangeLabel = REPORT_RANGES.find((r) => r.key === range)!.label.toLowerCase();
+  const [report, kcBucks] = await Promise.all([
+    getReportData(reportRangeStart(range)),
+    isAdmin ? getKcBucksSummaryTotals() : null,
+  ]);
   const { totals } = report;
 
   const peakDay = report.serviceDays.reduce<(typeof report.serviceDays)[number] | undefined>(
@@ -32,6 +42,8 @@ export default async function ReportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <RangePicker basePath="/reports" range={range} />
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile value={totals.kids} label="Registered kids" textClass="text-kids-navy" />
         <StatTile value={totals.serviceTeam} label="Service team members" textClass="text-kids-magenta" />
@@ -43,7 +55,7 @@ export default async function ReportsPage() {
         />
         <StatTile
           value={`${attendedPct}%`}
-          label="Kids who attended at least once"
+          label={`Kids who attended (${rangeLabel})`}
           hint={`${totals.kidsAttended} of ${totals.kids}`}
           textClass="text-kids-navy"
         />
@@ -54,7 +66,7 @@ export default async function ReportsPage() {
         subtitle={`Unique kids checked in each day · ${totals.checkIns} check-ins total. Faded columns are non-Sunday days.`}
       >
         {report.serviceDays.length === 0 ? (
-          <p className="text-sm text-gray-400">No check-ins yet.</p>
+          <p className="text-sm text-gray-400">No check-ins in this period.</p>
         ) : (
           <ColumnChart
             data={report.serviceDays.map((d) => ({
@@ -143,14 +155,18 @@ export default async function ReportsPage() {
             />
           </ChartCard>
 
-          <ChartCard title="New registrations by month">
-            <BarList
-              data={report.registrationsByMonth.map((m) => ({
-                key: m.label,
-                label: monthFormatter.format(dateFromString(`${m.label}-01`)),
-                value: m.count,
-              }))}
-            />
+          <ChartCard title="New registrations by month" subtitle={range === "all" ? undefined : `Registered ${rangeLabel}.`}>
+            {report.registrationsByMonth.length === 0 ? (
+              <p className="text-sm text-gray-400">No new registrations in this period.</p>
+            ) : (
+              <BarList
+                data={report.registrationsByMonth.map((m) => ({
+                  key: m.label,
+                  label: monthFormatter.format(dateFromString(`${m.label}-01`)),
+                  value: m.count,
+                }))}
+              />
+            )}
           </ChartCard>
         </div>
       </div>
