@@ -8,6 +8,7 @@ import {
   getKcBucksSummaryTotals,
 } from "@/lib/kcBucks";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { capitalizeName } from "@/lib/format";
 
 const STAT_TILES = [
   { key: "checkinCredits", label: "Check-in credits", textClass: "text-kids-green" },
@@ -107,7 +108,7 @@ export default async function KcBucksSummaryPage() {
               <tbody>
                 {grantsByStaff.map((row) => (
                   <tr key={row.userId ?? row.name} className="border-b border-gray-100 last:border-0">
-                    <td className="px-4 py-3 text-gray-900">{row.name}</td>
+                    <td className="px-4 py-3 text-gray-900">{capitalizeName(row.name)}</td>
                     <td className="px-4 py-3 text-right text-gray-500">{row.count}</td>
                     <td className="px-4 py-3 text-right font-bold text-kids-navy">{row.amount}</td>
                   </tr>

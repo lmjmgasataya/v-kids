@@ -115,7 +115,7 @@ export default async function KcBucksTransactionsPage({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-700">{row.reason}</td>
-                  <td className="px-4 py-3 text-gray-500">{row.staffName ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-500">{row.staffName ? capitalizeName(row.staffName) : "—"}</td>
                   <td
                     className={`px-4 py-3 text-right font-bold ${row.amount < 0 ? "text-kids-magenta" : "text-kids-green"}`}
                   >

@@ -12,6 +12,7 @@ import { LogoMark } from "@/components/LogoMark";
 import { CursorTrail } from "@/components/CursorTrail";
 import { Toaster } from "@/components/toast/Toaster";
 import "./globals.css";
+import { capitalizeName } from "@/lib/format";
 
 const geist = Geist({ subsets: ["latin"] });
 const fredoka = Fredoka({ subsets: ["latin"], variable: "--font-fredoka" });
@@ -72,7 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       </svg>
                     </Link>
                   )}
-                  <span className="text-xs text-gray-500 capitalize">{session.name}</span>
+                  <span className="text-xs text-gray-500">{capitalizeName(session.name)}</span>
                   <form action={logout}>
                     <button
                       type="submit"

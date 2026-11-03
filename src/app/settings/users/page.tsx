@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Pagination } from "@/components/Pagination";
 import { DeleteUserButton } from "./DeleteUserButton";
+import { capitalizeName } from "@/lib/format";
 
 const PAGE_SIZE = 20;
 
@@ -70,7 +71,7 @@ export default async function UsersPage({
               return (
                 <tr key={row.id} className="border-b border-gray-100 last:border-0 hover:bg-kids-yellow/5">
                   <td className="px-4 py-3 font-medium text-gray-900">{row.username}</td>
-                  <td className="px-4 py-3">{row.name}</td>
+                  <td className="px-4 py-3">{capitalizeName(row.name)}</td>
                   <td className="px-4 py-3 capitalize">{row.role}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-3">
