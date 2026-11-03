@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function DownloadIcon({ className }: { className?: string }) {
   return (
@@ -33,10 +33,20 @@ export function ServiceTeamPhoto({
   initials: string;
 }) {
   const [open, setOpen] = useState(false);
+  // The photo route returns an error when the file can't be loaded from storage — show the
+  // initials instead of a broken image.
+  const [failed, setFailed] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
-  if (!photoUrl) {
+  // onError can fire before hydration attaches the handler, so also check once on mount.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth === 0) setFailed(true);
+  }, []);
+
+  if (!photoUrl || failed) {
     return (
-      <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs font-semibold">
+      <div className="h-10 w-10 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs font-semibold">
         {initials}
       </div>
     );
@@ -45,15 +55,23 @@ export function ServiceTeamPhoto({
   return (
     <>
       <div className="flex items-center gap-2.5">
-        <button type="button" onClick={() => setOpen(true)} className="block rounded-full">
+        {/* shrink-0 + max-w-none: in a tight table column the flex row would otherwise squeeze the
+            image's width (Tailwind's img max-width: 100%) while its height stays fixed, making an oval. */}
+        <button type="button" onClick={() => setOpen(true)} className="block shrink-0 rounded-full">
           {/* eslint-disable-next-line @next/next/no-img-element -- private photo route, not a static asset */}
-          <img src={photoUrl} alt="" className="h-10 w-10 rounded-full object-cover transition hover:opacity-80" />
+          <img
+            ref={imgRef}
+            src={photoUrl}
+            alt=""
+            onError={() => setFailed(true)}
+            className="h-10 w-10 max-w-none rounded-full object-cover transition hover:opacity-80"
+          />
         </button>
         <a
           href={downloadUrl ?? photoUrl}
           aria-label="Download photo"
           title="Download photo"
-          className="ml-1 text-gray-400 hover:text-kids-navy transition"
+          className="ml-1 shrink-0 text-gray-400 hover:text-kids-navy transition"
         >
           <DownloadIcon className="h-5 w-5" />
         </a>
