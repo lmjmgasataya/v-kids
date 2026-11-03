@@ -51,6 +51,16 @@ const SERVICE_TEAM_TILES = [
   },
 ] as const;
 
+const REPORT_TILES = [
+  {
+    href: "/reports",
+    icon: "📈",
+    label: "Reports",
+    description: "Trends for attendance, families, and service team",
+    color: "kids-navy",
+  },
+] as const;
+
 function TileGrid({ tiles }: { tiles: readonly { href: string; icon: string; label: string; description: string; color: "kids-magenta" | "kids-navy" | "kids-green" | "kids-yellow" }[] }) {
   const isOddLeftover = tiles.length % 2 === 1;
 
@@ -92,6 +102,10 @@ export default async function Home() {
 
       <div className="w-full max-w-2xl border-t border-gray-200 pt-8">
         <TileGrid tiles={SERVICE_TEAM_TILES} />
+      </div>
+
+      <div className="w-full max-w-2xl border-t border-gray-200 pt-8">
+        <TileGrid tiles={REPORT_TILES} />
       </div>
     </div>
   );
