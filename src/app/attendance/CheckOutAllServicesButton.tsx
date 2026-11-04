@@ -4,9 +4,19 @@ import { useActionState } from "react";
 import { checkOutAllInAllServicesForDate } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
+import { peopleCount } from "@/lib/format";
+import type { CheckInPersonKind } from "@/lib/checkIn";
 
-export function CheckOutAllServicesButton({ date, count }: { date: string; count: number }) {
-  const checkOutAllForDate = checkOutAllInAllServicesForDate.bind(null, date);
+export function CheckOutAllServicesButton({
+  date,
+  count,
+  kind = "kid",
+}: {
+  date: string;
+  count: number;
+  kind?: CheckInPersonKind;
+}) {
+  const checkOutAllForDate = checkOutAllInAllServicesForDate.bind(null, date, kind);
   const [state, action] = useActionState(checkOutAllForDate, undefined);
   useToastOnResult(state);
 
@@ -16,7 +26,7 @@ export function CheckOutAllServicesButton({ date, count }: { date: string; count
     <form
       action={action}
       onSubmit={(e) => {
-        if (!confirm(`Check out all ${count} kid${count === 1 ? "" : "s"} still checked in, across every service?`)) {
+        if (!confirm(`Check out all ${peopleCount(count, kind)} still checked in, across every service?`)) {
           e.preventDefault();
         }
       }}

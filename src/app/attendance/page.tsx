@@ -5,7 +5,11 @@ import {
   getAttendanceDatesInMonth,
   getManilaDayBoundsForDateString,
   getManilaMonthBoundsForMonthString,
+  getTeamAttendanceByService,
   manilaMonthString,
+  type CheckInPersonKind,
+  type ServiceAttendance,
+  type ServiceAttendancePerson,
 } from "@/lib/checkIn";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { AttendanceMonthNav } from "./AttendanceMonthNav";
@@ -18,6 +22,56 @@ const dateHeadingFormatter = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "full",
   timeZone: "Asia/Manila",
 });
+
+function sumTotals(rows: ServiceAttendance<ServiceAttendancePerson>[]) {
+  return rows.reduce(
+    (acc, row) => ({
+      checkedIn: acc.checkedIn + row.checkedIn,
+      checkedOut: acc.checkedOut + row.checkedOut,
+      stillPresent: acc.stillPresent + row.stillPresent,
+    }),
+    { checkedIn: 0, checkedOut: 0, stillPresent: 0 }
+  );
+}
+
+function AttendanceTable({
+  rows,
+  date,
+  kind,
+}: {
+  rows: ServiceAttendance<ServiceAttendancePerson & { age?: number }>[];
+  date: string;
+  kind: CheckInPersonKind;
+}) {
+  const totals = sumTotals(rows);
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50">
+            <th className="px-4 py-3 text-left font-semibold text-gray-600">Service</th>
+            <th className="px-4 py-3 text-right font-semibold text-gray-600">Checked in</th>
+            <th className="px-4 py-3 text-right font-semibold text-gray-600">Checked out</th>
+            <th className="px-4 py-3 text-right font-semibold text-gray-600">Still present</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <ServiceRow key={row.service} row={row} date={date} kind={kind} />
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="bg-gray-50 font-bold text-gray-900">
+            <td className="px-4 py-3">Total</td>
+            <td className="px-4 py-3 text-right">{totals.checkedIn}</td>
+            <td className="px-4 py-3 text-right">{totals.checkedOut}</td>
+            <td className="px-4 py-3 text-right">{totals.stillPresent}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
 
 export default async function AttendancePage({
   searchParams,
@@ -38,21 +92,16 @@ export default async function AttendancePage({
   const date = monthDates.some((d) => d.date === requestedDate) ? requestedDate : monthDates.at(-1)?.date;
 
   let rows: Awaited<ReturnType<typeof getAttendanceByService>> = [];
+  let teamRows: Awaited<ReturnType<typeof getTeamAttendanceByService>> = [];
   let dayStart: Date | undefined;
   if (date) {
     const { start, end } = getManilaDayBoundsForDateString(date);
     dayStart = start;
-    rows = await getAttendanceByService(start, end);
+    [rows, teamRows] = await Promise.all([getAttendanceByService(start, end), getTeamAttendanceByService(start, end)]);
   }
 
-  const totals = rows.reduce(
-    (acc, row) => ({
-      checkedIn: acc.checkedIn + row.checkedIn,
-      checkedOut: acc.checkedOut + row.checkedOut,
-      stillPresent: acc.stillPresent + row.stillPresent,
-    }),
-    { checkedIn: 0, checkedOut: 0, stillPresent: 0 }
-  );
+  const totals = sumTotals(rows);
+  const teamTotals = sumTotals(teamRows);
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,35 +119,17 @@ export default async function AttendancePage({
               <CheckOutAllServicesButton date={date} count={totals.stillPresent} />
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Service</th>
-                    <th className="px-4 py-3 text-right font-semibold text-gray-600">Checked in</th>
-                    <th className="px-4 py-3 text-right font-semibold text-gray-600">Checked out</th>
-                    <th className="px-4 py-3 text-right font-semibold text-gray-600">Still present</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <ServiceRow key={row.service} row={row} date={date} />
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 font-bold text-gray-900">
-                    <td className="px-4 py-3">Total</td>
-                    <td className="px-4 py-3 text-right">{totals.checkedIn}</td>
-                    <td className="px-4 py-3 text-right">{totals.checkedOut}</td>
-                    <td className="px-4 py-3 text-right">{totals.stillPresent}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <AttendanceTable rows={rows} date={date} kind="kid" />
 
             <AgeGroupSummary
-              services={rows.map((row) => ({ service: row.service, ages: row.kids.map((kid) => kid.age) }))}
+              services={rows.map((row) => ({ service: row.service, ages: row.people.map((kid) => kid.age) }))}
             />
+
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h3 className="text-lg font-bold text-kids-navy">Service Team</h3>
+              <CheckOutAllServicesButton date={date} count={teamTotals.stillPresent} kind="team" />
+            </div>
+            <AttendanceTable rows={teamRows} date={date} kind="team" />
           </>
         )}
       </AttendanceMonthNav>

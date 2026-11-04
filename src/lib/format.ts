@@ -8,6 +8,12 @@ export function capitalizeName(value: string): string {
     .join(" ");
 }
 
+/** "1 kid" / "3 kids" / "2 service team members" — for check-in/out counts that may be either kind. */
+export function peopleCount(count: number, kind: "kid" | "team" = "kid"): string {
+  const noun = kind === "team" ? "service team member" : "kid";
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
 /** The short name shown on ID cards: the nickname if set, otherwise just the first word of the first name. */
 export function idCardDisplayName(firstName: string, nickname: string | null | undefined): string {
   const trimmedNickname = nickname?.trim();

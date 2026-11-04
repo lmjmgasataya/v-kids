@@ -2,22 +2,28 @@
 
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { checkIns, kcBucksTransactions, kids } from "@/db/schema";
+import { checkIns, kcBucksTransactions, kids, serviceTeamCheckIns, serviceTeamMembers } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
   checkOutAllOpenInService,
+  checkOutAllOpenTeamInService,
   getCheckedInServicesTodayByKidIds,
   getManilaDayBounds,
   getOpenCheckIn,
+  getOpenTeamCheckIn,
+  getTeamCheckedInServicesTodayByMemberIds,
   hasCheckedInServiceToday,
+  hasTeamCheckedInServiceToday,
   validateCheckInInput,
+  type CheckInPersonKind,
   type CheckInSearchResult,
   type OpenCheckInSummary,
 } from "@/lib/checkIn";
 import { getCheckInCreditAmount, getKidBalance } from "@/lib/kcBucks";
 import { withToast } from "@/lib/toast";
+import { peopleCount } from "@/lib/format";
 
 export interface CheckInActionState {
   error?: string;
@@ -178,10 +184,12 @@ export async function checkOutKid(
   redirect(withToast(nextPath, "success", "Checked out! 👋"));
 }
 
-// Checks out every kid still checked in to the given service today — a cleanup
-// tool for the end of a service, since kids are often left forgotten open.
+// Checks out every kid (or service team member) still checked in to the given
+// service today — a cleanup tool for the end of a service, since kids are often
+// left forgotten open.
 export async function checkOutAllInService(
   service: string,
+  kind: CheckInPersonKind,
   _prev: CheckOutActionState | undefined,
   _formData: FormData
 ): Promise<CheckOutActionState> {
@@ -189,13 +197,16 @@ export async function checkOutAllInService(
   if (!session) redirect("/login");
 
   const { start, end } = getManilaDayBounds();
-  const closedCount = await checkOutAllOpenInService(service, start, end, session.userId);
+  const closedCount =
+    kind === "team"
+      ? await checkOutAllOpenTeamInService(service, start, end, session.userId)
+      : await checkOutAllOpenInService(service, start, end, session.userId);
 
   revalidatePath("/check-in");
   revalidatePath("/attendance");
 
-  if (closedCount === 0) return { success: "No kids to check out." };
-  return { success: `Checked out ${closedCount} kid${closedCount === 1 ? "" : "s"}. 👋` };
+  if (closedCount === 0) return { success: `No ${kind === "team" ? "service team members" : "kids"} to check out.` };
+  return { success: `Checked out ${peopleCount(closedCount, kind)}. 👋` };
 }
 
 // Row-level checkout form on the roster table redirects + revalidates via
@@ -267,8 +278,10 @@ export async function resolveQrToken(token: string): Promise<{ kid: CheckInSearc
   if (!session) return { error: "Please sign in again." };
 
   if (!UUID_RE.test(token)) {
-    return { error: "That QR code isn't a Kids Church ID card. Please scan the child's ID card." };
+    return { error: "That QR code isn't a Kids Church ID card. Please scan a kid's or service team member's ID card." };
   }
+
+  const { start, end } = getManilaDayBounds();
 
   const [row] = await db
     .select({
@@ -282,13 +295,215 @@ export async function resolveQrToken(token: string): Promise<{ kid: CheckInSearc
     .from(kids)
     .where(eq(kids.qrToken, token));
 
-  if (!row) return { error: "No kid found for this QR code." };
+  if (row) {
+    const [openCheckIn, servicesByKid] = await Promise.all([
+      getOpenCheckIn(row.id, start),
+      getCheckedInServicesTodayByKidIds([row.id], start, end),
+    ]);
+    return { kid: { ...row, kind: "kid", openCheckIn, checkedInServicesToday: servicesByKid.get(row.id) ?? [] } };
+  }
+
+  const [member] = await db
+    .select({
+      id: serviceTeamMembers.id,
+      firstName: serviceTeamMembers.firstName,
+      lastName: serviceTeamMembers.lastName,
+      nickname: serviceTeamMembers.nickname,
+      defaultService: serviceTeamMembers.serviceAttending,
+    })
+    .from(serviceTeamMembers)
+    .where(eq(serviceTeamMembers.qrToken, token));
+
+  if (!member) return { error: "No kid or service team member found for this QR code." };
+
+  const [openCheckIn, servicesByMember] = await Promise.all([
+    getOpenTeamCheckIn(member.id, start),
+    getTeamCheckedInServicesTodayByMemberIds([member.id], start, end),
+  ]);
+  return {
+    kid: {
+      ...member,
+      kind: "team",
+      age: null,
+      openCheckIn,
+      checkedInServicesToday: servicesByMember.get(member.id) ?? [],
+    },
+  };
+}
+
+// Service team counterparts of checkInKid / checkOutKid / undoCheckIn / undoCheckOut,
+// against service_team_check_ins. Same flow and return shapes so the check-in page can
+// call either by the scanned/searched person's kind — minus KC Bucks, which are kids-only.
+
+export async function checkInTeamMember(
+  memberId: number,
+  _prev: CheckInActionState | undefined,
+  formData: FormData
+): Promise<CheckInActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const serviceAttending = (formData.get("serviceAttending") as string)?.trim() ?? "";
+  const remarks = (formData.get("remarks") as string)?.trim() ?? "";
+  const mode = formData.get("mode") === "scan" ? "scan" : "search";
+
+  const error = validateCheckInInput(serviceAttending, remarks);
+  if (error) return { error };
 
   const { start, end } = getManilaDayBounds();
-  const [openCheckIn, servicesByKid] = await Promise.all([
-    getOpenCheckIn(row.id, start),
-    getCheckedInServicesTodayByKidIds([row.id], start, end),
+  const [existingOpen, alreadyCheckedInService] = await Promise.all([
+    getOpenTeamCheckIn(memberId, start),
+    hasTeamCheckedInServiceToday(memberId, serviceAttending, start, end),
   ]);
+  if (existingOpen?.isToday) {
+    return { error: "This service team member is already checked in.", openCheckIn: existingOpen };
+  }
+  if (alreadyCheckedInService) {
+    return { error: `This service team member has already checked in to ${serviceAttending} today.` };
+  }
+  if (existingOpen) {
+    // Stale open check-in from a previous day — close it out (see checkInKid).
+    await db
+      .update(serviceTeamCheckIns)
+      .set({ checkedOutAt: new Date(), checkedOutBy: session.userId })
+      .where(eq(serviceTeamCheckIns.id, existingOpen.id));
+  }
 
-  return { kid: { ...row, openCheckIn, checkedInServicesToday: servicesByKid.get(row.id) ?? [] } };
+  try {
+    await db.insert(serviceTeamCheckIns).values({
+      memberId,
+      serviceAttending,
+      remarks: remarks || null,
+      checkedInBy: session.userId,
+    });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      const openCheckIn = await getOpenTeamCheckIn(memberId, start);
+      return { error: "This service team member is already checked in.", openCheckIn: openCheckIn ?? undefined };
+    }
+    throw err;
+  }
+
+  revalidatePath("/check-in");
+
+  if (mode === "scan") {
+    return { success: "Checked in! 🎉" };
+  }
+
+  redirect(
+    withToast(
+      `/check-in?service=${encodeURIComponent(serviceAttending)}&intent=checkin&mode=${mode}`,
+      "success",
+      "Checked in! 🎉"
+    )
+  );
+}
+
+export async function checkOutTeamMember(
+  checkInId: number,
+  _prev: CheckOutActionState | undefined,
+  formData: FormData
+): Promise<CheckOutActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const remarks = (formData.get("remarks") as string)?.trim() ?? "";
+  const service = (formData.get("service") as string)?.trim() ?? "";
+  const mode = formData.get("mode") === "scan" ? "scan" : "search";
+  if (remarks.length > 500) return { error: "Remarks must be 500 characters or fewer." };
+
+  const [updated] = await db
+    .update(serviceTeamCheckIns)
+    .set({
+      checkedOutAt: new Date(),
+      checkedOutBy: session.userId,
+      ...(remarks ? { remarks } : {}),
+    })
+    .where(and(eq(serviceTeamCheckIns.id, checkInId), isNull(serviceTeamCheckIns.checkedOutAt)))
+    .returning({ id: serviceTeamCheckIns.id });
+
+  if (!updated) {
+    const [existing] = await db
+      .select({ id: serviceTeamCheckIns.id })
+      .from(serviceTeamCheckIns)
+      .where(eq(serviceTeamCheckIns.id, checkInId));
+    if (!existing) return { error: "This check-in no longer exists." };
+    return { error: "This service team member has already been checked out." };
+  }
+
+  revalidatePath("/check-in");
+
+  if (mode === "scan") {
+    return { success: "Checked out! 👋" };
+  }
+
+  const nextPath = service
+    ? `/check-in?service=${encodeURIComponent(service)}&intent=checkout&mode=${mode}`
+    : `/check-in?intent=checkout&mode=${mode}`;
+  redirect(withToast(nextPath, "success", "Checked out! 👋"));
+}
+
+export async function checkOutTeamMemberForm(
+  checkInId: number,
+  _prev: { error?: string } | undefined,
+  formData: FormData
+) {
+  return checkOutTeamMember(checkInId, undefined, formData);
+}
+
+export async function undoTeamCheckIn(
+  checkInId: number,
+  _formData: FormData
+): Promise<{ error?: string; success?: string }> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const [existing] = await db
+    .select({ id: serviceTeamCheckIns.id, checkedOutAt: serviceTeamCheckIns.checkedOutAt })
+    .from(serviceTeamCheckIns)
+    .where(eq(serviceTeamCheckIns.id, checkInId));
+
+  if (!existing) return { error: "This check-in no longer exists." };
+  if (existing.checkedOutAt) {
+    return { error: "This service team member has already been checked out — undo the checkout first." };
+  }
+
+  await db.delete(serviceTeamCheckIns).where(eq(serviceTeamCheckIns.id, checkInId));
+
+  revalidatePath("/check-in");
+  return { success: "Check-in undone." };
+}
+
+export async function undoTeamCheckOut(
+  checkInId: number,
+  _formData: FormData
+): Promise<{ error?: string; success?: string }> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const [existing] = await db
+    .select({
+      id: serviceTeamCheckIns.id,
+      memberId: serviceTeamCheckIns.memberId,
+      checkedOutAt: serviceTeamCheckIns.checkedOutAt,
+    })
+    .from(serviceTeamCheckIns)
+    .where(eq(serviceTeamCheckIns.id, checkInId));
+
+  if (!existing) return { error: "This check-in no longer exists." };
+  if (!existing.checkedOutAt) return { error: "This service team member hasn't been checked out yet." };
+
+  const { start } = getManilaDayBounds();
+  const alreadyOpen = await getOpenTeamCheckIn(existing.memberId, start);
+  if (alreadyOpen) {
+    return { error: "This service team member already has a newer open check-in." };
+  }
+
+  await db
+    .update(serviceTeamCheckIns)
+    .set({ checkedOutAt: null, checkedOutBy: null })
+    .where(eq(serviceTeamCheckIns.id, checkInId));
+
+  revalidatePath("/check-in");
+  return { success: "Check-out undone." };
 }

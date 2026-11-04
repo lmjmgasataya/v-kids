@@ -1,6 +1,6 @@
 import { and, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
-import { checkIns, kids } from "@/db/schema";
+import { checkIns, kids, serviceTeamCheckIns, serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { manilaDateString } from "@/lib/date";
 
@@ -15,12 +15,18 @@ export interface OpenCheckInSummary {
   isToday: boolean;
 }
 
+export type CheckInPersonKind = "kid" | "team";
+
 export interface CheckInSearchResult {
+  // "team" = a service team member: same check-in flow, but recorded in service_team_check_ins
+  // (no KC Bucks) and `id` is their service_team_members id.
+  kind: CheckInPersonKind;
   id: number;
   firstName: string;
   lastName: string;
   nickname: string | null;
-  age: number;
+  // Null for service team members (only a birthday is stored).
+  age: number | null;
   defaultService: string;
   openCheckIn: OpenCheckInSummary | null;
   checkedInServicesToday: string[];
@@ -102,10 +108,16 @@ export interface CheckInDirectoryEntry extends CheckInSearchResult {
   qrToken: string;
 }
 
-// Every kid plus their live check-in status, for the check-in page to preload
-// client-side — search and QR-scan resolution then both run against this
-// in-memory snapshot instead of round-tripping to the DB per keystroke/scan.
+// Every kid and service team member plus their live check-in status, for the
+// check-in page to preload client-side — search and QR-scan resolution then
+// both run against this in-memory snapshot instead of round-tripping to the DB
+// per keystroke/scan.
 export async function getCheckInDirectory(start: Date, end: Date): Promise<CheckInDirectoryEntry[]> {
+  const [kidEntries, teamEntries] = await Promise.all([getKidDirectory(start, end), getTeamDirectory(start, end)]);
+  return [...kidEntries, ...teamEntries];
+}
+
+async function getKidDirectory(start: Date, end: Date): Promise<CheckInDirectoryEntry[]> {
   const rows = await db
     .select({
       id: kids.id,
@@ -126,8 +138,36 @@ export async function getCheckInDirectory(start: Date, end: Date): Promise<Check
 
   return rows.map((row) => ({
     ...row,
+    kind: "kid" as const,
     openCheckIn: openByKid.get(row.id) ?? null,
     checkedInServicesToday: servicesByKid.get(row.id) ?? [],
+  }));
+}
+
+async function getTeamDirectory(start: Date, end: Date): Promise<CheckInDirectoryEntry[]> {
+  const rows = await db
+    .select({
+      id: serviceTeamMembers.id,
+      firstName: serviceTeamMembers.firstName,
+      lastName: serviceTeamMembers.lastName,
+      nickname: serviceTeamMembers.nickname,
+      defaultService: serviceTeamMembers.serviceAttending,
+      qrToken: serviceTeamMembers.qrToken,
+    })
+    .from(serviceTeamMembers);
+
+  const memberIds = rows.map((row) => row.id);
+  const [openByMember, servicesByMember] = await Promise.all([
+    getOpenTeamCheckInsByMemberIds(memberIds, start),
+    getTeamCheckedInServicesTodayByMemberIds(memberIds, start, end),
+  ]);
+
+  return rows.map((row) => ({
+    ...row,
+    kind: "team" as const,
+    age: null,
+    openCheckIn: openByMember.get(row.id) ?? null,
+    checkedInServicesToday: servicesByMember.get(row.id) ?? [],
   }));
 }
 
@@ -216,6 +256,122 @@ export async function checkOutAllOpenInDateRange(start: Date, end: Date, checked
   return closed.length;
 }
 
+// Service team counterparts of checkOutAllOpenInService / checkOutAllOpenInDateRange.
+export async function checkOutAllOpenTeamInService(
+  service: string,
+  start: Date,
+  end: Date,
+  checkedOutBy: number
+): Promise<number> {
+  const closed = await db
+    .update(serviceTeamCheckIns)
+    .set({ checkedOutAt: new Date(), checkedOutBy })
+    .where(
+      and(
+        eq(serviceTeamCheckIns.serviceAttending, service),
+        gte(serviceTeamCheckIns.checkedInAt, start),
+        lt(serviceTeamCheckIns.checkedInAt, end),
+        isNull(serviceTeamCheckIns.checkedOutAt)
+      )
+    )
+    .returning({ id: serviceTeamCheckIns.id });
+  return closed.length;
+}
+
+export async function checkOutAllOpenTeamInDateRange(start: Date, end: Date, checkedOutBy: number): Promise<number> {
+  const closed = await db
+    .update(serviceTeamCheckIns)
+    .set({ checkedOutAt: new Date(), checkedOutBy })
+    .where(
+      and(
+        gte(serviceTeamCheckIns.checkedInAt, start),
+        lt(serviceTeamCheckIns.checkedInAt, end),
+        isNull(serviceTeamCheckIns.checkedOutAt)
+      )
+    )
+    .returning({ id: serviceTeamCheckIns.id });
+  return closed.length;
+}
+
+// Service team counterparts of getOpenCheckIn / getOpenCheckInsByKidIds /
+// getCheckedInServicesTodayByKidIds / hasCheckedInServiceToday, against service_team_check_ins.
+
+export async function getOpenTeamCheckIn(memberId: number, todayStart: Date): Promise<OpenCheckInSummary | null> {
+  const [row] = await db
+    .select({
+      id: serviceTeamCheckIns.id,
+      serviceAttending: serviceTeamCheckIns.serviceAttending,
+      checkedInAt: serviceTeamCheckIns.checkedInAt,
+    })
+    .from(serviceTeamCheckIns)
+    .where(and(eq(serviceTeamCheckIns.memberId, memberId), isNull(serviceTeamCheckIns.checkedOutAt)));
+  if (!row) return null;
+  return { ...row, isToday: row.checkedInAt >= todayStart };
+}
+
+export async function getOpenTeamCheckInsByMemberIds(
+  memberIds: number[],
+  todayStart: Date
+): Promise<Map<number, OpenCheckInSummary>> {
+  if (memberIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      memberId: serviceTeamCheckIns.memberId,
+      id: serviceTeamCheckIns.id,
+      serviceAttending: serviceTeamCheckIns.serviceAttending,
+      checkedInAt: serviceTeamCheckIns.checkedInAt,
+    })
+    .from(serviceTeamCheckIns)
+    .where(and(inArray(serviceTeamCheckIns.memberId, memberIds), isNull(serviceTeamCheckIns.checkedOutAt)));
+  return new Map(rows.map((row) => [row.memberId, { ...row, isToday: row.checkedInAt >= todayStart }]));
+}
+
+export async function getTeamCheckedInServicesTodayByMemberIds(
+  memberIds: number[],
+  start: Date,
+  end: Date
+): Promise<Map<number, string[]>> {
+  if (memberIds.length === 0) return new Map();
+  const rows = await db
+    .select({ memberId: serviceTeamCheckIns.memberId, service: serviceTeamCheckIns.serviceAttending })
+    .from(serviceTeamCheckIns)
+    .where(
+      and(
+        inArray(serviceTeamCheckIns.memberId, memberIds),
+        gte(serviceTeamCheckIns.checkedInAt, start),
+        lt(serviceTeamCheckIns.checkedInAt, end)
+      )
+    );
+
+  const map = new Map<number, Set<string>>();
+  for (const row of rows) {
+    if (!map.has(row.memberId)) map.set(row.memberId, new Set());
+    map.get(row.memberId)!.add(row.service);
+  }
+  return new Map(Array.from(map.entries()).map(([memberId, services]) => [memberId, Array.from(services)]));
+}
+
+export async function hasTeamCheckedInServiceToday(
+  memberId: number,
+  service: string,
+  start: Date,
+  end: Date
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: serviceTeamCheckIns.id })
+    .from(serviceTeamCheckIns)
+    .where(
+      and(
+        eq(serviceTeamCheckIns.memberId, memberId),
+        eq(serviceTeamCheckIns.serviceAttending, service),
+        gte(serviceTeamCheckIns.checkedInAt, start),
+        lt(serviceTeamCheckIns.checkedInAt, end)
+      )
+    )
+    .limit(1);
+  return !!row;
+}
+
 export function validateCheckInInput(serviceAttending: string, remarks: string): string | null {
   if (!serviceAttending) return "Please select a service.";
   if (!SERVICE_OPTIONS.includes(serviceAttending)) return "Please select a valid service.";
@@ -223,22 +379,48 @@ export function validateCheckInInput(serviceAttending: string, remarks: string):
   return null;
 }
 
-export interface ServiceAttendanceKid {
+export interface ServiceAttendancePerson {
   id: number;
   firstName: string;
   lastName: string;
   nickname: string | null;
-  age: number;
   checkedInAt: Date;
   checkedOutAt: Date | null;
 }
 
-export interface ServiceAttendance {
+export interface ServiceAttendanceKid extends ServiceAttendancePerson {
+  age: number;
+}
+
+export interface ServiceAttendance<T extends ServiceAttendancePerson = ServiceAttendanceKid> {
   service: string;
-  checkedIn: number; // total kids who checked in today, regardless of checkout status
+  checkedIn: number; // total who checked in today, regardless of checkout status
   checkedOut: number; // of those, how many have since checked out
   stillPresent: number; // checkedIn - checkedOut
-  kids: ServiceAttendanceKid[];
+  people: T[];
+}
+
+// One entry per SERVICE_OPTIONS service (plus any off-list service seen), in that order.
+function bucketByService<T extends ServiceAttendancePerson>(
+  rows: (T & { service: string })[]
+): ServiceAttendance<T>[] {
+  const buckets = new Map<string, T[]>();
+  for (const service of SERVICE_OPTIONS) buckets.set(service, []);
+  for (const row of rows) {
+    if (!buckets.has(row.service)) buckets.set(row.service, []);
+    buckets.get(row.service)!.push(row);
+  }
+
+  return Array.from(buckets.entries()).map(([service, people]) => {
+    const checkedOut = people.filter((person) => person.checkedOutAt).length;
+    return {
+      service,
+      checkedIn: people.length,
+      checkedOut,
+      stillPresent: people.length - checkedOut,
+      people,
+    };
+  });
 }
 
 export async function getAttendanceByService(start: Date, end: Date): Promise<ServiceAttendance[]> {
@@ -258,29 +440,27 @@ export async function getAttendanceByService(start: Date, end: Date): Promise<Se
     .where(and(gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end)))
     .orderBy(kids.firstName, kids.lastName);
 
-  const buckets = new Map<string, ServiceAttendanceKid[]>();
-  for (const service of SERVICE_OPTIONS) buckets.set(service, []);
-  for (const row of rows) {
-    if (!buckets.has(row.service)) buckets.set(row.service, []);
-    buckets.get(row.service)!.push({
-      id: row.id,
-      firstName: row.firstName,
-      lastName: row.lastName,
-      nickname: row.nickname,
-      age: row.age,
-      checkedInAt: row.checkedInAt,
-      checkedOutAt: row.checkedOutAt,
-    });
-  }
+  return bucketByService<ServiceAttendanceKid>(rows);
+}
 
-  return Array.from(buckets.entries()).map(([service, serviceKids]) => {
-    const checkedOut = serviceKids.filter((kid) => kid.checkedOutAt).length;
-    return {
-      service,
-      checkedIn: serviceKids.length,
-      checkedOut,
-      stillPresent: serviceKids.length - checkedOut,
-      kids: serviceKids,
-    };
-  });
+export async function getTeamAttendanceByService(
+  start: Date,
+  end: Date
+): Promise<ServiceAttendance<ServiceAttendancePerson>[]> {
+  const rows = await db
+    .select({
+      id: serviceTeamMembers.id,
+      firstName: serviceTeamMembers.firstName,
+      lastName: serviceTeamMembers.lastName,
+      nickname: serviceTeamMembers.nickname,
+      service: serviceTeamCheckIns.serviceAttending,
+      checkedInAt: serviceTeamCheckIns.checkedInAt,
+      checkedOutAt: serviceTeamCheckIns.checkedOutAt,
+    })
+    .from(serviceTeamCheckIns)
+    .innerJoin(serviceTeamMembers, eq(serviceTeamCheckIns.memberId, serviceTeamMembers.id))
+    .where(and(gte(serviceTeamCheckIns.checkedInAt, start), lt(serviceTeamCheckIns.checkedInAt, end)))
+    .orderBy(serviceTeamMembers.firstName, serviceTeamMembers.lastName);
+
+  return bucketByService<ServiceAttendancePerson>(rows);
 }

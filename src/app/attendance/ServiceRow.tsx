@@ -1,13 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import type { ServiceAttendance } from "@/lib/checkIn";
+import type { CheckInPersonKind, ServiceAttendance, ServiceAttendancePerson } from "@/lib/checkIn";
 import { capitalizeName } from "@/lib/format";
 import { CheckOutAllButton } from "./CheckOutAllButton";
 
 const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short", timeZone: "Asia/Manila" });
 
-export function ServiceRow({ row, date }: { row: ServiceAttendance; date: string }) {
+export function ServiceRow({
+  row,
+  date,
+  kind = "kid",
+}: {
+  // Kids carry an age; service team members don't.
+  row: ServiceAttendance<ServiceAttendancePerson & { age?: number }>;
+  date: string;
+  kind?: CheckInPersonKind;
+}) {
   const [open, setOpen] = useState(false);
   const hasKids = row.checkedIn > 0;
 
@@ -41,7 +50,7 @@ export function ServiceRow({ row, date }: { row: ServiceAttendance; date: string
             ) : (
               <span className="text-gray-300">0</span>
             )}
-            <CheckOutAllButton service={row.service} date={date} count={row.stillPresent} />
+            <CheckOutAllButton service={row.service} date={date} count={row.stillPresent} kind={kind} />
           </div>
         </td>
       </tr>
@@ -49,12 +58,12 @@ export function ServiceRow({ row, date }: { row: ServiceAttendance; date: string
         <tr className="border-b border-gray-100 last:border-0 bg-gray-50/70">
           <td colSpan={4} className="px-4 py-3">
             <ul className="flex flex-col divide-y divide-gray-100">
-              {row.kids.map((kid) => (
+              {row.people.map((kid) => (
                 <li key={kid.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="text-gray-800">
                     {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
                     {kid.nickname && <span className="text-xs text-gray-400"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
-                    <span className="text-xs text-gray-400"> · Age {kid.age}</span>
+                    {kid.age != null && <span className="text-xs text-gray-400"> · Age {kid.age}</span>}
                   </span>
                   {kid.checkedOutAt ? (
                     <span className="text-xs text-gray-400">

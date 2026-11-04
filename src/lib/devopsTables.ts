@@ -5,6 +5,7 @@ import {
   kcBucksTransactions,
   kcBucksSettings,
   serviceTeamMembers,
+  serviceTeamCheckIns,
   users,
   loginLogs,
   featureFlags,
@@ -47,7 +48,10 @@ export const DEVOPS_TABLE_GROUPS: { area: string; tables: DevopsTable[] }[] = [
   },
   {
     area: "Service Team",
-    tables: [{ key: "service_team_members", label: "Service Team Members", table: serviceTeamMembers }],
+    tables: [
+      { key: "service_team_members", label: "Service Team Members", table: serviceTeamMembers },
+      { key: "service_team_check_ins", label: "Service Team Check-ins", table: serviceTeamCheckIns },
+    ],
   },
   {
     area: "Staff & Settings",

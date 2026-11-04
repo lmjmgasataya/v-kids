@@ -5,7 +5,7 @@ import { and, eq, ilike } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { serviceTeamMembers } from "@/db/schema";
+import { serviceTeamCheckIns, serviceTeamMembers } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { withToast } from "@/lib/toast";
 import { parseCsv } from "@/lib/csv";
@@ -84,6 +84,7 @@ export async function deleteServiceTeamMember(memberId: number) {
   if (!session) redirect("/login");
   if (!(await canManageServiceTeam(session))) redirect("/service-team");
 
+  await db.delete(serviceTeamCheckIns).where(eq(serviceTeamCheckIns.memberId, memberId));
   await db.delete(serviceTeamMembers).where(eq(serviceTeamMembers.id, memberId));
 
   revalidatePath("/service-team");

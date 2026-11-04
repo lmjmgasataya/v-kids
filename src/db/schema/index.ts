@@ -96,6 +96,28 @@ export const serviceTeamMembers = pgTable("service_team_members", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Same shape as check_ins, but for service team members — kept separate so kid attendance,
+// reports and KC Bucks stay kids-only.
+export const serviceTeamCheckIns = pgTable(
+  "service_team_check_ins",
+  {
+    id: serial("id").primaryKey(),
+    memberId: integer("member_id")
+      .references(() => serviceTeamMembers.id)
+      .notNull(),
+    serviceAttending: text("service_attending").notNull(),
+    checkedInAt: timestamp("checked_in_at").defaultNow().notNull(),
+    checkedOutAt: timestamp("checked_out_at"),
+    remarks: text("remarks"),
+    checkedInBy: integer("checked_in_by").references(() => users.id),
+    checkedOutBy: integer("checked_out_by").references(() => users.id),
+  },
+  (t) => [
+    uniqueIndex("service_team_check_ins_open_member_idx").on(t.memberId).where(sql`${t.checkedOutAt} is null`),
+    index("service_team_check_ins_service_checked_in_idx").on(t.serviceAttending, t.checkedInAt),
+  ]
+);
+
 export const featureFlags = pgTable("feature_flags", {
   key: text("key").primaryKey(),
   enabled: boolean("enabled").notNull().default(true),
@@ -147,6 +169,7 @@ export type Guardian = typeof guardians.$inferSelect;
 export type Kid = typeof kids.$inferSelect;
 export type ServiceTeamMember = typeof serviceTeamMembers.$inferSelect;
 export type CheckIn = typeof checkIns.$inferSelect;
+export type ServiceTeamCheckIn = typeof serviceTeamCheckIns.$inferSelect;
 export type FeatureFlag = typeof featureFlags.$inferSelect;
 export type RegistrationLink = typeof registrationLinks.$inferSelect;
 export type KcBucksSettings = typeof kcBucksSettings.$inferSelect;

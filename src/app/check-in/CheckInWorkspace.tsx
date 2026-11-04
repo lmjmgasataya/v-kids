@@ -2,8 +2,8 @@
 
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { checkInKid, checkOutKid, resolveQrToken } from "./actions";
-import type { CheckInDirectoryEntry, CheckInSearchResult, OpenCheckInSummary } from "@/lib/checkIn";
+import { checkInKid, checkInTeamMember, checkOutKid, checkOutTeamMember, resolveQrToken } from "./actions";
+import type { CheckInDirectoryEntry, CheckInPersonKind, CheckInSearchResult, OpenCheckInSummary } from "@/lib/checkIn";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { inputCls } from "@/components/form";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -36,6 +36,28 @@ function splitServiceLabel(option: string): [string, string] {
   return [time, place ?? ""];
 }
 
+// Kids and service team members share this whole flow; only the Server Action
+// (and so the table it writes to) differs.
+function checkInActionFor(kind: CheckInPersonKind) {
+  return kind === "team" ? checkInTeamMember : checkInKid;
+}
+
+function checkOutActionFor(kind: CheckInPersonKind) {
+  return kind === "team" ? checkOutTeamMember : checkOutKid;
+}
+
+// "Age 7" for kids, a "Service Team" tag for team members.
+function PersonSubtitle({ kid }: { kid: CheckInSearchResult }) {
+  if (kid.kind === "team") {
+    return (
+      <span className="text-[10px] font-bold uppercase tracking-wide text-kids-navy bg-kids-navy/10 rounded-full px-2 py-0.5">
+        Service Team
+      </span>
+    );
+  }
+  return <>Age {kid.age}</>;
+}
+
 function Highlight({ children }: { children: ReactNode }) {
   return <span className="font-extrabold text-kids-navy">{children}</span>;
 }
@@ -58,8 +80,8 @@ function EmojiBurst({ triggerKey, emoji }: { triggerKey: number; emoji: string }
   );
 }
 
-function QuickCheckInButton({ kidId, service }: { kidId: number; service: string }) {
-  const checkInWithId = checkInKid.bind(null, kidId);
+function QuickCheckInButton({ kind, kidId, service }: { kind: CheckInPersonKind; kidId: number; service: string }) {
+  const checkInWithId = checkInActionFor(kind).bind(null, kidId);
   const [state, action] = useActionState(checkInWithId, undefined);
   useToastOnResult(state);
 
@@ -126,8 +148,16 @@ function AutoCheckOutButton({
   );
 }
 
-function QuickCheckOutButton({ checkInId, service }: { checkInId: number; service: string }) {
-  const checkOutWithId = checkOutKid.bind(null, checkInId);
+function QuickCheckOutButton({
+  kind,
+  checkInId,
+  service,
+}: {
+  kind: CheckInPersonKind;
+  checkInId: number;
+  service: string;
+}) {
+  const checkOutWithId = checkOutActionFor(kind).bind(null, checkInId);
   const [state, action] = useActionState(checkOutWithId, undefined);
   useToastOnResult(state);
 
@@ -187,27 +217,27 @@ function SearchPanel({
     <div className="flex flex-col gap-3">
       <input
         type="search"
-        placeholder={intent === "checkin" ? "Search kids to check in…" : "Search kids to check out…"}
+        placeholder={intent === "checkin" ? "Search kids or service team to check in…" : "Search kids or service team to check out…"}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className={inputCls}
       />
       {query.trim() && filtered.length === 0 && (
         <p className="text-xs text-gray-400">
-          {intent === "checkin" ? "No matching kids available to check in." : "No matching kids are currently checked in."}
+          {intent === "checkin" ? "No one matching is available to check in." : "No one matching is currently checked in."}
         </p>
       )}
       {filtered.length > 0 && (
         <ul className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
           {filtered.map((kid) => (
-            <li key={kid.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-kids-yellow/5">
+            <li key={`${kid.kind}-${kid.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-kids-yellow/5">
               <div>
                 <div className="font-medium text-gray-900">
                   {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
                   {kid.nickname && <span className="text-xs text-gray-400"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
                 </div>
                 <div className="text-xs text-gray-400">
-                  Age {kid.age} · {kid.defaultService}
+                  <PersonSubtitle kid={kid} /> · {kid.defaultService}
                 </div>
                 {intent === "checkin" && kid.openCheckIn && !kid.openCheckIn.isToday && (
                   <div className="text-xs font-medium text-kids-magenta mt-0.5">
@@ -220,14 +250,18 @@ function SearchPanel({
                 autoCheckInEnabled ? (
                   <AutoCheckInButton kid={kid} onCheckIn={onAutoCheckIn} />
                 ) : (
-                  <QuickCheckInButton kidId={kid.id} service={service} />
+                  <QuickCheckInButton kind={kid.kind} kidId={kid.id} service={service} />
                 )
               ) : (
                 kid.openCheckIn &&
                 (autoCheckOutEnabled ? (
                   <AutoCheckOutButton kid={kid} onCheckOut={onAutoCheckOut} />
                 ) : (
-                  <QuickCheckOutButton checkInId={kid.openCheckIn.id} service={kid.openCheckIn.serviceAttending} />
+                  <QuickCheckOutButton
+                    kind={kid.kind}
+                    checkInId={kid.openCheckIn.id}
+                    service={kid.openCheckIn.serviceAttending}
+                  />
                 ))
               )}
             </li>
@@ -249,7 +283,7 @@ function CheckInForm({
   mode: "search" | "scan";
   onDone: () => void;
 }) {
-  const checkInWithId = checkInKid.bind(null, kid.id);
+  const checkInWithId = checkInActionFor(kid.kind).bind(null, kid.id);
   const [state, action] = useActionState(checkInWithId, undefined);
   const [burst, setBurst] = useState(0);
   const router = useRouter();
@@ -275,7 +309,9 @@ function CheckInForm({
               {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
               {kid.nickname && <span className="text-xl text-black"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
             </div>
-            <div className="text-xs text-gray-500">Age {kid.age}</div>
+            <div className="text-xs text-gray-500">
+              <PersonSubtitle kid={kid} />
+            </div>
           </div>
           <button type="button" onClick={onDone} className="text-sm text-gray-400 hover:text-kids-navy">
             Close
@@ -324,7 +360,7 @@ function CheckOutForm({
   mode: "search" | "scan";
   onDone: () => void;
 }) {
-  const checkOutWithId = checkOutKid.bind(null, openCheckIn.id);
+  const checkOutWithId = checkOutActionFor(kid.kind).bind(null, openCheckIn.id);
   const [state, action] = useActionState(checkOutWithId, undefined);
   const [burst, setBurst] = useState(0);
   const router = useRouter();
@@ -350,7 +386,9 @@ function CheckOutForm({
               {capitalizeName(kid.firstName)} {capitalizeName(kid.lastName)}
               {kid.nickname && <span className="text-xl text-black"> &quot;{capitalizeName(kid.nickname)}&quot;</span>}
             </div>
-            <div className="text-xs text-gray-500">Age {kid.age}</div>
+            <div className="text-xs text-gray-500">
+              <PersonSubtitle kid={kid} />
+            </div>
           </div>
           <button type="button" onClick={onDone} className="text-sm text-gray-400 hover:text-kids-navy">
             Close
@@ -503,7 +541,7 @@ export function CheckInWorkspace({
       const formData = new FormData();
       formData.set("serviceAttending", service);
       formData.set("mode", "scan");
-      const result = await checkInKid(kid.id, undefined, formData);
+      const result = await checkInActionFor(kid.kind)(kid.id, undefined, formData);
       if (result?.error) {
         setScanError(result.error);
         return;
@@ -528,7 +566,7 @@ export function CheckInWorkspace({
       const formData = new FormData();
       formData.set("service", kid.openCheckIn.serviceAttending);
       formData.set("mode", "scan");
-      const result = await checkOutKid(kid.openCheckIn.id, undefined, formData);
+      const result = await checkOutActionFor(kid.kind)(kid.openCheckIn.id, undefined, formData);
       if (result?.error) {
         setScanError(result.error);
         return;

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
-import { checkIns, featureFlags, kids } from "@/db/schema";
+import { checkIns, featureFlags, kids, serviceTeamCheckIns, serviceTeamMembers } from "@/db/schema";
 import {
   getCheckInDirectory,
   getManilaDayBounds,
@@ -36,40 +36,63 @@ export default async function CheckInPage({
 
   // All of these reads are independent of each other — run them concurrently
   // instead of round-tripping to the DB one at a time.
-  const [[serviceCardsFlag], [autoCheckInFlag], [autoCheckOutFlag], directory, staleOpenCheckIns, roster] = await Promise.all([
-    db.select().from(featureFlags).where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY)),
-    db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY)),
-    db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_OUT_FLAG_KEY)),
-    getCheckInDirectory(start, end),
-    getStaleOpenCheckIns(start),
-    db
-      .select({
-        id: checkIns.id,
-        kidFirstName: kids.firstName,
-        kidLastName: kids.lastName,
-        kidNickname: kids.nickname,
-        kidAge: kids.age,
-        serviceAttending: checkIns.serviceAttending,
-        checkedInAt: checkIns.checkedInAt,
-        checkedOutAt: checkIns.checkedOutAt,
-        remarks: checkIns.remarks,
-      })
-      .from(checkIns)
-      .innerJoin(kids, eq(checkIns.kidId, kids.id))
-      .where(
-        and(
-          gte(checkIns.checkedInAt, start),
-          lt(checkIns.checkedInAt, end),
-          eq(checkIns.serviceAttending, service)
+  const [[serviceCardsFlag], [autoCheckInFlag], [autoCheckOutFlag], directory, staleOpenCheckIns, roster, teamRoster] =
+    await Promise.all([
+      db.select().from(featureFlags).where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY)),
+      db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY)),
+      db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_OUT_FLAG_KEY)),
+      getCheckInDirectory(start, end),
+      getStaleOpenCheckIns(start),
+      db
+        .select({
+          id: checkIns.id,
+          firstName: kids.firstName,
+          lastName: kids.lastName,
+          nickname: kids.nickname,
+          age: kids.age,
+          serviceAttending: checkIns.serviceAttending,
+          checkedInAt: checkIns.checkedInAt,
+          checkedOutAt: checkIns.checkedOutAt,
+          remarks: checkIns.remarks,
+        })
+        .from(checkIns)
+        .innerJoin(kids, eq(checkIns.kidId, kids.id))
+        .where(
+          and(
+            gte(checkIns.checkedInAt, start),
+            lt(checkIns.checkedInAt, end),
+            eq(checkIns.serviceAttending, service)
+          )
         )
-      )
-      .orderBy(desc(checkIns.checkedInAt)),
-  ]);
+        .orderBy(desc(checkIns.checkedInAt)),
+      db
+        .select({
+          id: serviceTeamCheckIns.id,
+          firstName: serviceTeamMembers.firstName,
+          lastName: serviceTeamMembers.lastName,
+          nickname: serviceTeamMembers.nickname,
+          serviceAttending: serviceTeamCheckIns.serviceAttending,
+          checkedInAt: serviceTeamCheckIns.checkedInAt,
+          checkedOutAt: serviceTeamCheckIns.checkedOutAt,
+          remarks: serviceTeamCheckIns.remarks,
+        })
+        .from(serviceTeamCheckIns)
+        .innerJoin(serviceTeamMembers, eq(serviceTeamCheckIns.memberId, serviceTeamMembers.id))
+        .where(
+          and(
+            gte(serviceTeamCheckIns.checkedInAt, start),
+            lt(serviceTeamCheckIns.checkedInAt, end),
+            eq(serviceTeamCheckIns.serviceAttending, service)
+          )
+        )
+        .orderBy(desc(serviceTeamCheckIns.checkedInAt)),
+    ]);
   const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
   const autoCheckInEnabled = autoCheckInFlag?.enabled ?? false;
   const autoCheckOutEnabled = autoCheckOutFlag?.enabled ?? false;
 
   const stillOpenCount = roster.filter((row) => !row.checkedOutAt).length;
+  const teamStillOpenCount = teamRoster.filter((row) => !row.checkedOutAt).length;
   const staleOpenCount = staleOpenCheckIns.reduce((sum, day) => sum + day.count, 0);
 
   return (
@@ -116,6 +139,14 @@ export default async function CheckInPage({
           <CheckOutAllButton service={service} count={stillOpenCount} />
         </div>
         <RosterTable rows={roster} />
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h3 className="text-lg font-bold text-kids-navy">Service team — {service}</h3>
+          <CheckOutAllButton service={service} count={teamStillOpenCount} kind="team" />
+        </div>
+        <RosterTable kind="team" rows={teamRoster.map((row) => ({ ...row, age: null }))} />
       </div>
     </div>
   );

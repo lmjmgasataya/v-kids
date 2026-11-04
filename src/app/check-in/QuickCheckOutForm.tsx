@@ -1,13 +1,22 @@
 "use client";
 
 import { useActionState } from "react";
-import { checkOutKidForm } from "./actions";
+import { checkOutKidForm, checkOutTeamMemberForm } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 import { inputCls } from "@/components/form";
+import type { CheckInPersonKind } from "@/lib/checkIn";
 
-export function QuickCheckOutForm({ checkInId, service }: { checkInId: number; service: string }) {
-  const checkOutWithId = checkOutKidForm.bind(null, checkInId);
+export function QuickCheckOutForm({
+  kind = "kid",
+  checkInId,
+  service,
+}: {
+  kind?: CheckInPersonKind;
+  checkInId: number;
+  service: string;
+}) {
+  const checkOutWithId = (kind === "team" ? checkOutTeamMemberForm : checkOutKidForm).bind(null, checkInId);
   const [state, action] = useActionState(checkOutWithId, undefined);
   useToastOnResult(state);
 
