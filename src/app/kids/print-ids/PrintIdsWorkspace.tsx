@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { IdCardFront, IdCardBack } from "@/components/IdCard";
 import { IdCardPreview } from "@/components/IdCardPreview";
 import { inputCls } from "@/components/form";
+import { PrintedFilter, matchesPrintedFilter, type PrintedFilterValue } from "@/components/PrintedFilter";
 import { useIdCardExport } from "@/lib/useIdCardExport";
 import { capitalizeName, idCardDisplayName, idCardNameFontSize } from "@/lib/format";
 import { ID_CARD_NAME_SCALE_MIN, ID_CARD_NAME_SCALE_MAX, SERVICE_OPTIONS } from "@/lib/constants";
@@ -19,6 +20,7 @@ interface KidRow {
   serviceAttending: string;
   qrToken: string;
   idCardNameScale: number;
+  idPrinted: boolean;
   qrDataUrl: string;
 }
 
@@ -49,6 +51,7 @@ const SAVE_DEBOUNCE_MS = 400;
 export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
   const [query, setQuery] = useState("");
   const [service, setService] = useState("");
+  const [printedFilter, setPrintedFilter] = useState<PrintedFilterValue>("unprinted");
   const [sort, setSort] = useState<SortKey>("lastName");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -77,11 +80,15 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase();
     return sortedAll.filter((kid) => {
+      if (!matchesPrintedFilter(kid.idPrinted, printedFilter)) return false;
       if (service && kid.serviceAttending !== service) return false;
       if (!search) return true;
       return `${kid.firstName} ${kid.lastName} ${kid.nickname ?? ""}`.toLowerCase().includes(search);
     });
-  }, [sortedAll, query, service]);
+  }, [sortedAll, query, service, printedFilter]);
+
+  const printedCount = kids.filter((kid) => kid.idPrinted).length;
+  const printedCounts = { unprinted: kids.length - printedCount, printed: printedCount, all: kids.length };
 
   const allVisibleSelected = filtered.length > 0 && filtered.every((kid) => selected.has(kid.id));
 
@@ -151,6 +158,10 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="print:hidden">
+        <PrintedFilter value={printedFilter} onChange={setPrintedFilter} counts={printedCounts} />
       </div>
 
       <div className="print:hidden flex items-center justify-between gap-4">
@@ -244,7 +255,14 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{fullName}</div>
+                    <div className="font-medium text-gray-900">
+                      {fullName}
+                      {kid.idPrinted && (
+                        <span className="ml-2 rounded-full bg-kids-green/10 px-2 py-0.5 text-xs font-semibold text-kids-green">
+                          Printed
+                        </span>
+                      )}
+                    </div>
                     {kid.nickname && <div className="text-xs text-gray-400">&quot;{capitalizeName(kid.nickname)}&quot;</div>}
                   </td>
                   <td className="px-4 py-3">{kid.age}</td>

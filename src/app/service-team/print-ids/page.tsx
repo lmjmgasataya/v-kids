@@ -28,6 +28,7 @@ export default async function ServiceTeamPrintIdsPage() {
       idCardPhotoX: serviceTeamMembers.idCardPhotoX,
       idCardPhotoY: serviceTeamMembers.idCardPhotoY,
       photoKey: serviceTeamMembers.photoKey,
+      idPrinted: serviceTeamMembers.idPrinted,
     })
     .from(serviceTeamMembers)
     .orderBy(asc(serviceTeamMembers.lastName), asc(serviceTeamMembers.firstName));

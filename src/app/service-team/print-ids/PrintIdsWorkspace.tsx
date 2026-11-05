@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { ServiceTeamIdCardFront, IdCardBack } from "@/components/IdCard";
 import { IdCardPreview } from "@/components/IdCardPreview";
 import { inputCls } from "@/components/form";
+import { PrintedFilter, matchesPrintedFilter, type PrintedFilterValue } from "@/components/PrintedFilter";
 import { useIdCardExport } from "@/lib/useIdCardExport";
 import { capitalizeName, idCardDisplayName, idCardTeamNameFontSize } from "@/lib/format";
 import {
@@ -29,6 +30,7 @@ interface MemberRow {
   idCardPhotoZoom: number;
   idCardPhotoX: number;
   idCardPhotoY: number;
+  idPrinted: boolean;
   qrDataUrl: string;
   photoDataUrl: string | null;
 }
@@ -59,6 +61,7 @@ function compareRows(a: MemberRow, b: MemberRow, sort: SortKey): number {
 
 export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
   const [query, setQuery] = useState("");
+  const [printedFilter, setPrintedFilter] = useState<PrintedFilterValue>("unprinted");
   const [sort, setSort] = useState<SortKey>("lastName");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -109,9 +112,15 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
 
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase();
-    if (!search) return sortedAll;
-    return sortedAll.filter((member) => `${member.firstName} ${member.lastName}`.toLowerCase().includes(search));
-  }, [sortedAll, query]);
+    return sortedAll.filter((member) => {
+      if (!matchesPrintedFilter(member.idPrinted, printedFilter)) return false;
+      if (!search) return true;
+      return `${member.firstName} ${member.lastName}`.toLowerCase().includes(search);
+    });
+  }, [sortedAll, query, printedFilter]);
+
+  const printedCount = members.filter((member) => member.idPrinted).length;
+  const printedCounts = { unprinted: members.length - printedCount, printed: printedCount, all: members.length };
 
   const allVisibleSelected = filtered.length > 0 && filtered.every((member) => selected.has(member.id));
 
@@ -167,6 +176,10 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
           onChange={(e) => setQuery(e.target.value)}
           className={`${inputCls} w-64`}
         />
+      </div>
+
+      <div className="print:hidden">
+        <PrintedFilter value={printedFilter} onChange={setPrintedFilter} counts={printedCounts} />
       </div>
 
       <div className="print:hidden flex items-center justify-between gap-4">
@@ -260,7 +273,14 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
                       className="h-4 w-4 accent-kids-navy"
                     />
                   </td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{fullName}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900">
+                    {fullName}
+                    {member.idPrinted && (
+                      <span className="ml-2 rounded-full bg-kids-green/10 px-2 py-0.5 text-xs font-semibold text-kids-green">
+                        Printed
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{birthdayFormatter.format(new Date(member.birthday))}</td>
                   <td className="px-4 py-3">{member.serviceAttending}</td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>

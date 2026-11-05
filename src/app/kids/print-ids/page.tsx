@@ -24,6 +24,7 @@ export default async function PrintIdsPage() {
       serviceAttending: kids.serviceAttending,
       qrToken: kids.qrToken,
       idCardNameScale: kids.idCardNameScale,
+      idPrinted: kids.idPrinted,
     })
     .from(kids)
     .orderBy(asc(kids.lastName), asc(kids.firstName));
