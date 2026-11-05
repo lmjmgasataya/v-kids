@@ -305,15 +305,14 @@ function CheckInForm({
   const checkInWithId = checkInActionFor(kid.kind).bind(null, kid.id);
   const [state, action] = useActionState(checkInWithId, undefined);
   const [burst, setBurst] = useState(0);
-  const router = useRouter();
   useToastOnResult(state);
 
   useEffect(() => {
     // The scan flow's action returns success instead of redirecting (see checkInKid),
-    // so refresh the roster data in place and close the card without navigating —
-    // that's what keeps the camera mounted and the scroll position untouched.
+    // so close the card without navigating — that's what keeps the camera mounted and
+    // the scroll position untouched. The action's revalidatePath already sent back the
+    // fresh roster; a router.refresh() here would render the page on the server again.
     if (state?.success) {
-      router.refresh();
       onDone();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -382,15 +381,13 @@ function CheckOutForm({
   const checkOutWithId = checkOutActionFor(kid.kind).bind(null, openCheckIn.id);
   const [state, action] = useActionState(checkOutWithId, undefined);
   const [burst, setBurst] = useState(0);
-  const router = useRouter();
   useToastOnResult(state);
 
   useEffect(() => {
     // The scan flow's action returns success instead of redirecting (see checkOutKid),
-    // so refresh the roster data in place and close the card without navigating —
-    // that's what keeps the camera mounted and the scroll position untouched.
+    // so close the card without navigating (see CheckInForm) — the fresh roster
+    // already came back with the action's revalidatePath.
     if (state?.success) {
-      router.refresh();
       onDone();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -526,7 +523,7 @@ export function CheckInWorkspace({
   today?: string;
   // Preloaded on the server (page.tsx) so scans/searches resolve from memory
   // instead of a per-interaction DB round trip. Refreshed whenever the server
-  // page re-renders with fresh data, e.g. after router.refresh() on check-in/out.
+  // page re-renders with fresh data, e.g. via the check-in/out actions' revalidatePath.
   directory: CheckInDirectoryEntry[];
 }) {
   const router = useRouter();
@@ -569,14 +566,14 @@ export function CheckInWorkspace({
         setScanError(result.error);
         return;
       }
-      router.refresh();
+      // No router.refresh(): the action's revalidatePath already sent back the fresh page
       setAutoSuccess({ kid, action: "checkin", balance: result?.balance });
       // Resume the camera right away instead of waiting for the popup to be
       // dismissed, so the next kid can be scanned while this one's success
       // popup is still on screen.
       qrScannerRef.current?.resume();
     },
-    [service, router]
+    [service]
   );
 
   // Same as performAutoCheckIn, but for check-out — kid.openCheckIn is
@@ -594,11 +591,10 @@ export function CheckInWorkspace({
         setScanError(result.error);
         return;
       }
-      router.refresh();
       setAutoSuccess({ kid, action: "checkout" });
       qrScannerRef.current?.resume();
     },
-    [router]
+    []
   );
 
   useEffect(() => {
