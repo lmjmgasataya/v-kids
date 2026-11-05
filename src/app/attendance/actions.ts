@@ -92,7 +92,7 @@ export async function checkOutAllInServiceForDate(
       : await checkOutAllOpenInService(service, start, end, session.userId);
 
   revalidatePath("/attendance");
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
 
   if (closedCount === 0) return { success: `No ${kind === "team" ? "service team members" : "kids"} to check out.` };
   return { success: `Checked out ${peopleCount(closedCount, kind)}. 👋` };
@@ -115,7 +115,7 @@ export async function checkOutAllInAllServicesForDate(
       : await checkOutAllOpenInDateRange(start, end, session.userId);
 
   revalidatePath("/attendance");
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
 
   if (closedCount === 0) return { success: `No ${kind === "team" ? "service team members" : "kids"} to check out.` };
   return { success: `Checked out ${peopleCount(closedCount, kind)}. 👋` };

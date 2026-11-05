@@ -1,22 +1,12 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { and, desc, eq, gte, lt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
-import { checkIns, featureFlags, kids, serviceTeamCheckIns, serviceTeamMembers } from "@/db/schema";
-import {
-  getCheckInDirectory,
-  getManilaDayBounds,
-  getManilaDayBoundsForDateString,
-  getStaleOpenCheckIns,
-} from "@/lib/checkIn";
-import { AUTO_CHECK_IN_FLAG_KEY, AUTO_CHECK_OUT_FLAG_KEY, SERVICE_CARDS_FLAG_KEY, SERVICE_OPTIONS } from "@/lib/constants";
+import { serviceTeamMembers } from "@/db/schema";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { CheckInWorkspace } from "./CheckInWorkspace";
-import { CheckOutAllButton } from "./CheckOutAllButton";
-import { RosterTable } from "./RosterTable";
+import { NavTile } from "@/components/NavTile";
 
-const fullDateFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "full", timeZone: "Asia/Manila" });
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function CheckInPage({
   searchParams,
@@ -26,127 +16,41 @@ export default async function CheckInPage({
   const session = await getSession();
   if (!session) redirect("/login");
 
+  // Every printed ID card's QR points here (/check-in?token=…), so send it on to
+  // the matching kids/team check-in page. Unknown or malformed tokens go to the
+  // kids page, which shows the scan error.
   const sp = await searchParams;
-  const token = typeof sp.token === "string" ? sp.token : undefined;
-  const service = typeof sp.service === "string" && SERVICE_OPTIONS.includes(sp.service) ? sp.service : SERVICE_OPTIONS[0];
-  const intent = sp.intent === "checkout" ? "checkout" : "checkin";
-  const mode = sp.mode === "scan" ? "scan" : "search";
-
-  const { start, end } = getManilaDayBounds();
-
-  // All of these reads are independent of each other — run them concurrently
-  // instead of round-tripping to the DB one at a time.
-  const [[serviceCardsFlag], [autoCheckInFlag], [autoCheckOutFlag], directory, staleOpenCheckIns, roster, teamRoster] =
-    await Promise.all([
-      db.select().from(featureFlags).where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY)),
-      db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY)),
-      db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_OUT_FLAG_KEY)),
-      getCheckInDirectory(start, end),
-      getStaleOpenCheckIns(start),
-      db
-        .select({
-          id: checkIns.id,
-          firstName: kids.firstName,
-          lastName: kids.lastName,
-          nickname: kids.nickname,
-          age: kids.age,
-          serviceAttending: checkIns.serviceAttending,
-          checkedInAt: checkIns.checkedInAt,
-          checkedOutAt: checkIns.checkedOutAt,
-          remarks: checkIns.remarks,
-        })
-        .from(checkIns)
-        .innerJoin(kids, eq(checkIns.kidId, kids.id))
-        .where(
-          and(
-            gte(checkIns.checkedInAt, start),
-            lt(checkIns.checkedInAt, end),
-            eq(checkIns.serviceAttending, service)
-          )
-        )
-        .orderBy(desc(checkIns.checkedInAt)),
-      db
-        .select({
-          id: serviceTeamCheckIns.id,
-          firstName: serviceTeamMembers.firstName,
-          lastName: serviceTeamMembers.lastName,
-          nickname: serviceTeamMembers.nickname,
-          serviceAttending: serviceTeamCheckIns.serviceAttending,
-          checkedInAt: serviceTeamCheckIns.checkedInAt,
-          checkedOutAt: serviceTeamCheckIns.checkedOutAt,
-          remarks: serviceTeamCheckIns.remarks,
-        })
-        .from(serviceTeamCheckIns)
-        .innerJoin(serviceTeamMembers, eq(serviceTeamCheckIns.memberId, serviceTeamMembers.id))
-        .where(
-          and(
-            gte(serviceTeamCheckIns.checkedInAt, start),
-            lt(serviceTeamCheckIns.checkedInAt, end),
-            eq(serviceTeamCheckIns.serviceAttending, service)
-          )
-        )
-        .orderBy(desc(serviceTeamCheckIns.checkedInAt)),
-    ]);
-  const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
-  const autoCheckInEnabled = autoCheckInFlag?.enabled ?? false;
-  const autoCheckOutEnabled = autoCheckOutFlag?.enabled ?? false;
-
-  const stillOpenCount = roster.filter((row) => !row.checkedOutAt).length;
-  const teamStillOpenCount = teamRoster.filter((row) => !row.checkedOutAt).length;
-  const staleOpenCount = staleOpenCheckIns.reduce((sum, day) => sum + day.count, 0);
+  if (typeof sp.token === "string") {
+    const token = sp.token;
+    const [member] = UUID_RE.test(token)
+      ? await db.select({ id: serviceTeamMembers.id }).from(serviceTeamMembers).where(eq(serviceTeamMembers.qrToken, token))
+      : [];
+    redirect(`/check-in/${member ? "team" : "kids"}?token=${encodeURIComponent(token)}`);
+  }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div>
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Check-In" }]} />
 
-      {staleOpenCount > 0 && (
-        <div className="rounded-2xl border-2 border-kids-magenta/30 bg-kids-magenta/5 p-4 flex flex-col gap-2">
-          <p className="text-sm font-semibold text-kids-magenta">
-            ⚠ {staleOpenCount} kid{staleOpenCount === 1 ? "" : "s"} still not checked out from a previous day.
-          </p>
-          <div className="flex flex-col gap-1">
-            {staleOpenCheckIns.map((day) => {
-              const dayStart = getManilaDayBoundsForDateString(day.date).start;
-              return (
-                <Link
-                  key={day.date}
-                  href={`/attendance?month=${day.date.slice(0, 7)}&date=${day.date}`}
-                  className="text-sm text-kids-navy font-medium hover:underline"
-                >
-                  {day.count} kid{day.count === 1 ? "" : "s"} from {fullDateFormatter.format(dayStart)} →
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <div className="flex flex-col items-center gap-8 py-6 text-center">
+        <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">Who are we checking in?</h2>
 
-      <CheckInWorkspace
-        initialToken={token}
-        initialService={service}
-        initialIntent={intent}
-        initialMode={mode}
-        serviceCardsEnabled={serviceCardsEnabled}
-        autoCheckInEnabled={autoCheckInEnabled}
-        autoCheckOutEnabled={autoCheckOutEnabled}
-        today={fullDateFormatter.format(start)}
-        directory={directory}
-      />
-
-      <div>
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <h3 className="text-lg font-bold text-kids-navy">Today&apos;s roster — {service}</h3>
-          <CheckOutAllButton service={service} count={stillOpenCount} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
+          <NavTile
+            href="/check-in/kids"
+            icon="🧒"
+            label="Kids"
+            description="Check kids in and out of service"
+            color="kids-green"
+          />
+          <NavTile
+            href="/check-in/team"
+            icon="🙋"
+            label="Service Team"
+            description="Check service team members in and out"
+            color="kids-navy"
+          />
         </div>
-        <RosterTable rows={roster} />
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <h3 className="text-lg font-bold text-kids-navy">Service team — {service}</h3>
-          <CheckOutAllButton service={service} count={teamStillOpenCount} kind="team" />
-        </div>
-        <RosterTable kind="team" rows={teamRoster.map((row) => ({ ...row, age: null }))} />
       </div>
     </div>
   );

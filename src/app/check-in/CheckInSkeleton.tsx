@@ -1,10 +1,12 @@
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SkeletonBar, SkeletonList, SkeletonTable } from "@/components/skeletons";
+import type { CheckInPersonKind } from "@/lib/checkIn";
+import { CHECK_IN_KIND_LABELS } from "./labels";
 
-export default function Loading() {
+export function CheckInSkeleton({ kind }: { kind: CheckInPersonKind }) {
   return (
     <div className="flex flex-col gap-6">
-      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Check-In" }]} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Check-In", href: "/check-in" }, { label: CHECK_IN_KIND_LABELS[kind] }]} />
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">

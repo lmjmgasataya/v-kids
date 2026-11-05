@@ -22,7 +22,7 @@ const TILES = [
     href: "/check-in",
     icon: "✅",
     label: "Check-In",
-    description: "Check kids in and out of service",
+    description: "Check kids and service team in and out",
     color: "kids-green",
   },
   {

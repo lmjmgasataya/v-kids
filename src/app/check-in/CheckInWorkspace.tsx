@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { checkInKid, checkInTeamMember, checkOutKid, checkOutTeamMember, resolveQrToken } from "./actions";
 import type { CheckInDirectoryEntry, CheckInPersonKind, CheckInSearchResult, OpenCheckInSummary } from "@/lib/checkIn";
@@ -14,6 +15,7 @@ import { useCloseOnKey } from "@/components/useCloseOnKey";
 import { useHardwareScanListener } from "@/components/useHardwareScanListener";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 import { capitalizeName } from "@/lib/format";
+import { CHECK_IN_KIND_LABELS } from "./labels";
 
 type Intent = "checkin" | "checkout";
 
@@ -60,6 +62,21 @@ function PersonSubtitle({ kid }: { kid: CheckInSearchResult }) {
 
 function Highlight({ children }: { children: ReactNode }) {
   return <span className="font-extrabold text-kids-navy">{children}</span>;
+}
+
+// Scanned a card that belongs on the other check-in page — link straight to it
+// with the token so it opens ready to confirm there.
+function wrongKindError(kid: CheckInSearchResult, token: string): ReactNode {
+  const otherPath = kid.kind === "team" ? "/check-in/team" : "/check-in/kids";
+  return (
+    <>
+      <Highlight>{capitalizeName(kid.firstName)}</Highlight> is{" "}
+      {kid.kind === "team" ? "a service team member" : "a kid, not a service team member"}.{" "}
+      <Link href={`${otherPath}?token=${encodeURIComponent(token)}`} className="font-bold text-kids-magenta underline">
+        Go to {CHECK_IN_KIND_LABELS[kid.kind]} Check-In →
+      </Link>
+    </>
+  );
 }
 
 function EmojiBurst({ triggerKey, emoji }: { triggerKey: number; emoji: string }) {
@@ -175,6 +192,7 @@ function QuickCheckOutButton({
 }
 
 function SearchPanel({
+  kind,
   intent,
   service,
   directory,
@@ -183,6 +201,7 @@ function SearchPanel({
   autoCheckOutEnabled,
   onAutoCheckOut,
 }: {
+  kind: CheckInPersonKind;
   intent: Intent;
   service: string;
   directory: CheckInDirectoryEntry[];
@@ -217,7 +236,7 @@ function SearchPanel({
     <div className="flex flex-col gap-3">
       <input
         type="search"
-        placeholder={intent === "checkin" ? "Search kids or service team to check in…" : "Search kids or service team to check out…"}
+        placeholder={`Search ${kind === "team" ? "service team" : "kids"} to check ${intent === "checkin" ? "in" : "out"}…`}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className={inputCls}
@@ -478,6 +497,7 @@ function AutoActionSuccessPopup({
 }
 
 export function CheckInWorkspace({
+  kind,
   initialToken,
   initialService,
   initialIntent,
@@ -488,6 +508,9 @@ export function CheckInWorkspace({
   today,
   directory,
 }: {
+  // Kids and service team check in on separate pages; the directory only holds
+  // this kind, and scanning the other kind's card points over to its page.
+  kind: CheckInPersonKind;
   initialToken?: string;
   initialService?: string;
   initialIntent?: Intent;
@@ -644,6 +667,10 @@ export function CheckInWorkspace({
       return;
     }
     const kid = result.kid;
+    if (kid.kind !== kind) {
+      setScanError(wrongKindError(kid, parsedToken));
+      return;
+    }
     if (forIntent === "checkin" && kid.openCheckIn?.isToday) {
       setScanError(
         <>
@@ -724,6 +751,10 @@ export function CheckInWorkspace({
         return;
       }
       const kid = result.kid;
+      if (kid.kind !== kind) {
+        setScanError(wrongKindError(kid, parsedToken));
+        return;
+      }
       setMode("scan");
       if (kid.openCheckIn?.isToday) {
         setIntent("checkout");
@@ -747,7 +778,7 @@ export function CheckInWorkspace({
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-3xl font-bold text-kids-navy font-[family-name:var(--font-fredoka)]">
-        {intent === "checkin" ? "Check-In" : "Check-Out"}
+        {CHECK_IN_KIND_LABELS[kind]} {intent === "checkin" ? "Check-In" : "Check-Out"}
       </h2>
       {today && <p className="text-sm text-gray-500 -mt-3">{today}</p>}
 
@@ -847,6 +878,7 @@ export function CheckInWorkspace({
 
       {mode === "search" && (
         <SearchPanel
+          kind={kind}
           intent={intent}
           service={service}
           directory={directory}

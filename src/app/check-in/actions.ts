@@ -117,7 +117,7 @@ export async function checkInKid(
     });
   }
 
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
 
   // The scan flow keeps the camera mounted and refreshes in place (see CheckInForm)
   // instead of redirecting, so a fresh page load doesn't reset the scroll position
@@ -128,7 +128,7 @@ export async function checkInKid(
 
   redirect(
     withToast(
-      `/check-in?service=${encodeURIComponent(serviceAttending)}&intent=checkin&mode=${mode}`,
+      `/check-in/kids?service=${encodeURIComponent(serviceAttending)}&intent=checkin&mode=${mode}`,
       "success",
       "Checked in! 🎉"
     )
@@ -169,7 +169,7 @@ export async function checkOutKid(
     return { error: "This kid has already been checked out." };
   }
 
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
 
   // The scan flow keeps the camera mounted and refreshes in place (see CheckOutForm)
   // instead of redirecting, so a fresh page load doesn't reset the scroll position
@@ -179,8 +179,8 @@ export async function checkOutKid(
   }
 
   const nextPath = service
-    ? `/check-in?service=${encodeURIComponent(service)}&intent=checkout&mode=${mode}`
-    : `/check-in?intent=checkout&mode=${mode}`;
+    ? `/check-in/kids?service=${encodeURIComponent(service)}&intent=checkout&mode=${mode}`
+    : `/check-in/kids?intent=checkout&mode=${mode}`;
   redirect(withToast(nextPath, "success", "Checked out! 👋"));
 }
 
@@ -202,7 +202,7 @@ export async function checkOutAllInService(
       ? await checkOutAllOpenTeamInService(service, start, end, session.userId)
       : await checkOutAllOpenInService(service, start, end, session.userId);
 
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
   revalidatePath("/attendance");
 
   if (closedCount === 0) return { success: `No ${kind === "team" ? "service team members" : "kids"} to check out.` };
@@ -236,7 +236,7 @@ export async function undoCheckIn(
   await db.delete(kcBucksTransactions).where(eq(kcBucksTransactions.checkInId, checkInId));
   await db.delete(checkIns).where(eq(checkIns.id, checkInId));
 
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
   revalidatePath("/attendance");
   return { success: "Check-in undone." };
 }
@@ -266,7 +266,7 @@ export async function undoCheckOut(
 
   await db.update(checkIns).set({ checkedOutAt: null, checkedOutBy: null }).where(eq(checkIns.id, checkInId));
 
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
   revalidatePath("/attendance");
   return { success: "Check-out undone." };
 }
@@ -384,7 +384,7 @@ export async function checkInTeamMember(
     throw err;
   }
 
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
 
   if (mode === "scan") {
     return { success: "Checked in! 🎉" };
@@ -392,7 +392,7 @@ export async function checkInTeamMember(
 
   redirect(
     withToast(
-      `/check-in?service=${encodeURIComponent(serviceAttending)}&intent=checkin&mode=${mode}`,
+      `/check-in/team?service=${encodeURIComponent(serviceAttending)}&intent=checkin&mode=${mode}`,
       "success",
       "Checked in! 🎉"
     )
@@ -431,15 +431,15 @@ export async function checkOutTeamMember(
     return { error: "This service team member has already been checked out." };
   }
 
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
 
   if (mode === "scan") {
     return { success: "Checked out! 👋" };
   }
 
   const nextPath = service
-    ? `/check-in?service=${encodeURIComponent(service)}&intent=checkout&mode=${mode}`
-    : `/check-in?intent=checkout&mode=${mode}`;
+    ? `/check-in/team?service=${encodeURIComponent(service)}&intent=checkout&mode=${mode}`
+    : `/check-in/team?intent=checkout&mode=${mode}`;
   redirect(withToast(nextPath, "success", "Checked out! 👋"));
 }
 
@@ -470,7 +470,7 @@ export async function undoTeamCheckIn(
 
   await db.delete(serviceTeamCheckIns).where(eq(serviceTeamCheckIns.id, checkInId));
 
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
   return { success: "Check-in undone." };
 }
 
@@ -504,6 +504,6 @@ export async function undoTeamCheckOut(
     .set({ checkedOutAt: null, checkedOutBy: null })
     .where(eq(serviceTeamCheckIns.id, checkInId));
 
-  revalidatePath("/check-in");
+  revalidatePath("/check-in", "layout");
   return { success: "Check-out undone." };
 }

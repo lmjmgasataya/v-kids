@@ -108,13 +108,16 @@ export interface CheckInDirectoryEntry extends CheckInSearchResult {
   qrToken: string;
 }
 
-// Every kid and service team member plus their live check-in status, for the
+// Every kid (or service team member) plus their live check-in status, for the
 // check-in page to preload client-side — search and QR-scan resolution then
 // both run against this in-memory snapshot instead of round-tripping to the DB
 // per keystroke/scan.
-export async function getCheckInDirectory(start: Date, end: Date): Promise<CheckInDirectoryEntry[]> {
-  const [kidEntries, teamEntries] = await Promise.all([getKidDirectory(start, end), getTeamDirectory(start, end)]);
-  return [...kidEntries, ...teamEntries];
+export async function getCheckInDirectory(
+  kind: CheckInPersonKind,
+  start: Date,
+  end: Date
+): Promise<CheckInDirectoryEntry[]> {
+  return kind === "team" ? getTeamDirectory(start, end) : getKidDirectory(start, end);
 }
 
 async function getKidDirectory(start: Date, end: Date): Promise<CheckInDirectoryEntry[]> {
