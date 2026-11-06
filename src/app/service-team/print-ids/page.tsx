@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { asc } from "drizzle-orm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { idCardPhotoDataUrl } from "@/lib/idCardPhoto";
+import { serviceTeamPhotoUrl } from "@/lib/photoUrl";
 import { PrintIdsWorkspace } from "./PrintIdsWorkspace";
 
 export default async function ServiceTeamPrintIdsPage() {
@@ -42,8 +42,10 @@ export default async function ServiceTeamPrintIdsPage() {
       const payload = `${proto}://${host}/check-in?token=${row.qrToken}`;
       // Level H (~30% recoverable) so the photo badge over the middle doesn't stop it scanning.
       const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0, errorCorrectionLevel: "H" });
-      const photoDataUrl = await idCardPhotoDataUrl(photoKey);
-      return { ...row, qrDataUrl, photoDataUrl };
+      // A same-origin link (not an inline data URL) keeps the page payload small; same-origin
+      // also means the client-side badge canvas isn't tainted, so html2canvas export still works.
+      const photoUrl = photoKey ? serviceTeamPhotoUrl(row.id, photoKey, "card") : null;
+      return { ...row, qrDataUrl, photoUrl };
     })
   );
 

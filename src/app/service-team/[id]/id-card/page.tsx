@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { IdCardViewer } from "@/components/IdCardViewer";
 import { capitalizeName, idCardDisplayName } from "@/lib/format";
-import { idCardPhotoDataUrl } from "@/lib/idCardPhoto";
+import { serviceTeamPhotoUrl } from "@/lib/photoUrl";
 
 export default async function ServiceTeamIdCardPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -42,7 +42,7 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
   const payload = `${proto}://${host}/check-in?token=${row.qrToken}`;
   // Level H (~30% recoverable) so the photo badge over the middle doesn't stop it scanning.
   const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0, errorCorrectionLevel: "H" });
-  const photoDataUrl = await idCardPhotoDataUrl(row.photoKey);
+  const photoUrl = row.photoKey ? serviceTeamPhotoUrl(memberId, row.photoKey, "card") : null;
 
   const fullName = `${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`;
   const displayName = idCardDisplayName(row.firstName, row.nickname);
@@ -75,7 +75,7 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
           variant="team"
           kidId={memberId}
           initialNameScale={row.idCardNameScale}
-          photoSrc={photoDataUrl}
+          photoSrc={photoUrl}
           initialPhotoCrop={{ zoom: row.idCardPhotoZoom, x: row.idCardPhotoX, y: row.idCardPhotoY }}
         />
       </div>

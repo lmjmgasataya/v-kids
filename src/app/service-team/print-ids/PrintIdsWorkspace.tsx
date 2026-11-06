@@ -32,7 +32,7 @@ interface MemberRow {
   idCardPhotoY: number;
   idPrinted: boolean;
   qrDataUrl: string;
-  photoDataUrl: string | null;
+  photoUrl: string | null;
 }
 
 const SAVE_DEBOUNCE_MS = 400;
@@ -300,7 +300,7 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
                           qrDataUrl={member.qrDataUrl}
                           fullName={fullName}
                           subtitle="Service Team Member"
-                          photoSrc={member.photoDataUrl}
+                          photoSrc={member.photoUrl}
                           photoCrop={photoCrops[member.id]}
                         />,
                       ]}
@@ -322,7 +322,7 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
                     </div>
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    {member.photoDataUrl ? (
+                    {member.photoUrl ? (
                       <button
                         type="button"
                         onClick={() => setCroppingId(member.id)}
@@ -341,7 +341,7 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
         </table>
       </div>
 
-      {croppingMember?.photoDataUrl && (
+      {croppingMember?.photoUrl && (
         <div
           className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
           onClick={() => setCroppingId(null)}
@@ -354,7 +354,7 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
               QR photo · {capitalizeName(croppingMember.firstName)} {capitalizeName(croppingMember.lastName)}
             </h3>
             <PhotoCropEditor
-              src={croppingMember.photoDataUrl}
+              src={croppingMember.photoUrl}
               crop={photoCrops[croppingMember.id]}
               onChange={(crop) => handlePhotoCropChange(croppingMember.id, crop)}
             />
@@ -390,7 +390,7 @@ export function PrintIdsWorkspace({ members }: { members: MemberRow[] }) {
                 qrDataUrl={member.qrDataUrl}
                 fullName={fullName}
                 subtitle="Service Team Member"
-                photoSrc={member.photoDataUrl}
+                photoSrc={member.photoUrl}
                 photoCrop={photoCrops[member.id]}
                 flat
               />

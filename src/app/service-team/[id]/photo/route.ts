@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { serviceTeamMembers } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { getPhotoVariant } from "@/lib/photoCache";
 import type { PhotoVariant } from "@/lib/photoUrl";
@@ -9,7 +6,9 @@ import type { PhotoVariant } from "@/lib/photoUrl";
 const VARIANTS: PhotoVariant[] = ["thumb", "card", "full"];
 
 // Build links with serviceTeamPhotoUrl (src/lib/photoUrl.ts). Any signed-in user, same as the
-// /service-team list that shows these photos.
+// /service-team list that shows these photos. The object key comes from the URL (`v`) rather than
+// a DB lookup, so a request is just a session check plus a data-cache read.
+const PHOTO_KEY = /^service-team\/[0-9a-f-]{36}\.jpg$/;
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,13 +20,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const variant = VARIANTS.find((v) => v === sizeParam);
   if (!variant) return NextResponse.json({ error: "Unknown size" }, { status: 400 });
 
-  const [row] = await db
-    .select({ photoKey: serviceTeamMembers.photoKey })
-    .from(serviceTeamMembers)
-    .where(eq(serviceTeamMembers.id, memberId));
-  if (!row?.photoKey) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Only keys in the shape uploads create, so `v` can't be used to read other bucket objects.
+  const photoKey = req.nextUrl.searchParams.get("v");
+  if (!photoKey || !PHOTO_KEY.test(photoKey)) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const photo = await getPhotoVariant(row.photoKey, variant);
+  const photo = await getPhotoVariant(photoKey, variant);
   if (!photo) return NextResponse.json({ error: "Photo unavailable" }, { status: 502 });
 
   const headers: Record<string, string> = {
