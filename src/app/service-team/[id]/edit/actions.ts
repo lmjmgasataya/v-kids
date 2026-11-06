@@ -1,7 +1,6 @@
 "use server";
 
 import crypto from "crypto";
-import sharp from "sharp";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
@@ -9,6 +8,7 @@ import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { isStorageConfigured, uploadPhoto } from "@/lib/storage";
+import { preparePhotoUpload } from "@/lib/photoUpload";
 import { withToast } from "@/lib/toast";
 import { canManageServiceTeam } from "../../permissions";
 
@@ -49,11 +49,7 @@ export async function updateServiceTeamMember(memberId: number, _: unknown, form
     if (!photo.type.startsWith("image/")) {
       return { error: "The uploaded file must be an image." };
     }
-    const resized = await sharp(Buffer.from(await photo.arrayBuffer()))
-      .rotate()
-      .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 82 })
-      .toBuffer();
+    const resized = await preparePhotoUpload(photo);
     photoKey = await uploadPhoto(resized, `service-team/${crypto.randomUUID()}.jpg`, "image/jpeg");
   }
 

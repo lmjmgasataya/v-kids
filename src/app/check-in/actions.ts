@@ -5,7 +5,6 @@ import { db } from "@/db";
 import { checkIns, kcBucksTransactions, kids, serviceTeamCheckIns, serviceTeamMembers } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import {
   checkOutAllOpenInService,
   checkOutAllOpenTeamInService,
@@ -22,19 +21,34 @@ import {
   type OpenCheckInSummary,
 } from "@/lib/checkIn";
 import { getCheckInCreditAmount, getKidBalance } from "@/lib/kcBucks";
-import { withToast } from "@/lib/toast";
 import { peopleCount } from "@/lib/format";
+
+// None of the check-in actions revalidate or redirect: re-rendering the check-in page
+// (directory + roster) on every scan was the bulk of its server CPU. Instead each one
+// returns just what changed, and CheckInWorkspace patches its in-memory copy.
 
 export interface CheckInActionState {
   error?: string;
   success?: string;
   openCheckIn?: OpenCheckInSummary;
   balance?: number;
+  // Set on success: the new check-in, for the caller to add to its roster/directory.
+  checkIn?: OpenCheckInSummary;
+  remarks?: string | null;
 }
 
 export interface CheckOutActionState {
   error?: string;
   success?: string;
+  checkedOutAt?: Date;
+  remarks?: string;
+}
+
+export interface UndoActionState {
+  error?: string;
+  success?: string;
+  // Set by undoCheckOut: the reopened check-in.
+  checkIn?: OpenCheckInSummary;
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -87,7 +101,7 @@ export async function checkInKid(
       .where(eq(checkIns.id, existingOpen.id));
   }
 
-  let insertedCheckIn: { id: number };
+  let insertedCheckIn: { id: number; checkedInAt: Date };
   try {
     [insertedCheckIn] = await db
       .insert(checkIns)
@@ -97,7 +111,7 @@ export async function checkInKid(
         remarks: remarks || null,
         checkedInBy: session.userId,
       })
-      .returning({ id: checkIns.id });
+      .returning({ id: checkIns.id, checkedInAt: checkIns.checkedInAt });
   } catch (err) {
     if (isUniqueViolation(err)) {
       const openCheckIn = await getOpenCheckIn(kidId, start);
@@ -117,22 +131,13 @@ export async function checkInKid(
     });
   }
 
-  revalidatePath("/check-in", "layout");
-
-  // The scan flow keeps the camera mounted and refreshes in place (see CheckInForm)
-  // instead of redirecting, so a fresh page load doesn't reset the scroll position
-  // away from the QR scanner.
-  if (mode === "scan") {
-    return { success: "Checked in! 🎉", balance: priorBalance + creditAmount };
-  }
-
-  redirect(
-    withToast(
-      `/check-in/kids?service=${encodeURIComponent(serviceAttending)}&intent=checkin&mode=${mode}`,
-      "success",
-      "Checked in! 🎉"
-    )
-  );
+  return {
+    success: "Checked in! 🎉",
+    // Only the scan flow's success popup shows the balance.
+    balance: mode === "scan" ? priorBalance + creditAmount : undefined,
+    checkIn: { id: insertedCheckIn.id, serviceAttending, checkedInAt: insertedCheckIn.checkedInAt, isToday: true },
+    remarks: remarks || null,
+  };
 }
 
 export async function checkOutKid(
@@ -144,8 +149,6 @@ export async function checkOutKid(
   if (!session) redirect("/login");
 
   const remarks = (formData.get("remarks") as string)?.trim() ?? "";
-  const service = (formData.get("service") as string)?.trim() ?? "";
-  const mode = formData.get("mode") === "scan" ? "scan" : "search";
   if (remarks.length > 500) return { error: "Remarks must be 500 characters or fewer." };
 
   // Single round trip: update only if still open, then inspect what happened
@@ -158,7 +161,7 @@ export async function checkOutKid(
       ...(remarks ? { remarks } : {}),
     })
     .where(and(eq(checkIns.id, checkInId), isNull(checkIns.checkedOutAt)))
-    .returning({ id: checkIns.id });
+    .returning({ id: checkIns.id, checkedOutAt: checkIns.checkedOutAt });
 
   if (!updated) {
     const [existing] = await db
@@ -169,19 +172,7 @@ export async function checkOutKid(
     return { error: "This kid has already been checked out." };
   }
 
-  revalidatePath("/check-in", "layout");
-
-  // The scan flow keeps the camera mounted and refreshes in place (see CheckOutForm)
-  // instead of redirecting, so a fresh page load doesn't reset the scroll position
-  // away from the QR scanner.
-  if (mode === "scan") {
-    return { success: "Checked out! 👋" };
-  }
-
-  const nextPath = service
-    ? `/check-in/kids?service=${encodeURIComponent(service)}&intent=checkout&mode=${mode}`
-    : `/check-in/kids?intent=checkout&mode=${mode}`;
-  redirect(withToast(nextPath, "success", "Checked out! 👋"));
+  return { success: "Checked out! 👋", checkedOutAt: updated.checkedOutAt!, remarks: remarks || undefined };
 }
 
 // Checks out every kid (or service team member) still checked in to the given
@@ -197,21 +188,17 @@ export async function checkOutAllInService(
   if (!session) redirect("/login");
 
   const { start, end } = getManilaDayBounds();
+  const checkedOutAt = new Date();
   const closedCount =
     kind === "team"
       ? await checkOutAllOpenTeamInService(service, start, end, session.userId)
       : await checkOutAllOpenInService(service, start, end, session.userId);
 
-  revalidatePath("/check-in", "layout");
-  revalidatePath("/attendance");
-
   if (closedCount === 0) return { success: `No ${kind === "team" ? "service team members" : "kids"} to check out.` };
-  return { success: `Checked out ${peopleCount(closedCount, kind)}. 👋` };
+  return { success: `Checked out ${peopleCount(closedCount, kind)}. 👋`, checkedOutAt };
 }
 
-// Row-level checkout form on the roster table redirects + revalidates via
-// checkOutKid on success; on validation failure it just returns the error
-// for the caller's useActionState to surface as a toast.
+// Row-level checkout form on the roster table; same result as checkOutKid.
 export async function checkOutKidForm(checkInId: number, _prev: { error?: string } | undefined, formData: FormData) {
   return checkOutKid(checkInId, undefined, formData);
 }
@@ -221,7 +208,7 @@ export async function checkOutKidForm(checkInId: number, _prev: { error?: string
 export async function undoCheckIn(
   checkInId: number,
   _formData: FormData
-): Promise<{ error?: string; success?: string }> {
+): Promise<UndoActionState> {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -236,8 +223,6 @@ export async function undoCheckIn(
   await db.delete(kcBucksTransactions).where(eq(kcBucksTransactions.checkInId, checkInId));
   await db.delete(checkIns).where(eq(checkIns.id, checkInId));
 
-  revalidatePath("/check-in", "layout");
-  revalidatePath("/attendance");
   return { success: "Check-in undone." };
 }
 
@@ -246,12 +231,18 @@ export async function undoCheckIn(
 export async function undoCheckOut(
   checkInId: number,
   _formData: FormData
-): Promise<{ error?: string; success?: string }> {
+): Promise<UndoActionState> {
   const session = await getSession();
   if (!session) redirect("/login");
 
   const [existing] = await db
-    .select({ id: checkIns.id, kidId: checkIns.kidId, checkedOutAt: checkIns.checkedOutAt })
+    .select({
+      id: checkIns.id,
+      kidId: checkIns.kidId,
+      serviceAttending: checkIns.serviceAttending,
+      checkedInAt: checkIns.checkedInAt,
+      checkedOutAt: checkIns.checkedOutAt,
+    })
     .from(checkIns)
     .where(eq(checkIns.id, checkInId));
 
@@ -266,9 +257,15 @@ export async function undoCheckOut(
 
   await db.update(checkIns).set({ checkedOutAt: null, checkedOutBy: null }).where(eq(checkIns.id, checkInId));
 
-  revalidatePath("/check-in", "layout");
-  revalidatePath("/attendance");
-  return { success: "Check-out undone." };
+  return {
+    success: "Check-out undone.",
+    checkIn: {
+      id: existing.id,
+      serviceAttending: existing.serviceAttending,
+      checkedInAt: existing.checkedInAt,
+      isToday: existing.checkedInAt >= start,
+    },
+  };
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -345,7 +342,6 @@ export async function checkInTeamMember(
 
   const serviceAttending = (formData.get("serviceAttending") as string)?.trim() ?? "";
   const remarks = (formData.get("remarks") as string)?.trim() ?? "";
-  const mode = formData.get("mode") === "scan" ? "scan" : "search";
 
   const error = validateCheckInInput(serviceAttending, remarks);
   if (error) return { error };
@@ -369,13 +365,17 @@ export async function checkInTeamMember(
       .where(eq(serviceTeamCheckIns.id, existingOpen.id));
   }
 
+  let insertedCheckIn: { id: number; checkedInAt: Date };
   try {
-    await db.insert(serviceTeamCheckIns).values({
-      memberId,
-      serviceAttending,
-      remarks: remarks || null,
-      checkedInBy: session.userId,
-    });
+    [insertedCheckIn] = await db
+      .insert(serviceTeamCheckIns)
+      .values({
+        memberId,
+        serviceAttending,
+        remarks: remarks || null,
+        checkedInBy: session.userId,
+      })
+      .returning({ id: serviceTeamCheckIns.id, checkedInAt: serviceTeamCheckIns.checkedInAt });
   } catch (err) {
     if (isUniqueViolation(err)) {
       const openCheckIn = await getOpenTeamCheckIn(memberId, start);
@@ -384,19 +384,11 @@ export async function checkInTeamMember(
     throw err;
   }
 
-  revalidatePath("/check-in", "layout");
-
-  if (mode === "scan") {
-    return { success: "Checked in! 🎉" };
-  }
-
-  redirect(
-    withToast(
-      `/check-in/team?service=${encodeURIComponent(serviceAttending)}&intent=checkin&mode=${mode}`,
-      "success",
-      "Checked in! 🎉"
-    )
-  );
+  return {
+    success: "Checked in! 🎉",
+    checkIn: { id: insertedCheckIn.id, serviceAttending, checkedInAt: insertedCheckIn.checkedInAt, isToday: true },
+    remarks: remarks || null,
+  };
 }
 
 export async function checkOutTeamMember(
@@ -408,8 +400,6 @@ export async function checkOutTeamMember(
   if (!session) redirect("/login");
 
   const remarks = (formData.get("remarks") as string)?.trim() ?? "";
-  const service = (formData.get("service") as string)?.trim() ?? "";
-  const mode = formData.get("mode") === "scan" ? "scan" : "search";
   if (remarks.length > 500) return { error: "Remarks must be 500 characters or fewer." };
 
   const [updated] = await db
@@ -420,7 +410,7 @@ export async function checkOutTeamMember(
       ...(remarks ? { remarks } : {}),
     })
     .where(and(eq(serviceTeamCheckIns.id, checkInId), isNull(serviceTeamCheckIns.checkedOutAt)))
-    .returning({ id: serviceTeamCheckIns.id });
+    .returning({ id: serviceTeamCheckIns.id, checkedOutAt: serviceTeamCheckIns.checkedOutAt });
 
   if (!updated) {
     const [existing] = await db
@@ -431,16 +421,7 @@ export async function checkOutTeamMember(
     return { error: "This service team member has already been checked out." };
   }
 
-  revalidatePath("/check-in", "layout");
-
-  if (mode === "scan") {
-    return { success: "Checked out! 👋" };
-  }
-
-  const nextPath = service
-    ? `/check-in/team?service=${encodeURIComponent(service)}&intent=checkout&mode=${mode}`
-    : `/check-in/team?intent=checkout&mode=${mode}`;
-  redirect(withToast(nextPath, "success", "Checked out! 👋"));
+  return { success: "Checked out! 👋", checkedOutAt: updated.checkedOutAt!, remarks: remarks || undefined };
 }
 
 export async function checkOutTeamMemberForm(
@@ -454,7 +435,7 @@ export async function checkOutTeamMemberForm(
 export async function undoTeamCheckIn(
   checkInId: number,
   _formData: FormData
-): Promise<{ error?: string; success?: string }> {
+): Promise<UndoActionState> {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -470,14 +451,13 @@ export async function undoTeamCheckIn(
 
   await db.delete(serviceTeamCheckIns).where(eq(serviceTeamCheckIns.id, checkInId));
 
-  revalidatePath("/check-in", "layout");
   return { success: "Check-in undone." };
 }
 
 export async function undoTeamCheckOut(
   checkInId: number,
   _formData: FormData
-): Promise<{ error?: string; success?: string }> {
+): Promise<UndoActionState> {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -485,6 +465,8 @@ export async function undoTeamCheckOut(
     .select({
       id: serviceTeamCheckIns.id,
       memberId: serviceTeamCheckIns.memberId,
+      serviceAttending: serviceTeamCheckIns.serviceAttending,
+      checkedInAt: serviceTeamCheckIns.checkedInAt,
       checkedOutAt: serviceTeamCheckIns.checkedOutAt,
     })
     .from(serviceTeamCheckIns)
@@ -504,6 +486,13 @@ export async function undoTeamCheckOut(
     .set({ checkedOutAt: null, checkedOutBy: null })
     .where(eq(serviceTeamCheckIns.id, checkInId));
 
-  revalidatePath("/check-in", "layout");
-  return { success: "Check-out undone." };
+  return {
+    success: "Check-out undone.",
+    checkIn: {
+      id: existing.id,
+      serviceAttending: existing.serviceAttending,
+      checkedInAt: existing.checkedInAt,
+      isToday: existing.checkedInAt >= start,
+    },
+  };
 }

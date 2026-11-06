@@ -11,13 +11,19 @@ export function QuickCheckOutForm({
   kind = "kid",
   checkInId,
   service,
+  onCheckedOut,
 }: {
   kind?: CheckInPersonKind;
   checkInId: number;
   service: string;
+  onCheckedOut: (checkInId: number, checkedOutAt: Date, remarks?: string) => void;
 }) {
-  const checkOutWithId = (kind === "team" ? checkOutTeamMemberForm : checkOutKidForm).bind(null, checkInId);
-  const [state, action] = useActionState(checkOutWithId, undefined);
+  const checkOut = kind === "team" ? checkOutTeamMemberForm : checkOutKidForm;
+  const [state, action] = useActionState(async (prev: Awaited<ReturnType<typeof checkOut>> | undefined, formData: FormData) => {
+    const result = await checkOut(checkInId, prev, formData);
+    if (result.checkedOutAt) onCheckedOut(checkInId, result.checkedOutAt, result.remarks);
+    return result;
+  }, undefined);
   useToastOnResult(state);
 
   return (

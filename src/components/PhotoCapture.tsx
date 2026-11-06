@@ -1,6 +1,26 @@
 "use client";
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { PHOTO_MAX_PX } from "@/lib/constants";
+
+// Same quality the server's sharp fallback uses (src/lib/photoUpload.ts).
+const PHOTO_JPEG_QUALITY = 0.82;
+
+// Draws the source onto the canvas scaled down to fit PHOTO_MAX_PX. Photos are resized here,
+// in the browser, so the server can store the upload as-is instead of running sharp on it.
+function drawScaled(canvas: HTMLCanvasElement, source: CanvasImageSource, width: number, height: number): boolean {
+  const scale = Math.min(1, PHOTO_MAX_PX / Math.max(width, height));
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return false;
+  ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+  return true;
+}
+
+function canvasToJpeg(canvas: HTMLCanvasElement): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", PHOTO_JPEG_QUALITY));
+}
 
 interface Props {
   name: string;
@@ -57,29 +77,25 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
     };
   }, [mode]);
 
-  function takePhoto() {
+  // Swaps the resized JPEG into the file input the form submits (doesn't fire onChange).
+  function setInputFile(blob: Blob) {
+    if (!fileInputRef.current) return;
+    const dt = new DataTransfer();
+    dt.items.add(new File([blob], "photo.jpg", { type: "image/jpeg" }));
+    fileInputRef.current.files = dt.files;
+  }
+
+  async function takePhoto() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
     // Always save the true (unmirrored) frame, even though the live preview may be mirrored.
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(
-      (blob) => {
-        if (!blob || !fileInputRef.current) return;
-        const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        fileInputRef.current.files = dt.files;
-        setCapturedPreview(canvas.toDataURL("image/jpeg"));
-        setMode("captured");
-      },
-      "image/jpeg",
-      0.9
-    );
+    if (!drawScaled(canvas, video, video.videoWidth, video.videoHeight)) return;
+    const blob = await canvasToJpeg(canvas);
+    if (!blob) return;
+    setInputFile(blob);
+    setCapturedPreview(canvas.toDataURL("image/jpeg", PHOTO_JPEG_QUALITY));
+    setMode("captured");
   }
 
   function closeCamera() {
@@ -101,9 +117,26 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
     setMode("existing");
   }
 
-  function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const canvas = canvasRef.current;
+    try {
+      // Applies EXIF orientation while decoding, so the canvas copy comes out upright.
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+      const drawn = canvas !== null && drawScaled(canvas, bitmap, bitmap.width, bitmap.height);
+      bitmap.close();
+      const blob = drawn ? await canvasToJpeg(canvas) : null;
+      if (blob) {
+        setInputFile(blob);
+        setCapturedPreview(canvas!.toDataURL("image/jpeg", PHOTO_JPEG_QUALITY));
+        setMode("captured");
+        return;
+      }
+    } catch {
+      // The browser can't decode it (e.g. HEIC outside Safari) — upload the original
+      // instead; the server resizes anything that isn't already small.
+    }
     try {
       const reader = new FileReader();
       reader.onerror = () => setError("Couldn't read that photo. Please try uploading a different file.");
@@ -133,10 +166,12 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
 
       {error ? (
         <input
+          ref={fileInputRef}
           type="file"
           name={name}
           accept="image/*"
           required={required}
+          onChange={handleFileSelect}
           className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-kids-navy file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
         />
       ) : (
@@ -191,7 +226,6 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
               )}
             </div>
           )}
-          <canvas ref={canvasRef} className="hidden" />
           <div className="mt-2 flex gap-2">
             {mode === "live" && (
               <>
@@ -229,6 +263,7 @@ export function PhotoCapture({ name, initialPreviewUrl, required }: Props) {
           </div>
         </>
       )}
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }

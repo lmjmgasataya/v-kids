@@ -1,10 +1,15 @@
+"use client";
+
 import { undoCheckIn, undoCheckOut, undoTeamCheckIn, undoTeamCheckOut } from "./actions";
-import type { CheckInPersonKind } from "@/lib/checkIn";
+import type { CheckInPersonKind, OpenCheckInSummary } from "@/lib/checkIn";
 import { UndoForm } from "./UndoForm";
 import { QuickCheckOutForm } from "./QuickCheckOutForm";
 
-interface Row {
+export interface RosterRow {
+  // The check-in's id.
   id: number;
+  // The kid's (or service team member's) id.
+  personId: number;
   firstName: string;
   lastName: string;
   nickname: string | null;
@@ -18,7 +23,21 @@ interface Row {
 
 const timeFormatter = new Intl.DateTimeFormat("en-PH", { timeStyle: "short", timeZone: "Asia/Manila" });
 
-export function RosterTable({ rows, kind = "kid" }: { rows: Row[]; kind?: CheckInPersonKind }) {
+// The on* callbacks let CheckInWorkspace patch its in-memory roster/directory after each
+// action, since the actions don't re-render the page (see actions.ts).
+export function RosterTable({
+  rows,
+  kind = "kid",
+  onCheckedOut,
+  onUndoCheckIn,
+  onUndoCheckOut,
+}: {
+  rows: RosterRow[];
+  kind?: CheckInPersonKind;
+  onCheckedOut: (checkInId: number, checkedOutAt: Date, remarks?: string) => void;
+  onUndoCheckIn: (checkInId: number) => void;
+  onUndoCheckOut: (checkInId: number, checkIn: OpenCheckInSummary) => void;
+}) {
   const showAge = kind === "kid";
   const undoIn = kind === "team" ? undoTeamCheckIn : undoCheckIn;
   const undoOut = kind === "team" ? undoTeamCheckOut : undoCheckOut;
@@ -64,9 +83,18 @@ export function RosterTable({ rows, kind = "kid" }: { rows: Row[]; kind?: CheckI
               <td className="px-4 py-3 text-right">
                 {!row.checkedOutAt ? (
                   <div className="flex items-center justify-end gap-2 flex-wrap">
-                    <QuickCheckOutForm kind={kind} checkInId={row.id} service={row.serviceAttending} />
+                    <QuickCheckOutForm
+                      kind={kind}
+                      checkInId={row.id}
+                      service={row.serviceAttending}
+                      onCheckedOut={onCheckedOut}
+                    />
                     <UndoForm
-                      action={undoIn.bind(null, row.id)}
+                      action={async (formData) => {
+                        const result = await undoIn(row.id, formData);
+                        if (result.success) onUndoCheckIn(row.id);
+                        return result;
+                      }}
                       confirmText={`Undo check-in for ${row.firstName} ${row.lastName}? This removes today's check-in record.`}
                       label="Undo check-in"
                       pendingLabel="…"
@@ -75,7 +103,11 @@ export function RosterTable({ rows, kind = "kid" }: { rows: Row[]; kind?: CheckI
                   </div>
                 ) : (
                   <UndoForm
-                    action={undoOut.bind(null, row.id)}
+                    action={async (formData) => {
+                      const result = await undoOut(row.id, formData);
+                      if (result.checkIn) onUndoCheckOut(row.id, result.checkIn);
+                      return result;
+                    }}
                     confirmText={`Undo check-out for ${row.firstName} ${row.lastName}? They'll show as checked in again.`}
                     label="Undo check-out"
                     pendingLabel="…"

@@ -11,13 +11,21 @@ export function CheckOutAllButton({
   service,
   count,
   kind = "kid",
+  onCheckedOut,
 }: {
   service: string;
   count: number;
   kind?: CheckInPersonKind;
+  onCheckedOut: (service: string, checkedOutAt: Date) => void;
 }) {
-  const checkOutAllForService = checkOutAllInService.bind(null, service, kind);
-  const [state, action] = useActionState(checkOutAllForService, undefined);
+  const [state, action] = useActionState(
+    async (prev: Awaited<ReturnType<typeof checkOutAllInService>> | undefined, formData: FormData) => {
+      const result = await checkOutAllInService(service, kind, prev, formData);
+      if (result.checkedOutAt) onCheckedOut(service, result.checkedOutAt);
+      return result;
+    },
+    undefined
+  );
   useToastOnResult(state);
 
   if (count === 0) return null;

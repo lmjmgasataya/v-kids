@@ -43,3 +43,7 @@ export const ID_CARD_PHOTO_ZOOM_MAX = 400;
 
 /** Upper bound for a custom KC Bucks grant from /kc-bucks/grant — guards against typos. */
 export const KC_BUCKS_MAX_CUSTOM_GRANT = 1000;
+
+// Longest side of a stored service team photo. PhotoCapture resizes to this in the browser,
+// and preparePhotoUpload (src/lib/photoUpload.ts) only falls back to sharp above it.
+export const PHOTO_MAX_PX = 800;

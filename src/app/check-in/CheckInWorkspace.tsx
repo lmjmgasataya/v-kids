@@ -1,9 +1,17 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { checkInKid, checkInTeamMember, checkOutKid, checkOutTeamMember, resolveQrToken } from "./actions";
+import {
+  checkInKid,
+  checkInTeamMember,
+  checkOutKid,
+  checkOutTeamMember,
+  resolveQrToken,
+  type CheckInActionState,
+  type CheckOutActionState,
+} from "./actions";
 import type { CheckInDirectoryEntry, CheckInPersonKind, CheckInSearchResult, OpenCheckInSummary } from "@/lib/checkIn";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { inputCls } from "@/components/form";
@@ -16,6 +24,8 @@ import { useHardwareScanListener } from "@/components/useHardwareScanListener";
 import { useToastOnResult } from "@/components/toast/useToastOnResult";
 import { capitalizeName } from "@/lib/format";
 import { CHECK_IN_KIND_LABELS } from "./labels";
+import { RosterTable, type RosterRow } from "./RosterTable";
+import { CheckOutAllButton } from "./CheckOutAllButton";
 
 type Intent = "checkin" | "checkout";
 
@@ -46,6 +56,28 @@ function checkInActionFor(kind: CheckInPersonKind) {
 
 function checkOutActionFor(kind: CheckInPersonKind) {
   return kind === "team" ? checkOutTeamMember : checkOutKid;
+}
+
+// The check-in/out actions don't re-render the page (see actions.ts); they hand back what
+// changed and these callbacks patch CheckInWorkspace's in-memory roster/directory with it.
+type OnCheckedIn = (person: CheckInSearchResult, checkIn: OpenCheckInSummary, remarks: string | null) => void;
+type OnCheckedOut = (checkInId: number, checkedOutAt: Date, remarks?: string) => void;
+
+// useActionState reducers that run the action, then report a success to the callback.
+function useCheckInAction(person: CheckInSearchResult, onCheckedIn: OnCheckedIn) {
+  return useActionState(async (prev: CheckInActionState | undefined, formData: FormData) => {
+    const result = await checkInActionFor(person.kind)(person.id, prev, formData);
+    if (result.checkIn) onCheckedIn(person, result.checkIn, result.remarks ?? null);
+    return result;
+  }, undefined);
+}
+
+function useCheckOutAction(kind: CheckInPersonKind, checkInId: number, onCheckedOut: OnCheckedOut) {
+  return useActionState(async (prev: CheckOutActionState | undefined, formData: FormData) => {
+    const result = await checkOutActionFor(kind)(checkInId, prev, formData);
+    if (result.checkedOutAt) onCheckedOut(checkInId, result.checkedOutAt, result.remarks);
+    return result;
+  }, undefined);
 }
 
 // "Age 7" for kids, a "Service Team" tag for team members.
@@ -97,9 +129,16 @@ function EmojiBurst({ triggerKey, emoji }: { triggerKey: number; emoji: string }
   );
 }
 
-function QuickCheckInButton({ kind, kidId, service }: { kind: CheckInPersonKind; kidId: number; service: string }) {
-  const checkInWithId = checkInActionFor(kind).bind(null, kidId);
-  const [state, action] = useActionState(checkInWithId, undefined);
+function QuickCheckInButton({
+  kid,
+  service,
+  onCheckedIn,
+}: {
+  kid: CheckInSearchResult;
+  service: string;
+  onCheckedIn: OnCheckedIn;
+}) {
+  const [state, action] = useCheckInAction(kid, onCheckedIn);
   useToastOnResult(state);
 
   return (
@@ -169,13 +208,14 @@ function QuickCheckOutButton({
   kind,
   checkInId,
   service,
+  onCheckedOut,
 }: {
   kind: CheckInPersonKind;
   checkInId: number;
   service: string;
+  onCheckedOut: OnCheckedOut;
 }) {
-  const checkOutWithId = checkOutActionFor(kind).bind(null, checkInId);
-  const [state, action] = useActionState(checkOutWithId, undefined);
+  const [state, action] = useCheckOutAction(kind, checkInId, onCheckedOut);
   useToastOnResult(state);
 
   return (
@@ -200,6 +240,8 @@ function SearchPanel({
   onAutoCheckIn,
   autoCheckOutEnabled,
   onAutoCheckOut,
+  onCheckedIn,
+  onCheckedOut,
 }: {
   kind: CheckInPersonKind;
   intent: Intent;
@@ -209,6 +251,8 @@ function SearchPanel({
   onAutoCheckIn: (kid: CheckInSearchResult) => Promise<void>;
   autoCheckOutEnabled: boolean;
   onAutoCheckOut: (kid: CheckInSearchResult) => Promise<void>;
+  onCheckedIn: OnCheckedIn;
+  onCheckedOut: OnCheckedOut;
 }) {
   const [query, setQuery] = useState("");
 
@@ -269,7 +313,7 @@ function SearchPanel({
                 autoCheckInEnabled ? (
                   <AutoCheckInButton kid={kid} onCheckIn={onAutoCheckIn} />
                 ) : (
-                  <QuickCheckInButton kind={kid.kind} kidId={kid.id} service={service} />
+                  <QuickCheckInButton kid={kid} service={service} onCheckedIn={onCheckedIn} />
                 )
               ) : (
                 kid.openCheckIn &&
@@ -280,6 +324,7 @@ function SearchPanel({
                     kind={kid.kind}
                     checkInId={kid.openCheckIn.id}
                     service={kid.openCheckIn.serviceAttending}
+                    onCheckedOut={onCheckedOut}
                   />
                 ))
               )}
@@ -296,22 +341,22 @@ function CheckInForm({
   service,
   mode,
   onDone,
+  onCheckedIn,
 }: {
   kid: CheckInSearchResult;
   service: string;
   mode: "search" | "scan";
   onDone: () => void;
+  onCheckedIn: OnCheckedIn;
 }) {
-  const checkInWithId = checkInActionFor(kid.kind).bind(null, kid.id);
-  const [state, action] = useActionState(checkInWithId, undefined);
+  const [state, action] = useCheckInAction(kid, onCheckedIn);
   const [burst, setBurst] = useState(0);
   useToastOnResult(state);
 
   useEffect(() => {
-    // The scan flow's action returns success instead of redirecting (see checkInKid),
-    // so close the card without navigating — that's what keeps the camera mounted and
-    // the scroll position untouched. The action's revalidatePath already sent back the
-    // fresh roster; a router.refresh() here would render the page on the server again.
+    // The action returns success instead of redirecting (see checkInKid), so close the
+    // card without navigating — that keeps the camera mounted and the scroll position
+    // untouched. useCheckInAction has already added the check-in to the roster.
     if (state?.success) {
       onDone();
     }
@@ -372,21 +417,21 @@ function CheckOutForm({
   openCheckIn,
   mode,
   onDone,
+  onCheckedOut,
 }: {
   kid: CheckInSearchResult;
   openCheckIn: OpenCheckInSummary;
   mode: "search" | "scan";
   onDone: () => void;
+  onCheckedOut: OnCheckedOut;
 }) {
-  const checkOutWithId = checkOutActionFor(kid.kind).bind(null, openCheckIn.id);
-  const [state, action] = useActionState(checkOutWithId, undefined);
+  const [state, action] = useCheckOutAction(kid.kind, openCheckIn.id, onCheckedOut);
   const [burst, setBurst] = useState(0);
   useToastOnResult(state);
 
   useEffect(() => {
-    // The scan flow's action returns success instead of redirecting (see checkOutKid),
-    // so close the card without navigating (see CheckInForm) — the fresh roster
-    // already came back with the action's revalidatePath.
+    // Close without navigating (see CheckInForm); useCheckOutAction has already
+    // updated the roster.
     if (state?.success) {
       onDone();
     }
@@ -503,7 +548,8 @@ export function CheckInWorkspace({
   autoCheckInEnabled,
   autoCheckOutEnabled,
   today,
-  directory,
+  directory: initialDirectory,
+  roster: initialRoster,
 }: {
   // Kids and service team check in on separate pages; the directory only holds
   // this kind, and scanning the other kind's card points over to its page.
@@ -521,13 +567,25 @@ export function CheckInWorkspace({
   // Today's date (Asia/Manila), pre-formatted server-side to match the
   // check-in day boundary used everywhere else on this page.
   today?: string;
-  // Preloaded on the server (page.tsx) so scans/searches resolve from memory
-  // instead of a per-interaction DB round trip. Refreshed whenever the server
-  // page re-renders with fresh data, e.g. via the check-in/out actions' revalidatePath.
+  // Preloaded on the server (CheckInScreen) so scans/searches resolve from memory
+  // instead of a per-interaction DB round trip. Kept in state and patched after
+  // each action here; replaced wholesale when the server page re-renders (Refresh).
   directory: CheckInDirectoryEntry[];
+  // Today's check-ins for every service, filtered to the selected one below.
+  roster: RosterRow[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [directory, setDirectory] = useState(initialDirectory);
+  const [roster, setRoster] = useState(initialRoster);
+  const [synced, setSynced] = useState({ initialDirectory, initialRoster });
+  if (synced.initialDirectory !== initialDirectory || synced.initialRoster !== initialRoster) {
+    // Fresh server data (e.g. after Refresh) — it already includes everything patched in.
+    setSynced({ initialDirectory, initialRoster });
+    setDirectory(initialDirectory);
+    setRoster(initialRoster);
+  }
+  const [refreshing, startRefresh] = useTransition();
   const [intent, setIntent] = useState<Intent>(initialIntent ?? "checkin");
   const [mode, setMode] = useState<"search" | "scan">(initialMode ?? "search");
   const [service, setServiceState] = useState<string>(initialService ?? SERVICE_OPTIONS[0]);
@@ -541,6 +599,94 @@ export function CheckInWorkspace({
   const qrScannerRef = useRef<QrScannerHandle | null>(null);
 
   const directoryByToken = useMemo(() => new Map(directory.map((kid) => [kid.qrToken, kid])), [directory]);
+
+  const handleCheckedIn = useCallback<OnCheckedIn>((person, checkIn, remarks) => {
+    setDirectory((entries) =>
+      entries.map((entry) =>
+        entry.id === person.id
+          ? {
+              ...entry,
+              openCheckIn: checkIn,
+              checkedInServicesToday: [...entry.checkedInServicesToday, checkIn.serviceAttending],
+            }
+          : entry
+      )
+    );
+    setRoster((rows) => [
+      {
+        id: checkIn.id,
+        personId: person.id,
+        firstName: person.firstName,
+        lastName: person.lastName,
+        nickname: person.nickname,
+        age: person.age,
+        serviceAttending: checkIn.serviceAttending,
+        checkedInAt: checkIn.checkedInAt,
+        checkedOutAt: null,
+        remarks,
+      },
+      ...rows,
+    ]);
+  }, []);
+
+  const handleCheckedOut = useCallback<OnCheckedOut>((checkInId, checkedOutAt, remarks) => {
+    setDirectory((entries) =>
+      entries.map((entry) => (entry.openCheckIn?.id === checkInId ? { ...entry, openCheckIn: null } : entry))
+    );
+    setRoster((rows) =>
+      rows.map((row) => (row.id === checkInId ? { ...row, checkedOutAt, remarks: remarks ?? row.remarks } : row))
+    );
+  }, []);
+
+  const handleCheckedOutAll = useCallback((forService: string, checkedOutAt: Date) => {
+    setDirectory((entries) =>
+      entries.map((entry) =>
+        entry.openCheckIn?.isToday && entry.openCheckIn.serviceAttending === forService
+          ? { ...entry, openCheckIn: null }
+          : entry
+      )
+    );
+    setRoster((rows) =>
+      rows.map((row) => (row.serviceAttending === forService && !row.checkedOutAt ? { ...row, checkedOutAt } : row))
+    );
+  }, []);
+
+  const handleUndoCheckIn = useCallback(
+    (checkInId: number) => {
+      const undone = roster.find((row) => row.id === checkInId);
+      if (!undone) return;
+      setDirectory((entries) =>
+        entries.map((entry) => {
+          if (entry.id !== undone.personId) return entry;
+          const services = [...entry.checkedInServicesToday];
+          const i = services.indexOf(undone.serviceAttending);
+          if (i !== -1) services.splice(i, 1);
+          return {
+            ...entry,
+            openCheckIn: entry.openCheckIn?.id === checkInId ? null : entry.openCheckIn,
+            checkedInServicesToday: services,
+          };
+        })
+      );
+      setRoster((rows) => rows.filter((row) => row.id !== checkInId));
+    },
+    [roster]
+  );
+
+  const handleUndoCheckOut = useCallback(
+    (checkInId: number, checkIn: OpenCheckInSummary) => {
+      const reopened = roster.find((row) => row.id === checkInId);
+      if (!reopened) return;
+      setDirectory((entries) =>
+        entries.map((entry) => (entry.id === reopened.personId ? { ...entry, openCheckIn: checkIn } : entry))
+      );
+      setRoster((rows) => rows.map((row) => (row.id === checkInId ? { ...row, checkedOutAt: null } : row)));
+    },
+    [roster]
+  );
+
+  const serviceRoster = useMemo(() => roster.filter((row) => row.serviceAttending === service), [roster, service]);
+  const stillOpenCount = serviceRoster.filter((row) => !row.checkedOutAt).length;
 
   const closePopup = useCallback(() => {
     setSelectedKid(null);
@@ -566,14 +712,14 @@ export function CheckInWorkspace({
         setScanError(result.error);
         return;
       }
-      // No router.refresh(): the action's revalidatePath already sent back the fresh page
+      if (result.checkIn) handleCheckedIn(kid, result.checkIn, result.remarks ?? null);
       setAutoSuccess({ kid, action: "checkin", balance: result?.balance });
       // Resume the camera right away instead of waiting for the popup to be
       // dismissed, so the next kid can be scanned while this one's success
       // popup is still on screen.
       qrScannerRef.current?.resume();
     },
-    [service]
+    [service, handleCheckedIn]
   );
 
   // Same as performAutoCheckIn, but for check-out — kid.openCheckIn is
@@ -591,15 +737,15 @@ export function CheckInWorkspace({
         setScanError(result.error);
         return;
       }
+      if (result.checkedOutAt) handleCheckedOut(kid.openCheckIn.id, result.checkedOutAt);
       setAutoSuccess({ kid, action: "checkout" });
       qrScannerRef.current?.resume();
     },
-    []
+    [handleCheckedOut]
   );
 
   useEffect(() => {
-    // Recovers scroll position after checkInKid/checkOutKid redirect back to this
-    // page on success. The App Router's own post-navigation scroll-to-top runs in an
+    // Opening (or reloading) the page in scan mode scrolls down to the scanner. The App Router's own post-navigation scroll-to-top runs in an
     // effect above this component, which fires after ours — so scrolling immediately
     // here gets clobbered. Deferring past a couple of paints lets it win instead.
     if (initialMode !== "scan" || initialToken) return;
@@ -622,9 +768,11 @@ export function CheckInWorkspace({
       params.set("service", nextService);
       params.set("intent", nextIntent);
       params.set("mode", nextMode);
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      // Native history instead of router.replace: keeps the URL shareable/reload-safe
+      // without rendering the page on the server again (state is all client-side).
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
     },
-    [router, pathname]
+    [pathname]
   );
 
   const setService = useCallback(
@@ -882,6 +1030,8 @@ export function CheckInWorkspace({
           onAutoCheckIn={performAutoCheckIn}
           autoCheckOutEnabled={!!autoCheckOutEnabled}
           onAutoCheckOut={performAutoCheckOut}
+          onCheckedIn={handleCheckedIn}
+          onCheckedOut={handleCheckedOut}
         />
       )}
       {mode === "scan" && (
@@ -898,7 +1048,13 @@ export function CheckInWorkspace({
       <div className="flex flex-col gap-2">
         {scanError && <ScanErrorPopup message={scanError} onClose={() => setScanError(null)} />}
         {selectedKid && intent === "checkin" && (
-          <CheckInForm kid={selectedKid} service={service} mode={mode} onDone={closePopup} />
+          <CheckInForm
+            kid={selectedKid}
+            service={service}
+            mode={mode}
+            onDone={closePopup}
+            onCheckedIn={handleCheckedIn}
+          />
         )}
         {selectedKid && intent === "checkout" && selectedKid.openCheckIn && (
           <CheckOutForm
@@ -906,6 +1062,7 @@ export function CheckInWorkspace({
             openCheckIn={selectedKid.openCheckIn}
             mode={mode}
             onDone={closePopup}
+            onCheckedOut={handleCheckedOut}
           />
         )}
         {autoSuccess && (
@@ -917,6 +1074,33 @@ export function CheckInWorkspace({
           />
         )}
         {hwScanBusy && <ScanningPopup />}
+      </div>
+
+      <div className="mt-2">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h3 className="text-lg font-bold text-kids-navy">
+            {kind === "team" ? "Service team" : "Today's roster"} — {service}
+          </h3>
+          <div className="flex items-center gap-3">
+            {/* Check-ins made on other devices only show up after a refresh. */}
+            <button
+              type="button"
+              onClick={() => startRefresh(() => router.refresh())}
+              disabled={refreshing}
+              className="text-xs font-semibold text-kids-navy hover:underline disabled:opacity-50"
+            >
+              {refreshing ? "Refreshing…" : "↻ Refresh"}
+            </button>
+            <CheckOutAllButton service={service} count={stillOpenCount} kind={kind} onCheckedOut={handleCheckedOutAll} />
+          </div>
+        </div>
+        <RosterTable
+          kind={kind}
+          rows={serviceRoster}
+          onCheckedOut={handleCheckedOut}
+          onUndoCheckIn={handleUndoCheckIn}
+          onUndoCheckOut={handleUndoCheckOut}
+        />
       </div>
     </div>
   );

@@ -14,17 +14,19 @@ import {
 import { AUTO_CHECK_IN_FLAG_KEY, AUTO_CHECK_OUT_FLAG_KEY, SERVICE_CARDS_FLAG_KEY, SERVICE_OPTIONS } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CheckInWorkspace } from "./CheckInWorkspace";
-import { CheckOutAllButton } from "./CheckOutAllButton";
-import { RosterTable } from "./RosterTable";
+import type { RosterRow } from "./RosterTable";
 import { CHECK_IN_KIND_LABELS } from "./labels";
 
 const fullDateFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "full", timeZone: "Asia/Manila" });
 
-function getRoster(kind: CheckInPersonKind, service: string, start: Date, end: Date) {
+// Today's check-ins across every service — the workspace filters by the selected service
+// client-side, so switching services doesn't need a server render.
+function getRoster(kind: CheckInPersonKind, start: Date, end: Date): Promise<RosterRow[]> {
   if (kind === "team") {
     return db
       .select({
         id: serviceTeamCheckIns.id,
+        personId: serviceTeamCheckIns.memberId,
         firstName: serviceTeamMembers.firstName,
         lastName: serviceTeamMembers.lastName,
         nickname: serviceTeamMembers.nickname,
@@ -35,19 +37,14 @@ function getRoster(kind: CheckInPersonKind, service: string, start: Date, end: D
       })
       .from(serviceTeamCheckIns)
       .innerJoin(serviceTeamMembers, eq(serviceTeamCheckIns.memberId, serviceTeamMembers.id))
-      .where(
-        and(
-          gte(serviceTeamCheckIns.checkedInAt, start),
-          lt(serviceTeamCheckIns.checkedInAt, end),
-          eq(serviceTeamCheckIns.serviceAttending, service)
-        )
-      )
+      .where(and(gte(serviceTeamCheckIns.checkedInAt, start), lt(serviceTeamCheckIns.checkedInAt, end)))
       .orderBy(desc(serviceTeamCheckIns.checkedInAt))
       .then((rows) => rows.map((row) => ({ ...row, age: null })));
   }
   return db
     .select({
       id: checkIns.id,
+      personId: checkIns.kidId,
       firstName: kids.firstName,
       lastName: kids.lastName,
       nickname: kids.nickname,
@@ -59,7 +56,7 @@ function getRoster(kind: CheckInPersonKind, service: string, start: Date, end: D
     })
     .from(checkIns)
     .innerJoin(kids, eq(checkIns.kidId, kids.id))
-    .where(and(gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end), eq(checkIns.serviceAttending, service)))
+    .where(and(gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end)))
     .orderBy(desc(checkIns.checkedInAt));
 }
 
@@ -93,13 +90,12 @@ export async function CheckInScreen({
       getCheckInDirectory(kind, start, end),
       // Forgotten checkouts are only tracked for kids.
       kind === "kid" ? getStaleOpenCheckIns(start) : Promise.resolve([]),
-      getRoster(kind, service, start, end),
+      getRoster(kind, start, end),
     ]);
   const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
   const autoCheckInEnabled = autoCheckInFlag?.enabled ?? false;
   const autoCheckOutEnabled = autoCheckOutFlag?.enabled ?? false;
 
-  const stillOpenCount = roster.filter((row) => !row.checkedOutAt).length;
   const staleOpenCount = staleOpenCheckIns.reduce((sum, day) => sum + day.count, 0);
   const label = CHECK_IN_KIND_LABELS[kind];
 
@@ -140,17 +136,8 @@ export async function CheckInScreen({
         autoCheckOutEnabled={autoCheckOutEnabled}
         today={fullDateFormatter.format(start)}
         directory={directory}
+        roster={roster}
       />
-
-      <div>
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <h3 className="text-lg font-bold text-kids-navy">
-            {kind === "team" ? "Service team" : "Today's roster"} — {service}
-          </h3>
-          <CheckOutAllButton service={service} count={stillOpenCount} kind={kind} />
-        </div>
-        <RosterTable kind={kind} rows={roster} />
-      </div>
     </div>
   );
 }

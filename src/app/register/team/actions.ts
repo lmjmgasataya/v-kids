@@ -1,12 +1,12 @@
 "use server";
 
 import crypto from "crypto";
-import sharp from "sharp";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { isStorageConfigured, uploadPhoto } from "@/lib/storage";
+import { preparePhotoUpload } from "@/lib/photoUpload";
 import { withToast } from "@/lib/toast";
 
 interface TeamRegisterValues {
@@ -46,11 +46,7 @@ export async function registerServiceTeamMember(_: unknown, formData: FormData) 
         return { error: "The uploaded file must be an image.", values };
       }
 
-      const resized = await sharp(Buffer.from(await photo.arrayBuffer()))
-        .rotate()
-        .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality: 82 })
-        .toBuffer();
+      const resized = await preparePhotoUpload(photo);
 
       photoKey = await uploadPhoto(resized, `service-team/${crypto.randomUUID()}.jpg`, "image/jpeg");
     }
