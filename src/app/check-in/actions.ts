@@ -15,6 +15,7 @@ import {
   getTeamCheckedInServicesTodayByMemberIds,
   hasCheckedInServiceToday,
   hasTeamCheckedInServiceToday,
+  insertCheckInWithCredit,
   validateCheckInInput,
   type CheckInPersonKind,
   type CheckInSearchResult,
@@ -51,8 +52,12 @@ export interface UndoActionState {
   checkIn?: OpenCheckInSummary;
 }
 
+// Drizzle wraps driver errors in DrizzleQueryError, with the pg error (and its code) as `cause`.
 function isUniqueViolation(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+  for (let e = error; typeof e === "object" && e !== null; e = (e as { cause?: unknown }).cause) {
+    if ("code" in e && e.code === "23505") return true;
+  }
+  return false;
 }
 
 export async function checkInKid(
@@ -103,32 +108,19 @@ export async function checkInKid(
 
   let insertedCheckIn: { id: number; checkedInAt: Date };
   try {
-    [insertedCheckIn] = await db
-      .insert(checkIns)
-      .values({
-        kidId,
-        serviceAttending,
-        remarks: remarks || null,
-        checkedInBy: session.userId,
-      })
-      .returning({ id: checkIns.id, checkedInAt: checkIns.checkedInAt });
+    insertedCheckIn = await insertCheckInWithCredit({
+      kidId,
+      serviceAttending,
+      remarks: remarks || null,
+      checkedInBy: session.userId,
+      creditAmount,
+    });
   } catch (err) {
     if (isUniqueViolation(err)) {
       const openCheckIn = await getOpenCheckIn(kidId, start);
       return { error: "This kid is already checked in.", openCheckIn: openCheckIn ?? undefined };
     }
     throw err;
-  }
-
-  if (creditAmount > 0) {
-    await db.insert(kcBucksTransactions).values({
-      kidId,
-      type: "checkin",
-      amount: creditAmount,
-      reason: `Checked in for ${serviceAttending}`,
-      checkInId: insertedCheckIn.id,
-      createdBy: session.userId,
-    });
   }
 
   return {

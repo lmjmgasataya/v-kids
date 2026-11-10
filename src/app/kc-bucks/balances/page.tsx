@@ -9,10 +9,16 @@ import { FilterSelect } from "@/components/FilterSelect";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { BalancesTable } from "./BalancesTable";
 import { Pagination } from "@/components/Pagination";
+import { fetchPage } from "@/lib/pagination";
 
 const PAGE_SIZE = 20;
 
-const balanceExpr = sql<number>`coalesce(sum(${kcBucksTransactions.amount}), 0)::int`;
+// Correlated per-kid sum instead of joining the whole ledger and grouping: when sorting by
+// name, Postgres evaluates it only for the page of kids it returns (each an index lookup on
+// kc_bucks_transactions_kid_created_idx). Columns are written out with table names because
+// Drizzle leaves them unqualified in a single-table select, which would make "id" resolve to
+// the inner table.
+const balanceExpr = sql<number>`(select coalesce(sum(t.amount), 0)::int from ${kcBucksTransactions} t where t.kid_id = "kids"."id")`;
 
 const SORTABLE = {
   lastName: kids.lastName,
@@ -50,11 +56,15 @@ export default async function KcBucksBalancesPage({
   if (service) conditions.push(eq(kids.serviceAttending, service));
   const whereClause = conditions.length ? and(...conditions) : undefined;
 
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(kids).where(whereClause);
-  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
-  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
-
-  const rows = await db
+  const { count, totalPages, page, rows } = await fetchPage({
+    requestedPage,
+    pageSize: PAGE_SIZE,
+    count: async () => {
+      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(kids).where(whereClause);
+      return count;
+    },
+    rows: (page) =>
+      db
     .select({
       id: kids.id,
       firstName: kids.firstName,
@@ -64,12 +74,11 @@ export default async function KcBucksBalancesPage({
       balance: balanceExpr,
     })
     .from(kids)
-    .leftJoin(kcBucksTransactions, eq(kcBucksTransactions.kidId, kids.id))
     .where(whereClause)
-    .groupBy(kids.id)
     .orderBy(orderFn(SORTABLE[sort]))
     .limit(PAGE_SIZE)
-    .offset((page - 1) * PAGE_SIZE);
+    .offset((page - 1) * PAGE_SIZE),
+  });
 
   return (
     <div className="flex flex-col gap-6">

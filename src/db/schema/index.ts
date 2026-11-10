@@ -89,6 +89,9 @@ export const checkIns = pgTable(
     // Covers date-range-only scans with no service filter: getAttendanceByService,
     // getAttendanceDatesInMonth, checkOutAllOpenInDateRange.
     index("check_ins_checked_in_idx").on(t.checkedInAt),
+    // Every check-in for one kid: hasCheckedInServiceToday, deleting a kid, and the FK check
+    // Postgres runs on check_ins when a kid row is deleted.
+    index("check_ins_kid_idx").on(t.kidId),
   ]
 );
 
@@ -132,6 +135,8 @@ export const serviceTeamCheckIns = pgTable(
   (t) => [
     uniqueIndex("service_team_check_ins_open_member_idx").on(t.memberId).where(sql`${t.checkedOutAt} is null`),
     index("service_team_check_ins_service_checked_in_idx").on(t.serviceAttending, t.checkedInAt),
+    // Date-range-only scans: the team roster, team attendance, checkOutAllOpenTeamInDateRange.
+    index("service_team_check_ins_checked_in_idx").on(t.checkedInAt),
   ]
 );
 
@@ -177,6 +182,9 @@ export const kcBucksTransactions = pgTable(
     index("kc_bucks_transactions_kid_created_idx").on(t.kidId, t.createdAt.desc()),
     // Covers the check-in delete/checkout lookup by checkInId
     index("kc_bucks_transactions_check_in_idx").on(t.checkInId),
+    // /kc-bucks/summary/transactions: newest first, optionally filtered by type.
+    index("kc_bucks_transactions_created_idx").on(t.createdAt.desc()),
+    index("kc_bucks_transactions_type_created_idx").on(t.type, t.createdAt.desc()),
   ]
 );
 

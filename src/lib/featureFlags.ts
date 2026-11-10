@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache, updateTag } from "next/cache";
 import { db } from "@/db";
 import { featureFlags } from "@/db/schema";
 import {
@@ -100,9 +100,35 @@ export function flagEnabled(key: string, row: { enabled: boolean } | undefined):
   return row?.enabled ?? FLAGS_BY_KEY.get(key)?.defaultEnabled ?? true;
 }
 
+const FLAGS_CACHE_TAG = "feature-flags";
+
+// Every flag row as { key: enabled }. Flags are read on nearly every request (the root layout
+// reads cursor_trail; permissions and check-in read others) but change only when an admin
+// toggles one, so they're kept in Next's data cache and cleared by clearFeatureFlagCache().
+const loadFlagStates = unstable_cache(
+  async (): Promise<Record<string, boolean>> => {
+    const rows = await db.select({ key: featureFlags.key, enabled: featureFlags.enabled }).from(featureFlags);
+    return Object.fromEntries(rows.map((r) => [r.key, r.enabled]));
+  },
+  ["feature-flags-v1"],
+  { tags: [FLAGS_CACHE_TAG] }
+);
+
+/** A flag's effective state (cached), with its missing-row default from FLAG_GROUPS. */
+export async function isFlagEnabled(key: string): Promise<boolean> {
+  const states = await loadFlagStates();
+  return flagEnabled(key, key in states ? { enabled: states[key] } : undefined);
+}
+
+/** Call from a Server Action after writing to feature_flags so the next read is fresh. */
+export function clearFeatureFlagCache() {
+  updateTag(FLAGS_CACHE_TAG);
+}
+
 /**
  * Flips a flag and returns its new state. An upsert, since the row may not exist yet
- * on first toggle. Callers must check the session is an admin first.
+ * on first toggle. Callers must check the session is an admin first, and call this
+ * from a Server Action (it clears the flag cache with updateTag).
  */
 export async function toggleFeatureFlag(key: string): Promise<boolean> {
   const [row] = await db.select().from(featureFlags).where(eq(featureFlags.key, key));
@@ -113,6 +139,7 @@ export async function toggleFeatureFlag(key: string): Promise<boolean> {
     .values({ key, enabled: nextEnabled })
     .onConflictDoUpdate({ target: featureFlags.key, set: { enabled: nextEnabled, updatedAt: new Date() } });
 
+  clearFeatureFlagCache();
   const { path, type } = FLAGS_BY_KEY.get(key)?.revalidate ?? { path: "/", type: "layout" as const };
   revalidatePath(path, type);
   return nextEnabled;

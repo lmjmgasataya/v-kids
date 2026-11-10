@@ -1,6 +1,6 @@
-import { and, eq, ilike, ne } from "drizzle-orm";
+import { and, eq, ilike, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { kids } from "@/db/schema";
+import { guardians, kids } from "@/db/schema";
 import { SERVICE_OPTIONS, MOBILE_NUMBER_REGEX } from "@/lib/constants";
 
 export type Gender = "Male" | "Female";
@@ -83,4 +83,24 @@ export async function isDuplicateKid(
     .where(and(...conditions));
 
   return !!existing;
+}
+
+/**
+ * Inserts a new guardian and their kid in one statement (a data-modifying CTE): one round
+ * trip, and no orphan guardian row if the kid insert fails.
+ */
+export async function insertGuardianAndKid(child: ChildInput, guardian: GuardianInput): Promise<{ id: number }> {
+  const result = await db.execute<{ id: number }>(sql`
+    with new_guardian as (
+      insert into ${guardians} (first_name, last_name, contact_number, gender)
+      values (${guardian.firstName}, ${guardian.lastName}, ${guardian.contactNumber}, ${guardian.gender})
+      returning id
+    )
+    insert into ${kids} (first_name, last_name, nickname, age, gender, service_attending, guardian_id)
+    select ${child.firstName}, ${child.lastName}, ${child.nickname || null}, ${child.age}, ${child.gender},
+      ${child.serviceAttending}, id
+    from new_guardian
+    returning id
+  `);
+  return result.rows[0];
 }

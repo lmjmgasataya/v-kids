@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import QRCode from "qrcode";
+import { idCardQrDataUrl } from "@/lib/qrCode";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
@@ -41,7 +41,7 @@ export default async function ServiceTeamPrintIdsPage() {
     rows.map(async ({ photoKey, ...row }) => {
       const payload = `${proto}://${host}/check-in?token=${row.qrToken}`;
       // Level H (~30% recoverable) so the photo badge over the middle doesn't stop it scanning.
-      const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0, errorCorrectionLevel: "H" });
+      const qrDataUrl = await idCardQrDataUrl(payload, "H");
       // A same-origin link (not an inline data URL) keeps the page payload small; same-origin
       // also means the client-side badge canvas isn't tainted, so html2canvas export still works.
       const photoUrl = photoKey ? serviceTeamPhotoUrl(row.id, photoKey, "card") : null;

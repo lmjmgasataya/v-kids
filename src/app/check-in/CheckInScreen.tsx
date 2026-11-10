@@ -3,7 +3,8 @@ import Link from "next/link";
 import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
-import { checkIns, featureFlags, kids, serviceTeamCheckIns, serviceTeamMembers } from "@/db/schema";
+import { checkIns, kids, serviceTeamCheckIns, serviceTeamMembers } from "@/db/schema";
+import { isFlagEnabled } from "@/lib/featureFlags";
 import {
   getCheckInDirectory,
   getManilaDayBounds,
@@ -82,19 +83,16 @@ export async function CheckInScreen({
 
   // All of these reads are independent of each other — run them concurrently
   // instead of round-tripping to the DB one at a time.
-  const [[serviceCardsFlag], [autoCheckInFlag], [autoCheckOutFlag], directory, staleOpenCheckIns, roster] =
+  const [serviceCardsEnabled, autoCheckInEnabled, autoCheckOutEnabled, directory, staleOpenCheckIns, roster] =
     await Promise.all([
-      db.select().from(featureFlags).where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY)),
-      db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY)),
-      db.select().from(featureFlags).where(eq(featureFlags.key, AUTO_CHECK_OUT_FLAG_KEY)),
+      isFlagEnabled(SERVICE_CARDS_FLAG_KEY),
+      isFlagEnabled(AUTO_CHECK_IN_FLAG_KEY),
+      isFlagEnabled(AUTO_CHECK_OUT_FLAG_KEY),
       getCheckInDirectory(kind, start, end),
       // Forgotten checkouts are only tracked for kids.
       kind === "kid" ? getStaleOpenCheckIns(start) : Promise.resolve([]),
       getRoster(kind, start, end),
     ]);
-  const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
-  const autoCheckInEnabled = autoCheckInFlag?.enabled ?? false;
-  const autoCheckOutEnabled = autoCheckOutFlag?.enabled ?? false;
 
   const staleOpenCount = staleOpenCheckIns.reduce((sum, day) => sum + day.count, 0);
   const label = CHECK_IN_KIND_LABELS[kind];

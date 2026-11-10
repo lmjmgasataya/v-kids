@@ -1,9 +1,8 @@
 "use server";
 
-import { db } from "@/db";
-import { guardians, kids } from "@/db/schema";
 import { redirect } from "next/navigation";
 import {
+  insertGuardianAndKid,
   isDuplicateKid,
   readChildInput,
   readGuardianInput,
@@ -30,20 +29,7 @@ export async function registerKid(_: unknown, formData: FormData) {
     };
   }
 
-  const [guardianRow] = await db.insert(guardians).values(guardian).returning({ id: guardians.id });
-
-  const [kidRow] = await db
-    .insert(kids)
-    .values({
-      firstName: child.firstName,
-      lastName: child.lastName,
-      nickname: child.nickname || null,
-      age: child.age,
-      gender: child.gender,
-      serviceAttending: child.serviceAttending,
-      guardianId: guardianRow.id,
-    })
-    .returning({ id: kids.id });
+  const kidRow = await insertGuardianAndKid(child, guardian);
 
   redirect(withToast(`/register/child/success?kidId=${kidRow.id}`, "success", "Registration submitted!"));
 }

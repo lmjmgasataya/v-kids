@@ -3,10 +3,8 @@ import { Geist, Fredoka } from "next/font/google";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { logout } from "@/app/login/actions";
-import { db } from "@/db";
-import { featureFlags } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { CURSOR_TRAIL_FLAG_KEY } from "@/lib/constants";
+import { isFlagEnabled } from "@/lib/featureFlags";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { LogoMark } from "@/components/LogoMark";
 import { CursorTrail } from "@/components/CursorTrail";
@@ -26,13 +24,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await getSession();
-
-  const [cursorTrailFlag] = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.key, CURSOR_TRAIL_FLAG_KEY));
-  const cursorTrailEnabled = cursorTrailFlag?.enabled ?? true;
+  const [session, cursorTrailEnabled] = await Promise.all([getSession(), isFlagEnabled(CURSOR_TRAIL_FLAG_KEY)]);
 
   return (
     <html lang="en" className="h-full">

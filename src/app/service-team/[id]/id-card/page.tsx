@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
-import QRCode from "qrcode";
+import { idCardQrDataUrl } from "@/lib/qrCode";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { serviceTeamMembers } from "@/db/schema";
@@ -41,7 +41,7 @@ export default async function ServiceTeamIdCardPage({ params }: { params: Promis
   const proto = h.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
   const payload = `${proto}://${host}/check-in?token=${row.qrToken}`;
   // Level H (~30% recoverable) so the photo badge over the middle doesn't stop it scanning.
-  const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0, errorCorrectionLevel: "H" });
+  const qrDataUrl = await idCardQrDataUrl(payload, "H");
   const photoUrl = row.photoKey ? serviceTeamPhotoUrl(memberId, row.photoKey, "card") : null;
 
   const fullName = `${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`;

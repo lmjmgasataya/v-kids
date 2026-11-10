@@ -1,3 +1,4 @@
+import { fetchPage } from "@/lib/pagination";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
@@ -43,11 +44,15 @@ export default async function ServiceTeamPage({
   const service = resolveService(serviceParam);
   const search = q.trim();
 
-  const count = await countServiceTeamRows({ q: search, gender, service });
-  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
-  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
-
-  const rows = await fetchServiceTeamRows({ q: search, sort, dir, gender, service, page });
+  const [{ count, totalPages, page, rows }, canManage] = await Promise.all([
+    fetchPage({
+      requestedPage,
+      pageSize: PAGE_SIZE,
+      count: () => countServiceTeamRows({ q: search, gender, service }),
+      rows: (page) => fetchServiceTeamRows({ q: search, sort, dir, gender, service, page }),
+    }),
+    canManageServiceTeam(session),
+  ]);
   const rowsWithPhotos = rows.map((row) => ({
     ...row,
     photoUrl: row.photoKey ? serviceTeamPhotoUrl(row.id, row.photoKey, "thumb") : null,
@@ -91,7 +96,7 @@ export default async function ServiceTeamPage({
         q={search}
         gender={gender}
         service={service}
-        canManage={await canManageServiceTeam(session)}
+        canManage={canManage}
       />
       <Pagination
         basePath="/service-team"

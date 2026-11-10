@@ -6,6 +6,7 @@ import { kcBucksTransactions, kids, users } from "@/db/schema";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { FilterSelect } from "@/components/FilterSelect";
 import { Pagination } from "@/components/Pagination";
+import { fetchPage } from "@/lib/pagination";
 import { capitalizeName } from "@/lib/format";
 
 const PAGE_SIZE = 20;
@@ -42,14 +43,18 @@ export default async function KcBucksTransactionsPage({
 
   const whereClause = type ? eq(kcBucksTransactions.type, type) : undefined;
 
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(kcBucksTransactions)
-    .where(whereClause);
-  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
-  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
-
-  const rows = await db
+  const { count, totalPages, page, rows } = await fetchPage({
+    requestedPage,
+    pageSize: PAGE_SIZE,
+    count: async () => {
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(kcBucksTransactions)
+        .where(whereClause);
+      return count;
+    },
+    rows: (page) =>
+      db
     .select({
       id: kcBucksTransactions.id,
       type: kcBucksTransactions.type,
@@ -67,7 +72,8 @@ export default async function KcBucksTransactionsPage({
     .where(whereClause)
     .orderBy(desc(kcBucksTransactions.createdAt))
     .limit(PAGE_SIZE)
-    .offset((page - 1) * PAGE_SIZE);
+    .offset((page - 1) * PAGE_SIZE),
+  });
 
   return (
     <div className="flex flex-col gap-6">

@@ -3,8 +3,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
-import { featureFlags, registrationLinks } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { registrationLinks } from "@/db/schema";
+import { isFlagEnabled } from "@/lib/featureFlags";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import {
   AUTO_CHECK_IN_FLAG_KEY,
@@ -32,40 +32,23 @@ export default async function SettingsPage() {
   if (!session) redirect("/login");
   if (session.role !== "admin") redirect("/");
 
-  const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.key, CURSOR_TRAIL_FLAG_KEY));
-  const enabled = flag?.enabled ?? true;
-
-  const [serviceCardsFlag] = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.key, SERVICE_CARDS_FLAG_KEY));
-  const serviceCardsEnabled = serviceCardsFlag?.enabled ?? true;
-
-  const [autoCheckInFlag] = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.key, AUTO_CHECK_IN_FLAG_KEY));
-  const autoCheckInEnabled = autoCheckInFlag?.enabled ?? false;
-
-  const [autoCheckOutFlag] = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.key, AUTO_CHECK_OUT_FLAG_KEY));
-  const autoCheckOutEnabled = autoCheckOutFlag?.enabled ?? false;
-
-  const [volunteerManageServiceTeamFlag] = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.key, VOLUNTEER_MANAGE_SERVICE_TEAM_FLAG_KEY));
-  const volunteerManageServiceTeamEnabled = volunteerManageServiceTeamFlag?.enabled ?? false;
-
-  const [volunteerManageKidsFlag] = await db
-    .select()
-    .from(featureFlags)
-    .where(eq(featureFlags.key, VOLUNTEER_MANAGE_KIDS_FLAG_KEY));
-  const volunteerManageKidsEnabled = volunteerManageKidsFlag?.enabled ?? false;
-
-  const links = await db.select().from(registrationLinks);
+  const [
+    enabled,
+    serviceCardsEnabled,
+    autoCheckInEnabled,
+    autoCheckOutEnabled,
+    volunteerManageServiceTeamEnabled,
+    volunteerManageKidsEnabled,
+    links,
+  ] = await Promise.all([
+    isFlagEnabled(CURSOR_TRAIL_FLAG_KEY),
+    isFlagEnabled(SERVICE_CARDS_FLAG_KEY),
+    isFlagEnabled(AUTO_CHECK_IN_FLAG_KEY),
+    isFlagEnabled(AUTO_CHECK_OUT_FLAG_KEY),
+    isFlagEnabled(VOLUNTEER_MANAGE_SERVICE_TEAM_FLAG_KEY),
+    isFlagEnabled(VOLUNTEER_MANAGE_KIDS_FLAG_KEY),
+    db.select().from(registrationLinks),
+  ]);
   const childLink = links.find((l) => l.formType === "child");
   const teamLink = links.find((l) => l.formType === "team");
 

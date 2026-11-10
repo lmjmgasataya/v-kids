@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
-import QRCode from "qrcode";
+import { idCardQrDataUrl } from "@/lib/qrCode";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { kids } from "@/db/schema";
@@ -35,7 +35,7 @@ export default async function KidIdCardPage({ params }: { params: Promise<{ id: 
   const host = h.get("host");
   const proto = h.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
   const payload = `${proto}://${host}/check-in?token=${row.qrToken}`;
-  const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0 });
+  const qrDataUrl = await idCardQrDataUrl(payload);
 
   const fullName = `${capitalizeName(row.firstName)} ${capitalizeName(row.lastName)}`;
   const displayName = idCardDisplayName(row.firstName, row.nickname);

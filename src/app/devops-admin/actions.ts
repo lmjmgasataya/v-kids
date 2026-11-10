@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { featureFlags } from "@/db/schema";
 import { getSession } from "@/lib/auth";
 import { withToast } from "@/lib/toast";
-import { isKnownFlag, toggleFeatureFlag } from "@/lib/featureFlags";
+import { clearFeatureFlagCache, isKnownFlag, toggleFeatureFlag } from "@/lib/featureFlags";
 
 export async function toggleFlag(key: string) {
   const session = await getSession();
@@ -37,6 +37,7 @@ export async function deleteFlag(key: string) {
   }
 
   await db.delete(featureFlags).where(eq(featureFlags.key, key));
+  clearFeatureFlagCache();
   revalidatePath("/devops-admin");
   redirect(withToast("/devops-admin", "success", `Flag "${key}" deleted.`));
 }

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import QRCode from "qrcode";
+import { idCardQrDataUrl } from "@/lib/qrCode";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { kids } from "@/db/schema";
@@ -36,7 +36,7 @@ export default async function PrintIdsPage() {
   const kidsWithQr = await Promise.all(
     rows.map(async (row) => {
       const payload = `${proto}://${host}/check-in?token=${row.qrToken}`;
-      const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 0 });
+      const qrDataUrl = await idCardQrDataUrl(payload);
       return { ...row, qrDataUrl };
     })
   );

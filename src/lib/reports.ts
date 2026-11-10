@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, gte } from "drizzle-orm";
 import { checkIns, guardians, kids, serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { getManilaMonthBoundsForMonthString, manilaDateString, manilaMonthString, shiftMonthString } from "@/lib/date";
@@ -109,7 +109,7 @@ function manilaHour(d: Date): number {
 // calendar date in JS — same approach as getAttendanceDatesInMonth — rather than
 // pushing timezone-aware grouping into SQL.
 export async function getReportData(since?: Date): Promise<ReportData> {
-  const [kidRows, allCheckInRows, teamRows] = await Promise.all([
+  const [kidRows, checkInRows, teamRows] = await Promise.all([
     db
       .select({
         id: kids.id,
@@ -121,9 +121,11 @@ export async function getReportData(since?: Date): Promise<ReportData> {
         createdAt: kids.createdAt,
       })
       .from(kids),
+    // Only the window's check-ins leave the database (uses check_ins_checked_in_idx).
     db
       .select({ kidId: checkIns.kidId, service: checkIns.serviceAttending, checkedInAt: checkIns.checkedInAt })
-      .from(checkIns),
+      .from(checkIns)
+      .where(since ? gte(checkIns.checkedInAt, since) : undefined),
     db
       .select({
         service: serviceTeamMembers.serviceAttending,
@@ -132,7 +134,6 @@ export async function getReportData(since?: Date): Promise<ReportData> {
       })
       .from(serviceTeamMembers),
   ]);
-  const checkInRows = allCheckInRows.filter((row) => inRange(row.checkedInAt, since));
 
   // Service days
   const dayBuckets = new Map<string, { checkIns: number; kids: Set<number> }>();

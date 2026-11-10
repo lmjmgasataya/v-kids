@@ -43,12 +43,11 @@ export async function searchKidsBasic(query: string, service = ""): Promise<KcBu
   return db
     .select({
       ...kidColumns,
-      balance: sql<number>`coalesce(sum(${kcBucksTransactions.amount}), 0)::int`,
+      // Per-kid sum, evaluated only for the (at most 100) kids returned — not the whole ledger.
+      balance: sql<number>`(select coalesce(sum(t.amount), 0)::int from ${kcBucksTransactions} t where t.kid_id = "kids"."id")`,
     })
     .from(kids)
-    .leftJoin(kcBucksTransactions, eq(kcBucksTransactions.kidId, kids.id))
     .where(conditions.length ? and(...conditions) : undefined)
-    .groupBy(kids.id)
     .orderBy(asc(kids.firstName), asc(kids.lastName))
     .limit(search ? 10 : 100);
 }

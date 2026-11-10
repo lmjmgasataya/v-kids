@@ -1,6 +1,6 @@
-import { and, eq, gte, inArray, isNull, lt } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { checkIns, kids, serviceTeamCheckIns, serviceTeamMembers } from "@/db/schema";
+import { checkIns, kcBucksTransactions, kids, serviceTeamCheckIns, serviceTeamMembers } from "@/db/schema";
 import { SERVICE_OPTIONS } from "@/lib/constants";
 import { manilaDateString } from "@/lib/date";
 
@@ -39,23 +39,6 @@ export async function getOpenCheckIn(kidId: number, todayStart: Date): Promise<O
     .where(and(eq(checkIns.kidId, kidId), isNull(checkIns.checkedOutAt)));
   if (!row) return null;
   return { ...row, isToday: row.checkedInAt >= todayStart };
-}
-
-export async function getOpenCheckInsByKidIds(
-  kidIds: number[],
-  todayStart: Date
-): Promise<Map<number, OpenCheckInSummary>> {
-  if (kidIds.length === 0) return new Map();
-  const rows = await db
-    .select({
-      kidId: checkIns.kidId,
-      id: checkIns.id,
-      serviceAttending: checkIns.serviceAttending,
-      checkedInAt: checkIns.checkedInAt,
-    })
-    .from(checkIns)
-    .where(and(inArray(checkIns.kidId, kidIds), isNull(checkIns.checkedOutAt)));
-  return new Map(rows.map((row) => [row.kidId, { ...row, isToday: row.checkedInAt >= todayStart }]));
 }
 
 export interface StaleOpenCheckInSummary {
@@ -120,8 +103,64 @@ export async function getCheckInDirectory(
   return kind === "team" ? getTeamDirectory(start, end) : getKidDirectory(start, end);
 }
 
-async function getKidDirectory(start: Date, end: Date): Promise<CheckInDirectoryEntry[]> {
+// Every open check-in / today's checked-in services, for the whole-directory preload. The
+// directory covers everyone, so these filter on the check-in columns alone (covered by the
+// open-check-in partial index and the checked_in_at index) instead of sending every id as an
+// IN list.
+async function getAllOpenCheckIns(todayStart: Date): Promise<Map<number, OpenCheckInSummary>> {
   const rows = await db
+    .select({
+      kidId: checkIns.kidId,
+      id: checkIns.id,
+      serviceAttending: checkIns.serviceAttending,
+      checkedInAt: checkIns.checkedInAt,
+    })
+    .from(checkIns)
+    .where(isNull(checkIns.checkedOutAt));
+  return new Map(rows.map((row) => [row.kidId, { ...row, isToday: row.checkedInAt >= todayStart }]));
+}
+
+async function getAllCheckedInServicesToday(start: Date, end: Date): Promise<Map<number, string[]>> {
+  const rows = await db
+    .select({ kidId: checkIns.kidId, service: checkIns.serviceAttending })
+    .from(checkIns)
+    .where(and(gte(checkIns.checkedInAt, start), lt(checkIns.checkedInAt, end)));
+  return groupServices(rows.map((row) => [row.kidId, row.service]));
+}
+
+async function getAllOpenTeamCheckIns(todayStart: Date): Promise<Map<number, OpenCheckInSummary>> {
+  const rows = await db
+    .select({
+      memberId: serviceTeamCheckIns.memberId,
+      id: serviceTeamCheckIns.id,
+      serviceAttending: serviceTeamCheckIns.serviceAttending,
+      checkedInAt: serviceTeamCheckIns.checkedInAt,
+    })
+    .from(serviceTeamCheckIns)
+    .where(isNull(serviceTeamCheckIns.checkedOutAt));
+  return new Map(rows.map((row) => [row.memberId, { ...row, isToday: row.checkedInAt >= todayStart }]));
+}
+
+async function getAllTeamCheckedInServicesToday(start: Date, end: Date): Promise<Map<number, string[]>> {
+  const rows = await db
+    .select({ memberId: serviceTeamCheckIns.memberId, service: serviceTeamCheckIns.serviceAttending })
+    .from(serviceTeamCheckIns)
+    .where(and(gte(serviceTeamCheckIns.checkedInAt, start), lt(serviceTeamCheckIns.checkedInAt, end)));
+  return groupServices(rows.map((row) => [row.memberId, row.service]));
+}
+
+function groupServices(pairs: [number, string][]): Map<number, string[]> {
+  const map = new Map<number, Set<string>>();
+  for (const [personId, service] of pairs) {
+    if (!map.has(personId)) map.set(personId, new Set());
+    map.get(personId)!.add(service);
+  }
+  return new Map(Array.from(map.entries()).map(([personId, services]) => [personId, Array.from(services)]));
+}
+
+async function getKidDirectory(start: Date, end: Date): Promise<CheckInDirectoryEntry[]> {
+  const [rows, openByKid, servicesByKid] = await Promise.all([
+    db
     .select({
       id: kids.id,
       firstName: kids.firstName,
@@ -131,13 +170,11 @@ async function getKidDirectory(start: Date, end: Date): Promise<CheckInDirectory
       defaultService: kids.serviceAttending,
       qrToken: kids.qrToken,
     })
-    .from(kids);
-
-  const kidIds = rows.map((row) => row.id);
-  const [openByKid, servicesByKid] = await Promise.all([
-    getOpenCheckInsByKidIds(kidIds, start),
-    getCheckedInServicesTodayByKidIds(kidIds, start, end),
+    .from(kids),
+    getAllOpenCheckIns(start),
+    getAllCheckedInServicesToday(start, end),
   ]);
+
 
   return rows.map((row) => ({
     ...row,
@@ -148,7 +185,8 @@ async function getKidDirectory(start: Date, end: Date): Promise<CheckInDirectory
 }
 
 async function getTeamDirectory(start: Date, end: Date): Promise<CheckInDirectoryEntry[]> {
-  const rows = await db
+  const [rows, openByMember, servicesByMember] = await Promise.all([
+    db
     .select({
       id: serviceTeamMembers.id,
       firstName: serviceTeamMembers.firstName,
@@ -157,12 +195,9 @@ async function getTeamDirectory(start: Date, end: Date): Promise<CheckInDirector
       defaultService: serviceTeamMembers.serviceAttending,
       qrToken: serviceTeamMembers.qrToken,
     })
-    .from(serviceTeamMembers);
-
-  const memberIds = rows.map((row) => row.id);
-  const [openByMember, servicesByMember] = await Promise.all([
-    getOpenTeamCheckInsByMemberIds(memberIds, start),
-    getTeamCheckedInServicesTodayByMemberIds(memberIds, start, end),
+    .from(serviceTeamMembers),
+    getAllOpenTeamCheckIns(start),
+    getAllTeamCheckedInServicesToday(start, end),
   ]);
 
   return rows.map((row) => ({
@@ -172,6 +207,37 @@ async function getTeamDirectory(start: Date, end: Date): Promise<CheckInDirector
     openCheckIn: openByMember.get(row.id) ?? null,
     checkedInServicesToday: servicesByMember.get(row.id) ?? [],
   }));
+}
+
+/**
+ * Inserts a kid's check-in and, when creditAmount > 0, its KC Bucks credit in one statement (a
+ * data-modifying CTE): one round trip per scan instead of two, and both rows land or neither
+ * does. A second open check-in for the kid still fails on check_ins_open_kid_idx (23505).
+ */
+export async function insertCheckInWithCredit(input: {
+  kidId: number;
+  serviceAttending: string;
+  remarks: string | null;
+  checkedInBy: number;
+  creditAmount: number;
+}): Promise<{ id: number; checkedInAt: Date }> {
+  const { kidId, serviceAttending, remarks, checkedInBy, creditAmount } = input;
+  // checked_in_at comes back as epoch ms: raw-SQL results skip Drizzle's timestamp mapping.
+  const result = await db.execute<{ id: number; checked_in_ms: number }>(sql`
+    with inserted as (
+      insert into ${checkIns} (kid_id, service_attending, remarks, checked_in_by)
+      values (${kidId}, ${serviceAttending}, ${remarks}, ${checkedInBy})
+      returning id, checked_in_at
+    ), credit as (
+      insert into ${kcBucksTransactions} (kid_id, type, amount, reason, check_in_id, created_by)
+      select ${kidId}, 'checkin', ${creditAmount}, ${`Checked in for ${serviceAttending}`}, id, ${checkedInBy}
+      from inserted
+      where ${creditAmount} > 0
+    )
+    select id, (extract(epoch from checked_in_at) * 1000)::float8 as checked_in_ms from inserted
+  `);
+  const row = result.rows[0];
+  return { id: row.id, checkedInAt: new Date(row.checked_in_ms) };
 }
 
 export async function hasCheckedInServiceToday(
@@ -296,7 +362,7 @@ export async function checkOutAllOpenTeamInDateRange(start: Date, end: Date, che
   return closed.length;
 }
 
-// Service team counterparts of getOpenCheckIn / getOpenCheckInsByKidIds /
+// Service team counterparts of getOpenCheckIn /
 // getCheckedInServicesTodayByKidIds / hasCheckedInServiceToday, against service_team_check_ins.
 
 export async function getOpenTeamCheckIn(memberId: number, todayStart: Date): Promise<OpenCheckInSummary | null> {
@@ -310,23 +376,6 @@ export async function getOpenTeamCheckIn(memberId: number, todayStart: Date): Pr
     .where(and(eq(serviceTeamCheckIns.memberId, memberId), isNull(serviceTeamCheckIns.checkedOutAt)));
   if (!row) return null;
   return { ...row, isToday: row.checkedInAt >= todayStart };
-}
-
-export async function getOpenTeamCheckInsByMemberIds(
-  memberIds: number[],
-  todayStart: Date
-): Promise<Map<number, OpenCheckInSummary>> {
-  if (memberIds.length === 0) return new Map();
-  const rows = await db
-    .select({
-      memberId: serviceTeamCheckIns.memberId,
-      id: serviceTeamCheckIns.id,
-      serviceAttending: serviceTeamCheckIns.serviceAttending,
-      checkedInAt: serviceTeamCheckIns.checkedInAt,
-    })
-    .from(serviceTeamCheckIns)
-    .where(and(inArray(serviceTeamCheckIns.memberId, memberIds), isNull(serviceTeamCheckIns.checkedOutAt)));
-  return new Map(rows.map((row) => [row.memberId, { ...row, isToday: row.checkedInAt >= todayStart }]));
 }
 
 export async function getTeamCheckedInServicesTodayByMemberIds(

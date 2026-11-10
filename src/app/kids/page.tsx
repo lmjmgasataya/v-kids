@@ -10,6 +10,7 @@ import { ExportExcelButton } from "./ExportExcelButton";
 import { ImportKidsModal } from "./ImportKidsModal";
 import { canManageKids } from "./permissions";
 import { Pagination } from "@/components/Pagination";
+import { fetchPage } from "@/lib/pagination";
 import { countKidsRows, fetchKidsRows, PAGE_SIZE, resolveDir, resolveGender, resolveService, resolveSort } from "./queries";
 
 export default async function KidsPage({
@@ -34,11 +35,15 @@ export default async function KidsPage({
   const service = resolveService(serviceParam);
   const search = q.trim();
 
-  const count = await countKidsRows({ q: search, gender, service });
-  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
-  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
-
-  const rows = await fetchKidsRows({ q: search, sort, dir, gender, service, page });
+  const [{ count, totalPages, page, rows }, canManage] = await Promise.all([
+    fetchPage({
+      requestedPage,
+      pageSize: PAGE_SIZE,
+      count: () => countKidsRows({ q: search, gender, service }),
+      rows: (page) => fetchKidsRows({ q: search, sort, dir, gender, service, page }),
+    }),
+    canManageKids(session),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,7 +87,7 @@ export default async function KidsPage({
         q={search}
         gender={gender}
         service={service}
-        canManage={await canManageKids(session)}
+        canManage={canManage}
       />
       <Pagination
         basePath="/kids"

@@ -114,11 +114,49 @@ interface Match {
   reason: string;
 }
 
-function compareFirstNames(a: DuplicateCandidate, b: DuplicateCandidate): Match | null {
-  const af = compact(a.firstName);
-  const bf = compact(b.firstName);
-  const an = compact(a.nickname);
-  const bn = compact(b.nickname);
+/**
+ * Everything compareKids needs from one kid, normalized once up front. Comparing every pair
+ * means each kid is compared ~n times, so re-normalizing names per pair was most of the work.
+ */
+interface Prepared {
+  id: number;
+  age: number;
+  gender: string;
+  guardianId: number;
+  first: string;
+  last: string;
+  nick: string;
+  firstTokens: string[];
+  lastTokens: string[];
+  firstSound: string;
+  lastSound: string;
+  phone: string;
+  guardianFirst: string;
+  guardianLast: string;
+}
+
+function prepare(kid: DuplicateCandidate): Prepared {
+  return {
+    id: kid.id,
+    age: kid.age,
+    gender: kid.gender,
+    guardianId: kid.guardianId,
+    first: compact(kid.firstName),
+    last: compact(kid.lastName),
+    nick: compact(kid.nickname),
+    firstTokens: tokens(kid.firstName),
+    lastTokens: tokens(kid.lastName),
+    firstSound: phonetic(kid.firstName),
+    lastSound: phonetic(kid.lastName),
+    phone: normalizePhone(kid.guardianContactNumber),
+    guardianFirst: compact(kid.guardianFirstName),
+    guardianLast: compact(kid.guardianLastName),
+  };
+}
+
+function compareFirstNames(a: Prepared, b: Prepared): Match | null {
+  const { first: af, nick: an } = a;
+  const { first: bf, nick: bn } = b;
 
   if (af && af === bf) return { score: 40, reason: "Same first name" };
 
@@ -128,13 +166,13 @@ function compareFirstNames(a: DuplicateCandidate, b: DuplicateCandidate): Match 
   }
 
   if (isTypo(af, bf)) return { score: 30, reason: "First name spelled slightly differently" };
-  if (phonetic(a.firstName) === phonetic(b.firstName)) {
+  if (a.firstSound === b.firstSound) {
     return { score: 30, reason: "First names sound alike" };
   }
 
   // Compound first names where only one part was used: "Juan Miguel" vs "Miguel".
-  const at = tokens(a.firstName);
-  const bt = tokens(b.firstName);
+  const at = a.firstTokens;
+  const bt = b.firstTokens;
   if ((at.length > 1 || bt.length > 1) && at.some((t) => t.length >= 3 && bt.includes(t))) {
     return { score: 24, reason: "Shares part of a compound first name" };
   }
@@ -150,17 +188,17 @@ function compareFirstNames(a: DuplicateCandidate, b: DuplicateCandidate): Match 
   return null;
 }
 
-function compareLastNames(a: DuplicateCandidate, b: DuplicateCandidate): Match | null {
-  const al = compact(a.lastName);
-  const bl = compact(b.lastName);
+function compareLastNames(a: Prepared, b: Prepared): Match | null {
+  const al = a.last;
+  const bl = b.last;
 
   if (al && al === bl) return { score: 40, reason: "Same last name" };
   if (isTypo(al, bl)) return { score: 30, reason: "Last name spelled slightly differently" };
-  if (phonetic(a.lastName) === phonetic(b.lastName)) return { score: 30, reason: "Last names sound alike" };
+  if (a.lastSound === b.lastSound) return { score: 30, reason: "Last names sound alike" };
 
   // Double-barrelled surnames where one form dropped a part: "Santos Reyes" vs "Reyes".
-  const at = tokens(a.lastName);
-  const bt = tokens(b.lastName);
+  const at = a.lastTokens;
+  const bt = b.lastTokens;
   if ((at.length > 1 || bt.length > 1) && at.some((t) => t.length >= 3 && bt.includes(t))) {
     return { score: 26, reason: "Shares part of the last name" };
   }
@@ -168,22 +206,15 @@ function compareLastNames(a: DuplicateCandidate, b: DuplicateCandidate): Match |
   return null;
 }
 
-export function compareKids(a: DuplicateCandidate, b: DuplicateCandidate): DuplicatePair | null {
+function comparePrepared(a: Prepared, b: Prepared): DuplicatePair | null {
   const reasons: string[] = [];
   let score = 0;
 
-  const sameContact =
-    normalizePhone(a.guardianContactNumber) !== "" &&
-    normalizePhone(a.guardianContactNumber) === normalizePhone(b.guardianContactNumber);
-  const sameGuardianName =
-    compact(a.guardianFirstName) === compact(b.guardianFirstName) &&
-    compact(a.guardianLastName) === compact(b.guardianLastName);
+  const sameContact = a.phone !== "" && a.phone === b.phone;
+  const sameGuardianName = a.guardianFirst === b.guardianFirst && a.guardianLast === b.guardianLast;
 
   // First and last name entered in the wrong boxes.
-  const swapped =
-    compact(a.firstName) === compact(b.lastName) &&
-    compact(a.lastName) === compact(b.firstName) &&
-    compact(a.firstName) !== compact(a.lastName);
+  const swapped = a.first === b.last && a.last === b.first && a.first !== a.last;
 
   if (swapped) {
     score += 70;
@@ -233,6 +264,10 @@ export function compareKids(a: DuplicateCandidate, b: DuplicateCandidate): Dupli
   return { aId: a.id, bId: b.id, score, reasons };
 }
 
+export function compareKids(a: DuplicateCandidate, b: DuplicateCandidate): DuplicatePair | null {
+  return comparePrepared(prepare(a), prepare(b));
+}
+
 /** Order-independent key for a pair of kid ids — the smaller id first, as stored in kid_duplicate_dismissals. */
 export function pairKey(aId: number, bId: number): string {
   return aId < bId ? `${aId}-${bId}` : `${bId}-${aId}`;
@@ -254,11 +289,12 @@ export function findDuplicateGroups<T extends DuplicateCandidate>(
   rows: T[],
   dismissed: ReadonlySet<string> = new Set(),
 ): DuplicateGroup<T>[] {
+  const prepared = rows.map(prepare);
   const pairs: DuplicatePair[] = [];
-  for (let i = 0; i < rows.length; i++) {
-    for (let j = i + 1; j < rows.length; j++) {
-      if (dismissed.has(pairKey(rows[i].id, rows[j].id))) continue;
-      const pair = compareKids(rows[i], rows[j]);
+  for (let i = 0; i < prepared.length; i++) {
+    for (let j = i + 1; j < prepared.length; j++) {
+      if (dismissed.size > 0 && dismissed.has(pairKey(prepared[i].id, prepared[j].id))) continue;
+      const pair = comparePrepared(prepared[i], prepared[j]);
       if (pair) pairs.push(pair);
     }
   }
