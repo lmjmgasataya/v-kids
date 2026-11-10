@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DEFAULT_BRACKETS, bracketIndexFor, loadBrackets, type AgeBracket } from "@/lib/ageBrackets";
+import { DEFAULT_BRACKETS, bracketIndexFor, formatBracketRange, loadBrackets, type AgeBracket } from "@/lib/ageBrackets";
 import type { ReportSundayAges } from "@/lib/reports";
 import { ColumnChart } from "./charts";
 import { dateFromString, fullDateFormatter, shortDateFormatter } from "./format";
@@ -18,7 +18,7 @@ export function AgeTrend({ sundays }: { sundays: ReportSundayAges[] }) {
     if (stored) setBrackets(stored);
   }, []);
 
-  const groups = [...brackets.map((b) => ({ label: `${b.label} (${b.min}–${b.max})` })), { label: "Other ages" }];
+  const groups = [...brackets.map((b) => ({ label: `${b.label} (${formatBracketRange(b)})` })), { label: "Other ages" }];
   const counts = sundays.map((s) => {
     const row = groups.map(() => 0);
     for (const age of s.ages) {

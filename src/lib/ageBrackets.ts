@@ -8,12 +8,18 @@ export interface AgeBracket {
   max: number;
 }
 
-// Placeholder brackets — editable in the attendance UI until the ministry settles on the
-// real cutoffs.
+// A bracket whose max is at least this is shown as open-ended ("13+"). Kept a finite number so
+// it survives JSON in localStorage and stays editable in the number input.
+const OPEN_ENDED_MAX = 99;
+
+// The ministry's age groups. Still editable per browser in the attendance UI; a saved set
+// with a different number of brackets is ignored by loadBrackets, so older saves fall back to these.
 export const DEFAULT_BRACKETS: AgeBracket[] = [
-  { label: "Small Kids", min: 4, max: 6 },
-  { label: "Big Kids", min: 7, max: 12 },
-  { label: "Preteens", min: 12, max: 13 },
+  { label: "Toddlers", min: 1, max: 3 },
+  { label: "Preschool", min: 4, max: 6 },
+  { label: "Primary", min: 7, max: 9 },
+  { label: "Preteens", min: 10, max: 12 },
+  { label: "13 & Up", min: 13, max: OPEN_ENDED_MAX },
 ];
 
 const STORAGE_KEY = "attendance-age-brackets";
@@ -41,7 +47,12 @@ export function saveBrackets(brackets: AgeBracket[]) {
 }
 
 // Each kid counts toward the first bracket their age falls in, so overlapping
-// ranges (e.g. 12 in both Big Kids and Preteens) never double-count.
+// ranges (if someone edits two to share an age) never double-count.
 export function bracketIndexFor(age: number, brackets: AgeBracket[]): number {
   return brackets.findIndex((b) => age >= b.min && age <= b.max);
+}
+
+/** "4–6", or "13+" for an open-ended bracket. */
+export function formatBracketRange(b: AgeBracket): string {
+  return b.max >= OPEN_ENDED_MAX ? `${b.min}+` : `${b.min}–${b.max}`;
 }

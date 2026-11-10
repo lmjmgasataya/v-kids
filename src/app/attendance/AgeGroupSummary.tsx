@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DEFAULT_BRACKETS, bracketIndexFor, loadBrackets, saveBrackets, type AgeBracket } from "@/lib/ageBrackets";
+import {
+  DEFAULT_BRACKETS,
+  bracketIndexFor,
+  formatBracketRange,
+  loadBrackets,
+  saveBrackets,
+  type AgeBracket,
+} from "@/lib/ageBrackets";
 
 export interface ServiceAges {
   service: string;
@@ -147,7 +154,7 @@ export function AgeGroupSummary({ services }: { services: ServiceAges[] }) {
                 <th key={i} className="px-4 py-3 text-right font-semibold text-gray-600 whitespace-nowrap">
                   {b.label}
                   <span className="block text-xs font-normal text-gray-400">
-                    {b.min}–{b.max} yrs
+                    {formatBracketRange(b)} yrs
                   </span>
                 </th>
               ))}
