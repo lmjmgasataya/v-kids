@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { idCardQrDataUrl } from "@/lib/qrCode";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
 import { kids } from "@/db/schema";
@@ -33,13 +32,9 @@ export default async function PrintIdsPage() {
   const host = h.get("host");
   const proto = h.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
 
-  const kidsWithQr = await Promise.all(
-    rows.map(async (row) => {
-      const payload = `${proto}://${host}/check-in?token=${row.qrToken}`;
-      const qrDataUrl = await idCardQrDataUrl(payload);
-      return { ...row, qrDataUrl };
-    })
-  );
+  // QRs are drawn in the browser from each kid's token (see PrintIdsWorkspace) — drawing a
+  // PNG per kid here dominated this page's load time and doubled its payload.
+  const checkInBaseUrl = `${proto}://${host}/check-in?token=`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,7 +46,7 @@ export default async function PrintIdsPage() {
         />
       </div>
 
-      <PrintIdsWorkspace kids={kidsWithQr} />
+      <PrintIdsWorkspace kids={rows} checkInBaseUrl={checkInBaseUrl} />
     </div>
   );
 }

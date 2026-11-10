@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { forwardRef, useMemo, useRef, useState } from "react";
 import { IdCardFront, IdCardBack } from "@/components/IdCard";
 import { IdCardPreview } from "@/components/IdCardPreview";
 import { inputCls } from "@/components/form";
@@ -8,6 +8,7 @@ import { PrintedFilter, matchesPrintedFilter, type PrintedFilterValue } from "@/
 import { useIdCardExport } from "@/lib/useIdCardExport";
 import { capitalizeName, idCardDisplayName, idCardNameFontSize } from "@/lib/format";
 import { ID_CARD_NAME_SCALE_MIN, ID_CARD_NAME_SCALE_MAX, SERVICE_OPTIONS } from "@/lib/constants";
+import { qrSvgDataUrl } from "@/lib/qrSvg";
 import { updateIdCardNameScale } from "../actions";
 
 interface KidRow {
@@ -21,7 +22,6 @@ interface KidRow {
   qrToken: string;
   idCardNameScale: number;
   idPrinted: boolean;
-  qrDataUrl: string;
 }
 
 const COLUMNS: { key: SortKey; label: string }[] = [
@@ -48,7 +48,17 @@ function compareRows(a: KidRow, b: KidRow, sort: SortKey): number {
 
 const SAVE_DEBOUNCE_MS = 400;
 
-export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
+// Draws the QR only when this card actually renders (previews are lazy, print/export only
+// renders selected kids), rather than one per kid up front.
+const KidIdCardBack = forwardRef<HTMLDivElement, { checkInUrl: string; fullName: string }>(function KidIdCardBack(
+  { checkInUrl, fullName },
+  ref
+) {
+  const qrDataUrl = useMemo(() => qrSvgDataUrl(checkInUrl), [checkInUrl]);
+  return <IdCardBack ref={ref} flat qrDataUrl={qrDataUrl} fullName={fullName} />;
+});
+
+export function PrintIdsWorkspace({ kids, checkInBaseUrl }: { kids: KidRow[]; checkInBaseUrl: string }) {
   const [query, setQuery] = useState("");
   const [service, setService] = useState("");
   const [printedFilter, setPrintedFilter] = useState<PrintedFilterValue>("unprinted");
@@ -279,7 +289,7 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
                           fullName={fullName}
                           nameFontSize={nameFontSize}
                         />,
-                        <IdCardBack key="back" flat qrDataUrl={kid.qrDataUrl} fullName={fullName} />,
+                        <KidIdCardBack key="back" checkInUrl={`${checkInBaseUrl}${kid.qrToken}`} fullName={fullName} />,
                       ]}
                     />
                   </td>
@@ -321,7 +331,11 @@ export function PrintIdsWorkspace({ kids }: { kids: KidRow[] }) {
                 nameFontSize={nameFontSize}
                 flat
               />
-              <IdCardBack ref={(el) => setBackRef(kid.id, el)} qrDataUrl={kid.qrDataUrl} fullName={fullName} flat />
+              <KidIdCardBack
+                ref={(el) => setBackRef(kid.id, el)}
+                checkInUrl={`${checkInBaseUrl}${kid.qrToken}`}
+                fullName={fullName}
+              />
             </div>
           );
         })}

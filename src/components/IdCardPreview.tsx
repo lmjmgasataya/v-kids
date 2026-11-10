@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ID_CARD_WIDTH_MM, ID_CARD_HEIGHT_MM } from "./IdCard";
 
 // Cards are laid out in real mm units; shrink/grow them via CSS transform instead of rendering
@@ -68,12 +68,33 @@ function EnlargedPreview({ title, sides, onClose }: { title: string; sides: Reac
 }
 
 // Small inline thumbnails of a card's sides (pass `flat` cards); click to see them enlarged.
+// Print pages list hundreds of these, so the cards only render once the thumbnail nears the
+// viewport (same-size placeholders until then) — keeps the server HTML and hydration small.
 export function IdCardPreview({ title, sides }: { title: string; sides: ReactNode[] }) {
   const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const el = buttonRef.current;
+    if (!el || visible) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "400px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visible]);
 
   return (
     <>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen(true)}
         title="Click to enlarge"
@@ -81,8 +102,12 @@ export function IdCardPreview({ title, sides }: { title: string; sides: ReactNod
         className="flex gap-2 rounded-md cursor-zoom-in transition hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-kids-navy"
       >
         {sides.map((side, i) => (
-          <ScaledIdCard key={i} width={THUMB_WIDTH_PX} className="rounded-md border border-gray-200">
-            {side}
+          <ScaledIdCard
+            key={i}
+            width={THUMB_WIDTH_PX}
+            className={`rounded-md border border-gray-200 ${visible ? "" : "bg-gray-100"}`}
+          >
+            {visible ? side : null}
           </ScaledIdCard>
         ))}
       </button>

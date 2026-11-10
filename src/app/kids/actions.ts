@@ -31,7 +31,8 @@ export async function updateIdCardNameScale(kidId: number, scale: number): Promi
 
   await db.update(kids).set({ idCardNameScale: clamped }).where(eq(kids.id, kidId));
 
-  revalidatePath("/kids/print-ids");
+  // Not /kids/print-ids: its workspace already shows the new scale, and re-rendering that page
+  // per slider save redrew every card. It loads fresh on the next visit (dynamic page).
   revalidatePath(`/kids/${kidId}/id-card`);
   return {};
 }
