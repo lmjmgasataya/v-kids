@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, serial, text, boolean, timestamp, integer, real, uuid, uniqueIndex, index, date } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, serial, text, boolean, timestamp, integer, real, uuid, uniqueIndex, index, date, primaryKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const roleEnum = pgEnum("user_role", ["admin", "volunteer"]);
@@ -50,6 +50,23 @@ export const kids = pgTable("kids", {
   idGiven: boolean("id_given").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Pairs a staff member marked "Not duplicates" on /kids/duplicates, so they stop being suggested.
+// Stored with kidAId < kidBId; rows go away with either kid.
+export const kidDuplicateDismissals = pgTable(
+  "kid_duplicate_dismissals",
+  {
+    kidAId: integer("kid_a_id")
+      .references(() => kids.id, { onDelete: "cascade" })
+      .notNull(),
+    kidBId: integer("kid_b_id")
+      .references(() => kids.id, { onDelete: "cascade" })
+      .notNull(),
+    dismissedBy: integer("dismissed_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.kidAId, t.kidBId] }), index("kid_duplicate_dismissals_kid_b_idx").on(t.kidBId)]
+);
 
 export const checkIns = pgTable(
   "check_ins",
@@ -168,6 +185,7 @@ export type LoginLog = typeof loginLogs.$inferSelect;
 export type Guardian = typeof guardians.$inferSelect;
 export type Kid = typeof kids.$inferSelect;
 export type ServiceTeamMember = typeof serviceTeamMembers.$inferSelect;
+export type KidDuplicateDismissal = typeof kidDuplicateDismissals.$inferSelect;
 export type CheckIn = typeof checkIns.$inferSelect;
 export type ServiceTeamCheckIn = typeof serviceTeamCheckIns.$inferSelect;
 export type FeatureFlag = typeof featureFlags.$inferSelect;

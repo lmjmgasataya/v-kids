@@ -1,6 +1,7 @@
 import {
   guardians,
   kids,
+  kidDuplicateDismissals,
   checkIns,
   kcBucksTransactions,
   kcBucksSettings,
@@ -33,6 +34,7 @@ export const DEVOPS_TABLE_GROUPS: { area: string; tables: DevopsTable[] }[] = [
     tables: [
       { key: "kids", label: "Kids", table: kids },
       { key: "guardians", label: "Guardians", table: guardians },
+      { key: "kid_duplicate_dismissals", label: "Dismissed Duplicate Matches", table: kidDuplicateDismissals },
     ],
   },
   {

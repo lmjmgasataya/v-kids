@@ -233,6 +233,11 @@ export function compareKids(a: DuplicateCandidate, b: DuplicateCandidate): Dupli
   return { aId: a.id, bId: b.id, score, reasons };
 }
 
+/** Order-independent key for a pair of kid ids — the smaller id first, as stored in kid_duplicate_dismissals. */
+export function pairKey(aId: number, bId: number): string {
+  return aId < bId ? `${aId}-${bId}` : `${bId}-${aId}`;
+}
+
 function confidenceFor(score: number): DuplicateConfidence {
   if (score >= 90) return "High";
   if (score >= 75) return "Medium";
@@ -242,12 +247,17 @@ function confidenceFor(score: number): DuplicateConfidence {
 /**
  * Compares every pair of kids, then merges matching pairs into groups (so a kid
  * registered three times shows up once, as a group of three). Sorted most
- * likely first.
+ * likely first. Pairs in `dismissed` (keys from `pairKey`) were marked "Not
+ * duplicates" by staff and are skipped.
  */
-export function findDuplicateGroups<T extends DuplicateCandidate>(rows: T[]): DuplicateGroup<T>[] {
+export function findDuplicateGroups<T extends DuplicateCandidate>(
+  rows: T[],
+  dismissed: ReadonlySet<string> = new Set(),
+): DuplicateGroup<T>[] {
   const pairs: DuplicatePair[] = [];
   for (let i = 0; i < rows.length; i++) {
     for (let j = i + 1; j < rows.length; j++) {
+      if (dismissed.has(pairKey(rows[i].id, rows[j].id))) continue;
       const pair = compareKids(rows[i], rows[j]);
       if (pair) pairs.push(pair);
     }
